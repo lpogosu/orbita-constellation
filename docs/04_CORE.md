@@ -104,7 +104,8 @@ availability(c) = reachable_ticks(c) / total_ticks
 visibility(c)   = visible_ticks(c) / total_ticks
 max_gap_s(c)    = longest_unreachable_run(c) × step_s
 mean_hops(c), max_hops(c)   по отсчётам с путём; переход = ребро, включая две наземные линии
-route_switches(c)           смены пути между соседними отсчётами с путём
+route_switches(c)           смены пути между соседними отсчётами, на обоих из которых путь есть;
+                            перерыв и выход из него сменой не считаются
 outage_intervals(c)         [{start_s, end_s, primary_cause, causes, truncated_by_horizon}]
 ```
 

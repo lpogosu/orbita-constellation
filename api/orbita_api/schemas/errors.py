@@ -29,11 +29,17 @@ class ErrorCode(StrEnum):
 NotImplementedCode: TypeAlias = Literal["NOT_IMPLEMENTED"]
 NOT_IMPLEMENTED_CODE: Final[NotImplementedCode] = "NOT_IMPLEMENTED"
 
+# `05_API.md` §3 требует 404 для отсутствующей сущности, но кода для неё в
+# `03_GLOSSARY.md` §3.6 нет. Пока код не заведён в глоссарии, он живёт литералом рядом с
+# `NOT_IMPLEMENTED`: добавлять значение в enum глоссария самовольно нельзя.
+NotFoundCode: TypeAlias = Literal["NOT_FOUND"]
+NOT_FOUND_CODE: Final[NotFoundCode] = "NOT_FOUND"
+
 
 class ErrorDetail(BaseModel):
     """Одна ошибка: код, человекочитаемое сообщение, поле и доказательство."""
 
-    code: ErrorCode | NotImplementedCode = Field(description="Код ошибки")
+    code: ErrorCode | NotImplementedCode | NotFoundCode = Field(description="Код ошибки")
     message: str = Field(description="Сообщение для пользователя")
     path: str | None = Field(
         default=None,

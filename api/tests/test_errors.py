@@ -68,13 +68,15 @@ def test_query_parameter_error_names_the_parameter(client: TestClient) -> None:
 
 def test_not_implemented_envelope_has_no_field_path(client: TestClient) -> None:
     """Заглушка сообщает о самом endpoint, поэтому поля с ошибкой у неё нет."""
-    response = client.get("/api/projects")
+    endpoint = f"/api/runs/{SAMPLE_UUID}/metrics"
+
+    response = client.get(endpoint)
 
     assert response.status_code == 501
     error = response.json()["error"]
     assert error["code"] == "NOT_IMPLEMENTED"
     assert error["path"] is None
-    assert error["details"] == {"method": "GET", "endpoint": "/api/projects"}
+    assert error["details"] == {"method": "GET", "endpoint": endpoint}
 
 
 @pytest.mark.parametrize(

@@ -92,10 +92,11 @@ class Scenario(BaseModel):
     environment: Environment
     design: Design
     ground_sites: list[GroundSite]
-    # Пустой список отказов и отсутствующий раздел означают одно и то же, поэтому файл без
-    # них принимается: сценарий жюри не должен отклоняться из-за необязательного раздела.
-    failures: list[SatelliteFailure] = Field(default_factory=list)
-    gateway_outages: list[GatewayOutage] = Field(default_factory=list)
+    # Разделы обязательны, хотя пустой список допустим: ядро и эталонный `geometry.py`
+    # обращаются к ним без проверки наличия, и молчаливо принятый файл без `failures`
+    # дал бы на одном и том же входе разный ответ у API и у ядра.
+    failures: list[SatelliteFailure]
+    gateway_outages: list[GatewayOutage]
 
 
 class ScenarioValidationResult(BaseModel):
@@ -115,3 +116,9 @@ class ScenarioValidationResult(BaseModel):
     client_count: int
     gateway_count: int
     total_ticks: int = Field(description="`horizon_s / step_s`: отсчётов в расчёте")
+    config_hash: str = Field(
+        description=(
+            "sha256 канонического сценария: совпадение хэшей означает, что два файла "
+            "задают один и тот же расчёт (ADR-011)"
+        ),
+    )

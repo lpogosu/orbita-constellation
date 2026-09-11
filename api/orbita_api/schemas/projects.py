@@ -1,6 +1,7 @@
 """Проекты, варианты и граф их происхождения (`05_API.md` §1-2, ADR-011)."""
 
 from datetime import datetime
+from typing import Final
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -8,6 +9,10 @@ from pydantic import BaseModel, Field
 from orbita_api.schemas.common import ParameterChange
 from orbita_api.schemas.runs import Run
 from orbita_api.schemas.scenario import Scenario
+
+# Предел длины названия проекта и варианта. Он же длина колонки в базе: иначе слишком
+# длинное название возвращало бы 500 из драйвера вместо 400 с указанием поля.
+TITLE_MAX_LENGTH: Final[int] = 200
 
 
 class Project(BaseModel):
@@ -38,18 +43,29 @@ class Variant(BaseModel):
 class ProjectCreateRequest(BaseModel):
     """Тело `POST /api/projects`: проект создаётся сразу с первым вариантом."""
 
-    title: str
+    # Название необязательно: инженер загружает файл кнопкой и не обязан придумывать имя
+    # проекту, у сценария уже есть `meta.title`. Пустая строка приравнивается к пропуску,
+    # иначе в списке проектов появилась бы безымянная строка.
+    title: str | None = Field(
+        default=None,
+        max_length=TITLE_MAX_LENGTH,
+        description="По умолчанию — `meta.title` сценария",
+    )
     scenario: Scenario
 
 
 class VariantCreateRequest(BaseModel):
     """Тело `POST /api/projects/{project_id}/variants`."""
 
-    title: str
+    title: str | None = Field(
+        default=None,
+        max_length=TITLE_MAX_LENGTH,
+        description="По умолчанию — `meta.title` сценария",
+    )
     scenario: Scenario
     parent_variant_id: UUID | None = Field(
         default=None,
-        description="Родитель для diff и lineage; null для варианта, загруженного файлом",
+        description="Родитель для diff и lineage; по умолчанию — активный вариант проекта",
     )
 
 

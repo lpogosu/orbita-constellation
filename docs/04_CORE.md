@@ -85,10 +85,15 @@ Union-Find по всем рёбрам `G_t` без клиентских узло
 ```text
 если нет активных спутников, видимых клиенту          → NO_CLIENT_COVERAGE
 если все шлюзы в gateway_outage                         → GATEWAY_OUTAGE
-если у каждого доступного шлюза нет видимых спутников   → NO_GATEWAY_COVERAGE
-если компонента(спутники клиента) ∩ компонента(спутники шлюза) = ∅ → NETWORK_PARTITION
+если есть доступные шлюзы и ни один не видит спутник    → NO_GATEWAY_COVERAGE
+если и клиент, и доступные шлюзы видят спутники, но
+   компоненты этих спутников не пересекаются             → NETWORK_PARTITION
 иначе                                                   → INTERNAL_INCONSISTENCY
 ```
+
+Условия проверяются на непустых множествах: пустое множество видимых спутников не даёт
+вакуумного срабатывания `NO_GATEWAY_COVERAGE` или `NETWORK_PARTITION`, оно уже учтено
+первыми строками.
 
 Собираются все сработавшие причины; `primary_cause` — первая. Доказательства:
 `client_visible_satellites`, `gateway_visible_satellites`, `failed_satellites`,
@@ -113,8 +118,9 @@ outage_intervals(c)         [{start_s, end_s, primary_cause, causes, truncated_b
 
 ### 5.2 По конфигурации
 
-`min_client_availability`, `mean_client_availability`, `worst_max_gap_s`, `mean_hops`,
-`max_hops`, `route_switches_total`, `outage_count_by_cause`, `backup_path_count_min`
+`min_client_availability`, `mean_client_availability`, `worst_max_gap_s`, `mean_hops`
+(среднее по клиентам от `mean_hops(c)`, клиенты равноправны), `max_hops`,
+`route_switches_total`, `outage_count_by_cause`, `backup_path_count_min`
 (минимум по клиентам и отсчётам с путём), `target_met_clients` (список клиентов с
 `availability ≥ target_availability`).
 

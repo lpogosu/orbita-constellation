@@ -1,0 +1,337 @@
+{
+  "schema_version": "cosmo-A-1.0",
+  "meta": {
+    "id": "hidden_like",
+    "title": "Hidden-like acceptance scenario (5 planes x 7 satellites, two gateways)"
+  },
+  "environment": {
+    "altitude_km": 620.0,
+    "inclination_deg": 82.5,
+    "earth_angle0_deg": 217.4,
+    "horizon_s": 86400,
+    "step_s": 120,
+    "min_elevation_deg": 7.5,
+    "isl_range_km": 2600.0,
+    "target_availability": 0.85
+  },
+  "design": {
+    "launch_stage": 3,
+    "planes": [
+      {
+        "id": "ORB-A",
+        "raan_deg": 0.0,
+        "phase_deg": 0.0
+      },
+      {
+        "id": "ORB-B",
+        "raan_deg": 72.0,
+        "phase_deg": 10.3
+      },
+      {
+        "id": "ORB-C",
+        "raan_deg": 144.0,
+        "phase_deg": 20.6
+      },
+      {
+        "id": "ORB-D",
+        "raan_deg": 216.0,
+        "phase_deg": 30.9
+      },
+      {
+        "id": "ORB-E",
+        "raan_deg": 288.0,
+        "phase_deg": 41.2
+      }
+    ],
+    "satellites": [
+      {
+        "id": "A-01",
+        "plane_id": "ORB-A",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "A-02",
+        "plane_id": "ORB-A",
+        "slot_deg": 51.428571,
+        "launch_batch": 2
+      },
+      {
+        "id": "A-03",
+        "plane_id": "ORB-A",
+        "slot_deg": 102.857143,
+        "launch_batch": 3
+      },
+      {
+        "id": "A-04",
+        "plane_id": "ORB-A",
+        "slot_deg": 154.285714,
+        "launch_batch": 1
+      },
+      {
+        "id": "A-05",
+        "plane_id": "ORB-A",
+        "slot_deg": 205.714286,
+        "launch_batch": 2
+      },
+      {
+        "id": "A-06",
+        "plane_id": "ORB-A",
+        "slot_deg": 257.142857,
+        "launch_batch": 3
+      },
+      {
+        "id": "A-07",
+        "plane_id": "ORB-A",
+        "slot_deg": 308.571429,
+        "launch_batch": 1
+      },
+      {
+        "id": "B-01",
+        "plane_id": "ORB-B",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "B-02",
+        "plane_id": "ORB-B",
+        "slot_deg": 51.428571,
+        "launch_batch": 2
+      },
+      {
+        "id": "B-03",
+        "plane_id": "ORB-B",
+        "slot_deg": 102.857143,
+        "launch_batch": 3
+      },
+      {
+        "id": "B-04",
+        "plane_id": "ORB-B",
+        "slot_deg": 154.285714,
+        "launch_batch": 1
+      },
+      {
+        "id": "B-05",
+        "plane_id": "ORB-B",
+        "slot_deg": 205.714286,
+        "launch_batch": 2
+      },
+      {
+        "id": "B-06",
+        "plane_id": "ORB-B",
+        "slot_deg": 257.142857,
+        "launch_batch": 3
+      },
+      {
+        "id": "B-07",
+        "plane_id": "ORB-B",
+        "slot_deg": 308.571429,
+        "launch_batch": 1
+      },
+      {
+        "id": "C-01",
+        "plane_id": "ORB-C",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "C-02",
+        "plane_id": "ORB-C",
+        "slot_deg": 51.428571,
+        "launch_batch": 2
+      },
+      {
+        "id": "C-03",
+        "plane_id": "ORB-C",
+        "slot_deg": 102.857143,
+        "launch_batch": 3
+      },
+      {
+        "id": "C-04",
+        "plane_id": "ORB-C",
+        "slot_deg": 154.285714,
+        "launch_batch": 1
+      },
+      {
+        "id": "C-05",
+        "plane_id": "ORB-C",
+        "slot_deg": 205.714286,
+        "launch_batch": 2
+      },
+      {
+        "id": "C-06",
+        "plane_id": "ORB-C",
+        "slot_deg": 257.142857,
+        "launch_batch": 3
+      },
+      {
+        "id": "C-07",
+        "plane_id": "ORB-C",
+        "slot_deg": 308.571429,
+        "launch_batch": 1
+      },
+      {
+        "id": "D-01",
+        "plane_id": "ORB-D",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "D-02",
+        "plane_id": "ORB-D",
+        "slot_deg": 51.428571,
+        "launch_batch": 2
+      },
+      {
+        "id": "D-03",
+        "plane_id": "ORB-D",
+        "slot_deg": 102.857143,
+        "launch_batch": 3
+      },
+      {
+        "id": "D-04",
+        "plane_id": "ORB-D",
+        "slot_deg": 154.285714,
+        "launch_batch": 1
+      },
+      {
+        "id": "D-05",
+        "plane_id": "ORB-D",
+        "slot_deg": 205.714286,
+        "launch_batch": 2
+      },
+      {
+        "id": "D-06",
+        "plane_id": "ORB-D",
+        "slot_deg": 257.142857,
+        "launch_batch": 3
+      },
+      {
+        "id": "D-07",
+        "plane_id": "ORB-D",
+        "slot_deg": 308.571429,
+        "launch_batch": 1
+      },
+      {
+        "id": "E-01",
+        "plane_id": "ORB-E",
+        "slot_deg": 0.0,
+        "launch_batch": 1
+      },
+      {
+        "id": "E-02",
+        "plane_id": "ORB-E",
+        "slot_deg": 51.428571,
+        "launch_batch": 2
+      },
+      {
+        "id": "E-03",
+        "plane_id": "ORB-E",
+        "slot_deg": 102.857143,
+        "launch_batch": 3
+      },
+      {
+        "id": "E-04",
+        "plane_id": "ORB-E",
+        "slot_deg": 154.285714,
+        "launch_batch": 1
+      },
+      {
+        "id": "E-05",
+        "plane_id": "ORB-E",
+        "slot_deg": 205.714286,
+        "launch_batch": 2
+      },
+      {
+        "id": "E-06",
+        "plane_id": "ORB-E",
+        "slot_deg": 257.142857,
+        "launch_batch": 3
+      },
+      {
+        "id": "E-07",
+        "plane_id": "ORB-E",
+        "slot_deg": 308.571429,
+        "launch_batch": 1
+      }
+    ]
+  },
+  "ground_sites": [
+    {
+      "id": "GWA",
+      "name": "Arctic hub Alfa (synthetic site)",
+      "role": "gateway",
+      "lat_deg": 67.62,
+      "lon_deg": 53.01
+    },
+    {
+      "id": "GWB",
+      "name": "Southern hub Bravo (synthetic site)",
+      "role": "gateway",
+      "lat_deg": -29.1,
+      "lon_deg": 26.2
+    },
+    {
+      "id": "TRM_A",
+      "name": "Terminal Alfa (taiga)",
+      "role": "client",
+      "lat_deg": 61.25,
+      "lon_deg": 73.4
+    },
+    {
+      "id": "TRM_B",
+      "name": "Terminal Bravo (high latitude)",
+      "role": "client",
+      "lat_deg": 74.5,
+      "lon_deg": 112.4
+    },
+    {
+      "id": "TRM_C",
+      "name": "Terminal Charlie (pacific coast)",
+      "role": "client",
+      "lat_deg": 55.03,
+      "lon_deg": 158.65
+    },
+    {
+      "id": "TRM_D",
+      "name": "Terminal Delta (southern hemisphere)",
+      "role": "client",
+      "lat_deg": -33.92,
+      "lon_deg": 18.42
+    }
+  ],
+  "failures": [
+    {
+      "satellite_id": "A-06",
+      "start_s": 0,
+      "end_s": 7200
+    },
+    {
+      "satellite_id": "B-03",
+      "start_s": 10800,
+      "end_s": 25200
+    },
+    {
+      "satellite_id": "B-03",
+      "start_s": 21600,
+      "end_s": 36000
+    },
+    {
+      "satellite_id": "D-05",
+      "start_s": 43200,
+      "end_s": 54000
+    },
+    {
+      "satellite_id": "E-01",
+      "start_s": 72000,
+      "end_s": 86400
+    }
+  ],
+  "gateway_outages": [
+    {
+      "gateway_id": "GWA",
+      "start_s": 21600,
+      "end_s": 28800
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# Профиль degraded (06_STORAGE.md §7, ADR-008): проверяет, что api поднимается и
+# отвечает, когда Redis, Memgraph и MinIO недоступны. Адреса указывают на
+# несуществующие хосты, поэтому пробы падают на разрешении имени и отвечают `down`.
+# Это тестовый режим, не режим защиты.
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/compose.degraded.yml up -d
+
+services:
+  api:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+    environment: !override
+      ORBITA_POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-orbita}:${POSTGRES_PASSWORD:-orbita}@postgres:5432/${POSTGRES_DB:-orbita}
+      ORBITA_REDIS_URL: redis://redis-unavailable:6379/0
+      ORBITA_MEMGRAPH_URL: bolt://memgraph-unavailable:7687
+      ORBITA_MINIO_ENDPOINT: http://minio-unavailable:9000
+
+  web:
+    depends_on: !override
+      api:
+        condition: service_started
+
+  # Профиль, который никогда не активируется: сервис описан, но не запускается.
+  redis:
+    profiles: ["disabled"]
+
+  memgraph:
+    profiles: ["disabled"]
+
+  minio:
+    profiles: ["disabled"]
+
+  # Без Redis воркер работать не может: очередь arq живёт именно там.
+  worker:
+    profiles: ["disabled"]

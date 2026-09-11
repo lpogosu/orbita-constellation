@@ -1,0 +1,154 @@
+name: orbita
+
+# Семь сервисов (ADR-008). Порты хоста вынесены в переменные: на машине разработчика
+# 5432 и 6379 обычно уже заняты чужими контейнерами, поэтому дефолты сдвинуты.
+# Образцы значений — в deploy/.env.example.
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      target: runtime
+    image: orbita-web:local
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      # Явный 127.0.0.1: имя localhost в образе разрешается сначала в ::1, а nginx
+      # слушает только IPv4 — проверка по имени падала бы на работающем сервисе.
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: &backend_build
+      context: ..
+      dockerfile: api/Dockerfile
+      target: runtime
+    image: orbita-backend:local
+    restart: unless-stopped
+    environment: &backend_environment
+      ORBITA_POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-orbita}:${POSTGRES_PASSWORD:-orbita}@postgres:5432/${POSTGRES_DB:-orbita}
+      ORBITA_REDIS_URL: redis://redis:6379/0
+      ORBITA_MEMGRAPH_URL: bolt://memgraph:7687
+      ORBITA_MINIO_ENDPOINT: http://minio:9000
+      ORBITA_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-orbita}
+      ORBITA_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-orbita-secret}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      # Только Postgres и Redis обязательны для старта. Memgraph и MinIO могут быть
+      # недоступны: это degraded mode, а не отказ (06_STORAGE.md §7).
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  worker:
+    build: *backend_build
+    # Тот же Dockerfile и та же стадия, что у api: код и версия ядра совпадают
+    # побайтово. Отдельный тег нужен лишь потому, что два сервиса не могут писать
+    # результат сборки в один и тот же тег одновременно.
+    image: orbita-worker:local
+    restart: unless-stopped
+    command: ["arq", "orbita_worker.settings.WorkerSettings"]
+    environment: *backend_environment
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # arq сверяет собственную отметку живости в Redis — ту же, по которой воркера
+      # видит /api/health.
+      test: ["CMD", "arq", "--check", "orbita_worker.settings.WorkerSettings"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  postgres:
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orbita}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbita}
+      POSTGRES_DB: ${POSTGRES_DB:-orbita}
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbita} -d ${POSTGRES_DB:-orbita}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4.11-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  memgraph:
+    image: memgraph/memgraph-mage:3.13.0
+    restart: unless-stopped
+    command: ["--log-level=WARNING", "--telemetry-enabled=false"]
+    ports:
+      - "${MEMGRAPH_PORT:-7687}:7687"
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+    healthcheck:
+      # В образе нет ни curl, ни клиента Bolt в PATH, зато есть bash: проверяем,
+      # что порт принимает соединение.
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/7687'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  minio:
+    # Официальные образы MinIO публикуются на quay.io; на Docker Hub репозиторий закрыт.
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-orbita}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-orbita-secret}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  redis_data:
+  memgraph_data:
+  minio_data:

@@ -9,6 +9,10 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Final
 
+import numpy as np
+
+from orbita_core.contacts import ContactPlan, EdgeKind
+
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 SCENARIOS_DIR: Final[Path] = REPO_ROOT / "scenarios"
 FIXTURES_DIR: Final[Path] = Path(__file__).resolve().parent / "fixtures"
@@ -109,3 +113,43 @@ def synthetic_scenario(
         "failures": [dict(item) for item in failures],
         "gateway_outages": [dict(item) for item in gateway_outages],
     }
+
+
+def single_tick_plan(
+    *,
+    satellite_count: int,
+    gateway_count: int,
+    client_count: int,
+    links: Sequence[tuple[int, int, float]],
+    gateway_available: Sequence[bool],
+) -> ContactPlan:
+    """Contact plan из произвольного графа на одном отсчёте.
+
+    Нужен property-тестам: сценарий с заданной топологией через орбитальную геометрию не
+    построить, а маршрутизация от геометрии и не зависит — ей достаточно узлов, рёбер и
+    ролей. Ребро задаётся как `(узел, узел, длина)` в том же порядке, что в
+    `contacts.build`: первым идёт аппарат, вторым аппарат или наземный пункт.
+    """
+    node_ids = (
+        tuple(f"SAT-{index:02d}" for index in range(satellite_count))
+        + tuple(f"GW-{index}" for index in range(gateway_count))
+        + tuple(f"TRM-{index}" for index in range(client_count))
+    )
+    edges = np.array([[first, second] for first, second, _ in links], dtype=np.int64)
+    return ContactPlan(
+        nodes=node_ids,
+        node_index={node_id: index for index, node_id in enumerate(node_ids)},
+        satellite_count=satellite_count,
+        step_s=120,
+        edges=edges.reshape(-1, 2),
+        kinds=tuple(
+            EdgeKind.ISL if second < satellite_count else EdgeKind.GROUND
+            for _, second, _ in links
+        ),
+        bits=np.ones((1, len(links)), dtype=np.bool_),
+        dist=np.array([[length for _, _, length in links]], dtype=np.float64).reshape(1, -1),
+        active=np.ones((1, satellite_count), dtype=np.bool_),
+        gateway_ids=node_ids[satellite_count : satellite_count + gateway_count],
+        gateway_available=np.array([list(gateway_available)], dtype=np.bool_),
+        positions=np.zeros((1, satellite_count, 3), dtype=np.float64),
+    )

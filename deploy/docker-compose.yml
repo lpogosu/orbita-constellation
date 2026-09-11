@@ -32,6 +32,13 @@ services:
       target: runtime
     image: orbita-backend:local
     restart: unless-stopped
+    # Схема базы приводится к текущей ревизии до первого запроса: отдельная цель make
+    # забывается, а `make up` обязан давать работающий сервис одной командой.
+    command:
+      - sh
+      - -ec
+      - alembic -c /app/api/alembic.ini upgrade head
+        && exec uvicorn orbita_api.main:app --host 0.0.0.0 --port 8000
     environment: &backend_environment
       ORBITA_POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-orbita}:${POSTGRES_PASSWORD:-orbita}@postgres:5432/${POSTGRES_DB:-orbita}
       ORBITA_REDIS_URL: redis://redis:6379/0

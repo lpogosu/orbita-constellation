@@ -16,6 +16,8 @@ COPY core/pyproject.toml core/pyproject.toml
 COPY core/orbita_core core/orbita_core
 COPY api/pyproject.toml api/pyproject.toml
 COPY api/orbita_api api/orbita_api
+# Конфигурация Alembic нужна в runtime: контейнер api применяет миграции перед стартом.
+COPY api/alembic.ini api/alembic.ini
 COPY worker/pyproject.toml worker/pyproject.toml
 COPY worker/orbita_worker worker/orbita_worker
 
@@ -32,6 +34,10 @@ FROM runtime AS dev
 # Тест OpenAPI сверяет схему с разделом «Endpoint map» документа, а не с копией списка
 # в коде, поэтому документ нужен и в образе проверок.
 COPY docs/05_API.md docs/05_API.md
+# Сверка ядра с эталонным модулем и интеграционные тесты api читают файлы сценариев и
+# сам эталон, поэтому обе папки нужны в стадии проверок.
+COPY scenarios scenarios
+COPY ["Расчетный модуль", "Расчетный модуль"]
 COPY core/tests core/tests
 COPY api/tests api/tests
 COPY worker/tests worker/tests

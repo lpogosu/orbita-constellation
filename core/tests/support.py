@@ -130,26 +130,71 @@ def single_tick_plan(
     ролей. Ребро задаётся как `(узел, узел, длина)` в том же порядке, что в
     `contacts.build`: первым идёт аппарат, вторым аппарат или наземный пункт.
     """
+    return scripted_plan(
+        satellite_count=satellite_count,
+        gateway_count=gateway_count,
+        client_count=client_count,
+        links=links,
+        present=[[True] * len(links)],
+        gateway_available=[list(gateway_available)],
+    )
+
+
+def scripted_plan(
+    *,
+    satellite_count: int,
+    gateway_count: int,
+    client_count: int,
+    links: Sequence[tuple[int, int, float]],
+    present: Sequence[Sequence[bool]],
+    gateway_available: Sequence[Sequence[bool]],
+    active: Sequence[Sequence[bool]] | None = None,
+    step_s: int = 120,
+) -> ContactPlan:
+    """Contact plan с заданным вручную состоянием каждой линии на каждом отсчёте.
+
+    Нужен тестам диагностики и метрик: разрыв нужной природы — потеря видимости у клиента,
+    отказ шлюза, распад межспутниковой сети — через орбитальную геометрию подбирается
+    долго и хрупко, а причина разрыва от геометрии не зависит. Линии недоступного аппарата
+    снимаются автоматически, иначе получился бы план, невозможный в `contacts.build`.
+
+    `present` и `gateway_available` задаются построчно по отсчётам, `links` — как в
+    `contacts.build`: первым узлом ребра всегда идёт аппарат.
+    """
     node_ids = (
         tuple(f"SAT-{index:02d}" for index in range(satellite_count))
         + tuple(f"GW-{index}" for index in range(gateway_count))
         + tuple(f"TRM-{index}" for index in range(client_count))
     )
-    edges = np.array([[first, second] for first, second, _ in links], dtype=np.int64)
+    ticks = len(present)
+    edges = np.array([[first, second] for first, second, _ in links], dtype=np.int64).reshape(-1, 2)
+    bits = np.array([list(row) for row in present], dtype=np.bool_).reshape(ticks, len(links))
+    active_matrix = (
+        np.ones((ticks, satellite_count), dtype=np.bool_)
+        if active is None
+        else np.array([list(row) for row in active], dtype=np.bool_)
+    )
+    # Второй конец наземного ребра — пункт, у него активности нет; чтобы индексировать
+    # матрицу одним выражением, для таких рёбер он заменяется первым концом.
+    second_satellite = np.where(edges[:, 1] < satellite_count, edges[:, 1], edges[:, 0])
+    for tick in range(ticks):
+        bits[tick] &= active_matrix[tick][edges[:, 0]] & active_matrix[tick][second_satellite]
     return ContactPlan(
         nodes=node_ids,
         node_index={node_id: index for index, node_id in enumerate(node_ids)},
         satellite_count=satellite_count,
-        step_s=120,
-        edges=edges.reshape(-1, 2),
+        step_s=step_s,
+        edges=edges,
         kinds=tuple(
             EdgeKind.ISL if second < satellite_count else EdgeKind.GROUND
             for _, second, _ in links
         ),
-        bits=np.ones((1, len(links)), dtype=np.bool_),
-        dist=np.array([[length for _, _, length in links]], dtype=np.float64).reshape(1, -1),
-        active=np.ones((1, satellite_count), dtype=np.bool_),
+        bits=bits,
+        dist=np.tile(
+            np.array([length for _, _, length in links], dtype=np.float64), (ticks, 1)
+        ).reshape(ticks, len(links)),
+        active=active_matrix,
         gateway_ids=node_ids[satellite_count : satellite_count + gateway_count],
-        gateway_available=np.array([list(gateway_available)], dtype=np.bool_),
-        positions=np.zeros((1, satellite_count, 3), dtype=np.float64),
+        gateway_available=np.array([list(row) for row in gateway_available], dtype=np.bool_),
+        positions=np.zeros((ticks, satellite_count, 3), dtype=np.float64),
     )

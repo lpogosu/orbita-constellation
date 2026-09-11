@@ -35,6 +35,8 @@ jobs:
 
       - name: pytest
         working-directory: ${{ matrix.package }}
+        env:
+          ORBITA_TEST_DATABASE_URL: postgresql://orbita:orbita@localhost:5432/orbita
         run: pytest -q
 
   compose:

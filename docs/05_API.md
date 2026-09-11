@@ -67,6 +67,7 @@
 { "min_client_availability": 0.9667, "mean_client_availability": 0.981,
   "worst_max_gap_s": 480, "mean_hops": 2.7, "max_hops": 5,
   "route_switches_total": 1439, "backup_path_count_min": 1,
+  "outage_count_by_cause": { "NETWORK_PARTITION": 5, "NO_CLIENT_COVERAGE": 2 },
   "target_met_clients": ["C65", "C70", "C72"] }
 ```
 
@@ -87,7 +88,7 @@
 ### Проекты и варианты
 | Метод | Путь | Назначение |
 |---|---|---|
-| `POST` | `/api/scenarios/validate` | только валидация файла, без сохранения |
+| `POST` | `/api/scenarios/validate` | только валидация файла, без сохранения; 200 — сводка сценария (плоскости, аппараты, активные аппараты, клиенты, шлюзы, отсчёты, `config_hash`) |
 | `POST` | `/api/projects` | создать проект из сценария |
 | `GET` | `/api/projects` | список проектов |
 | `GET` | `/api/projects/{id}` | проект, варианты, последние Run |
@@ -139,6 +140,10 @@
 ```
 
 Валидация возвращает **все** найденные ошибки списком `errors[]`, а не первую.
+Порядок проверки сценария: сначала типы и обязательность полей (схема), затем диапазоны,
+ссылки и интервалы в ядре; оба слоя отдают код и `path`. Ошибка query- или header-параметра
+(`t_s`, `client_id`, `Idempotency-Key`) — тот же `INVALID_SCENARIO_FIELD` с `path` = имя
+параметра: отдельного кода в глоссарии нет намеренно.
 Коды — `03_GLOSSARY.md` §3.6. HTTP: 400 для ошибок входа, 404 для отсутствующих сущностей,
 409 для конфликта idempotency, 422 для `EXPERIMENT_BUDGET_EXCEEDED`, 503 для
 `STORAGE_UNAVAILABLE`.

@@ -107,8 +107,18 @@
 
 `truncated_by_horizon: bool` — перерыв примыкает к началу или концу горизонта (ADR-004).
 
+### 3.8 Вид ребра снимка `EdgeKind`
+
+| Значение | Ребро |
+|---|---|
+| `isl` | спутник — спутник |
+| `ground` | клиент — спутник или шлюз — спутник |
+
 ## 4. Соглашения об именах
 
+- Разделы сценария `failures` и `gateway_outages` обязательны; пустой список допустим,
+  отсутствие раздела — ошибка `INVALID_SCENARIO_FIELD` с путём до раздела. Так же ведёт
+  себя эталонный `geometry.py`.
 - Идентификаторы сущностей: UUID v4 в API; идентификаторы из сценария (`S01`, `C65`)
   остаются строками как в файле.
 - Время всегда в секундах от начала расчёта (`t_s`), в интерфейсе форматируется как
@@ -117,5 +127,7 @@
 - Расстояния в километрах с суффиксом `_km`, углы в градусах с `_deg`, время в секундах
   с `_s`.
 - Метрики конфигурации: `min_client_availability`, `mean_client_availability`,
-  `worst_max_gap_s`, `mean_hops`, `max_hops`, `route_switches`, `backup_path_count`,
-  `outage_count_by_cause`.
+  `worst_max_gap_s`, `mean_hops`, `max_hops`, `route_switches_total`,
+  `backup_path_count_min`, `outage_count_by_cause`. Агрегат по конфигурации получает
+  суффикс способа свёртки (`_total`, `_min`), метрика клиента остаётся без суффикса
+  (`route_switches`, `backup_path_count`).

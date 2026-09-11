@@ -1,0 +1,27 @@
+# Записи встреч и их расшифровки не публикуются
+*.mp4
+*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Секреты и локальное окружение
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

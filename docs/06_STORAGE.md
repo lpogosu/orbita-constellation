@@ -78,7 +78,7 @@ variants            id, project_id, parent_variant_id, title, scenario jsonb,
                     diff_from_parent jsonb, config_hash, created_at
 runs                id, variant_id, routing_policy, engine_version, config_hash,
                     status, stage, progress, completed_ticks, total_ticks,
-                    started_at, finished_at, duration_ms, trace_uri, error jsonb
+                    created_at, started_at, finished_at, duration_ms, trace_uri, error jsonb
 client_metrics      run_id, client_id, availability, visibility, max_gap_s,
                     mean_hops, max_hops, route_switches, target_met,
                     outage_count_by_cause jsonb

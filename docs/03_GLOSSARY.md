@@ -102,6 +102,7 @@
 | `EXPERIMENT_BUDGET_EXCEEDED` | sweep превышает лимит точек или времени |
 | `INTERNAL_INCONSISTENCY` | расхождение BFS и Union-Find или причина не определена |
 | `STORAGE_UNAVAILABLE` | внешнее хранилище недоступно и degraded mode не разрешён |
+| `NOT_FOUND` | сущность с таким идентификатором отсутствует (HTTP 404) |
 
 ### 3.7 Флаги интервала перерыва
 

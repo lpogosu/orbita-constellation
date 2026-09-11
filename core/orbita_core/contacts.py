@@ -59,6 +59,16 @@ class ContactPlan:
     def satellite_ids(self) -> tuple[str, ...]:
         return self.nodes[: self.satellite_count]
 
+    @property
+    def client_ids(self) -> tuple[str, ...]:
+        """Наземные пункты, не являющиеся шлюзами: для них и считается маршрут.
+
+        Роль пункта — `client` или `gateway` (`03_GLOSSARY.md` §3.5), поэтому список
+        клиентов однозначно восстанавливается из узлов и `gateway_ids`.
+        """
+        gateways = frozenset(self.gateway_ids)
+        return tuple(node for node in self.nodes[self.satellite_count :] if node not in gateways)
+
     def edges_at(self, tick: int) -> NDArray[np.int64]:
         """Индексы рёбер, существующих на отсчёте `tick`."""
         return np.flatnonzero(self.bits[tick]).astype(np.int64)

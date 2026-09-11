@@ -13,6 +13,9 @@ dependencies = ["numpy>=2.1"]
 dev = [
   "pytest>=8.3",
   "hypothesis>=6.112",
+  # Независимый оракул графовых алгоритмов в property-тестах маршрутизации. В ядро не
+  # входит: расчёт обязан работать на чистом Python и NumPy.
+  "networkx>=3.3",
   "ruff>=0.14",
   "mypy>=1.18",
 ]
@@ -38,3 +41,8 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # запускают (3.11 локально, 3.12 в образе), и должна проходить под обоими.
 strict = true
 files = ["orbita_core", "tests"]
+
+# NetworkX не поставляет `py.typed`, а писать заглушки ради оракула в тестах незачем.
+[[tool.mypy.overrides]]
+module = "networkx.*"
+ignore_missing_imports = true

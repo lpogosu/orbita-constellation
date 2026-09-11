@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from orbita_api import API_VERSION
 from orbita_api.adapters.registry import build_registry
+from orbita_api.db.session import build_engine, build_sessionmaker
 from orbita_api.error_handling import register_error_handlers
 from orbita_api.routers import (
     analysis,
@@ -29,14 +30,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Клиенты хранилищ создаются один раз на процесс.
 
     Создание клиента на каждый запрос стоило бы нового TCP-соединения и рукопожатия;
-    закрытие на остановке освобождает соединения, не дожидаясь сборщика мусора.
+    закрытие на остановке освобождает соединения, не дожидаясь сборщика мусора. По той
+    же причине пул соединений с Postgres живёт всё время работы процесса, а сессия -
+    один запрос.
     """
-    registry = build_registry(get_settings())
+    settings = get_settings()
+    registry = build_registry(settings)
+    engine = build_engine(settings.postgres_dsn)
     app.state.probe_registry = registry
+    app.state.sessionmaker = build_sessionmaker(engine)
     try:
         yield
     finally:
         await registry.aclose()
+        await engine.dispose()
 
 
 def _drop_fastapi_validation_responses(schema: dict[str, Any]) -> None:

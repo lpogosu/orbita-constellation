@@ -46,6 +46,22 @@ SERVICE_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
     {("get", "/api/health"), ("get", "/api/version")},
 )
 
+# Endpoint с реализацией: они ходят в Postgres и проверяются интеграционными тестами
+# (`tests/test_projects.py`). Список сокращается по мере того, как заглушки исчезают, и
+# вместе с последней исчезнет сам тест про 501.
+IMPLEMENTED_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
+    {
+        ("post", "/api/scenarios/validate"),
+        ("post", "/api/projects"),
+        ("get", "/api/projects"),
+        ("get", "/api/projects/{project_id}"),
+        ("post", "/api/projects/{project_id}/variants"),
+        ("get", "/api/projects/{project_id}/lineage"),
+        ("get", "/api/variants/{variant_id}"),
+        ("get", "/api/variants/{variant_id}/export"),
+    },
+)
+
 # Тела корректных запросов: заглушка обязана отвечать 501, а не 400 на разбор входа.
 REQUEST_BODIES: Final[dict[tuple[str, str], dict[str, Any]]] = {
     ("post", "/api/scenarios/validate"): MINIMAL_SCENARIO,
@@ -218,7 +234,7 @@ def test_no_endpoint_promises_the_default_validation_response(schema: dict[str, 
 
 @pytest.mark.parametrize(
     ("method", "path"),
-    sorted(documented_endpoints() - SERVICE_ENDPOINTS),
+    sorted(documented_endpoints() - SERVICE_ENDPOINTS - IMPLEMENTED_ENDPOINTS),
 )
 def test_every_declared_endpoint_answers_not_implemented(
     client: TestClient,

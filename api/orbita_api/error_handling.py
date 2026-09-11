@@ -4,7 +4,9 @@
 зависит от того, какой роутер её вызвал.
 """
 
+from collections.abc import Sequence
 from typing import Any, Final, cast
+from uuid import UUID
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -12,6 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from orbita_api.schemas.errors import (
+    NOT_FOUND_CODE,
     NOT_IMPLEMENTED_CODE,
     ErrorCode,
     ErrorDetail,
@@ -32,6 +35,27 @@ class EndpointNotImplementedError(Exception):
     Скелет отвечает 501, а не 404: путь существует и его форма зафиксирована, отсутствует
     только реализация. Класс исчезнет вместе с последней заглушкой.
     """
+
+
+class EntityNotFoundError(Exception):
+    """Сущность с таким идентификатором не найдена: ответ 404 (`05_API.md` §3)."""
+
+    def __init__(self, entity: str, entity_id: UUID) -> None:
+        self.entity = entity
+        self.entity_id = entity_id
+        super().__init__(f"{entity} {entity_id} не найден")
+
+
+class ScenarioRejectedError(Exception):
+    """Сценарий не прошёл проверку ядра.
+
+    В `errors` лежат **все** найденные ошибки: инженер исправляет файл за один проход
+    (`05_API.md` §3).
+    """
+
+    def __init__(self, errors: Sequence[ErrorDetail]) -> None:
+        self.errors = list(errors)
+        super().__init__(f"ошибок в сценарии: {len(self.errors)}")
 
 
 def json_path(loc: tuple[int | str, ...]) -> str | None:
@@ -94,6 +118,33 @@ async def handle_not_implemented(request: Request, exc: Exception) -> JSONRespon
     )
 
 
+async def handle_entity_not_found(request: Request, exc: Exception) -> JSONResponse:
+    """Ответ 404 с кодом `NOT_FOUND` и идентификатором, которого нет."""
+    not_found = cast(EntityNotFoundError, exc)
+    body = ErrorResponse(
+        error=ErrorDetail(
+            code=NOT_FOUND_CODE,
+            message=f"{not_found.entity} не найден",
+            details={"id": str(not_found.entity_id)},
+        ),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content=jsonable_encoder(body),
+    )
+
+
+async def handle_scenario_rejected(request: Request, exc: Exception) -> JSONResponse:
+    """Ошибки валидации ядра — те же ошибки входа, что и ошибки разбора запроса: 400."""
+    body = ValidationErrorResponse(errors=cast(ScenarioRejectedError, exc).errors)
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=jsonable_encoder(body),
+    )
+
+
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, handle_request_validation_error)
     app.add_exception_handler(EndpointNotImplementedError, handle_not_implemented)
+    app.add_exception_handler(EntityNotFoundError, handle_entity_not_found)
+    app.add_exception_handler(ScenarioRejectedError, handle_scenario_rejected)

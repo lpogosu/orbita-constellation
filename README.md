@@ -66,6 +66,32 @@ Python не нужен.
 | memgraph | `MEMGRAPH_PORT` | 7687 |
 | minio | `MINIO_API_PORT`, `MINIO_CONSOLE_PORT` | 9000, 9001 |
 
+### База и миграции
+
+Схема Postgres описана миграциями Alembic (`api/orbita_api/db/migrations`). Контейнер
+`api` перед стартом uvicorn выполняет `alembic upgrade head`, поэтому `make up` поднимает
+стек с готовой схемой и отдельной команды не требует. Ревизия `0001` создаёт все таблицы
+`docs/06_STORAGE.md` §3.
+
+Адрес базы задаётся одной переменной и для приложения, и для миграций:
+
+| Переменная | Где нужна | По умолчанию |
+|---|---|---|
+| `ORBITA_POSTGRES_DSN` | api, worker, `alembic upgrade head` | `postgresql+asyncpg://orbita:orbita@postgres:5432/orbita` |
+| `ORBITA_TEST_DATABASE_URL` | тесты api | не задана: базу поднимает testcontainers |
+
+Применить миграции вручную (например, к базе поднятого стека с хоста):
+
+```bash
+cd api
+ORBITA_POSTGRES_DSN=postgresql+asyncpg://orbita:orbita@localhost:15432/orbita   alembic -c alembic.ini upgrade head
+```
+
+Интеграционные тесты api сами поднимают контейнер `postgres:16`. Если задана
+`ORBITA_TEST_DATABASE_URL`, используется она; если нет ни того, ни другого — тесты
+помечаются `skip`, поэтому `make test` в образе проверок, у которого нет доступа к сокету
+Docker, остаётся зелёным.
+
 ### Профиль degraded
 
 Проверяет требование `06_STORAGE.md` §7: api обязан работать, когда Redis, Memgraph и
@@ -134,3 +160,7 @@ api → Redis → worker → результат проверяет `make demo`: 
 - **Все образы зафиксированы по версиям**, включая MinIO, у которого версия — это тег
   релиза с датой. Официальные образы MinIO берутся с quay.io: на Docker Hub репозиторий
   закрыт.
+- **Значения enum хранятся строками с CHECK**, а не типами Postgres: новое значение
+  глоссария не требует миграции типа, а ограничение всё равно действует на уровне базы.
+- **Миграции применяет сам контейнер api.** Отдельная цель `make migrate` означала бы, что
+  её можно забыть, и стек поднимался бы с пустой базой.

@@ -33,6 +33,9 @@ dev = [
   "httpx2>=2.12",
   "ruff>=0.14",
   "mypy>=1.18",
+  # Интеграционные тесты поднимают postgres:16 сами; в CI вместо контейнера задаётся
+  # ORBITA_TEST_DATABASE_URL, и пакет там не используется.
+  "testcontainers[postgres]>=4.15",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -52,9 +55,9 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "TID"]
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
-# `contract_data` - модуль с данными для тестов, лежащий рядом с ними; для isort он не
-# сторонний пакет, иначе импорт уезжает в блок зависимостей.
-known-first-party = ["orbita_api", "contract_data"]
+# `contract_data` и `conftest` - модули тестов, лежащие рядом с ними; для isort они не
+# сторонние пакеты, иначе импорт уезжает в блок зависимостей.
+known-first-party = ["orbita_api", "conftest", "contract_data"]
 
 [tool.mypy]
 # Версия интерпретатора не фиксируется: проверка идёт под тем Python, которым проект

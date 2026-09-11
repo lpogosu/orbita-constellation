@@ -153,7 +153,7 @@ async def get_run_outages(run_id: UUID) -> list[OutageInterval]:
 async def get_run_backup_paths(
     run_id: UUID,
     t_s: TickQuery,
-    client_id: Annotated[str, Query(description="Клиентский пункт из сценария, например C65")],
+    client_id: Annotated[str, Query(description="Идентификатор клиентского пункта из сценария")],
 ) -> BackupPaths:
     raise EndpointNotImplementedError
 

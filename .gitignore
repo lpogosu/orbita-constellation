@@ -35,3 +35,6 @@ build/
 # Отчёты о покрытии
 .coverage
 htmlcov/
+
+# Рабочие копии инструментов (worktree) внутри репозитория
+.*/worktrees/

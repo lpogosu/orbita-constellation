@@ -19,3 +19,7 @@ scenarios
 .env
 .env.*
 !deploy/.env.example
+
+# Контракт API читается тестом `api/tests/test_openapi.py`, поэтому один документ из
+# исключённой папки docs возвращается в контекст сборки.
+!docs/05_API.md

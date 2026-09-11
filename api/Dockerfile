@@ -29,6 +29,9 @@ CMD ["uvicorn", "orbita_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # поэтому «у меня локально работает» невозможно. Собирается только для `make test`.
 FROM runtime AS dev
 
+# Тест OpenAPI сверяет схему с разделом «Endpoint map» документа, а не с копией списка
+# в коде, поэтому документ нужен и в образе проверок.
+COPY docs/05_API.md docs/05_API.md
 COPY core/tests core/tests
 COPY api/tests api/tests
 COPY worker/tests worker/tests

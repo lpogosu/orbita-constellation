@@ -25,3 +25,13 @@ dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Сборка пакетов
+*.egg-info/
+build/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Отчёты о покрытии
+.coverage
+htmlcov/

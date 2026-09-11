@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [core, api, worker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # orbita-core ставится из исходников: api и worker зависят от него, но в индексе
+      # пакета нет.
+      - name: Установить пакеты
+        run: pip install -e "./core[dev]" -e "./api[dev]" -e "./worker[dev]"
+
+      - name: ruff
+        working-directory: ${{ matrix.package }}
+        run: ruff check .
+
+      - name: mypy --strict
+        working-directory: ${{ matrix.package }}
+        run: mypy
+
+      - name: pytest
+        working-directory: ${{ matrix.package }}
+        run: pytest -q
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ошибка в compose обнаруживается здесь, а не при первом `make up` на защите.
+      - name: Проверить конфигурацию compose
+        run: |
+          docker compose -f deploy/docker-compose.yml config --quiet
+          docker compose -f deploy/docker-compose.yml -f deploy/compose.degraded.yml config --quiet

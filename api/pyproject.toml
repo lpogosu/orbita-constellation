@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "orbita-api"
+version = "0.1.0"
+description = "HTTP-слой ОРБИТЫ: валидация сценариев, проекты, запуски, экспорт"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.5",
+  "sqlalchemy[asyncio]>=2.0.35",
+  "asyncpg>=0.30",
+  "alembic>=1.13",
+  "redis>=5.1",
+  "neo4j>=5.25",
+  "boto3>=1.35",
+  "sse-starlette>=2.1",
+  "arq>=0.26",
+]
+
+# orbita-core не указан в dependencies: пакет ставится из исходников соседней папки
+# (`pip install ./core ./api`), в индексе его нет.
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  # starlette.testclient требует httpx2: со старым httpx он выводит предупреждение
+  # об устаревании при каждом запуске тестов.
+  "httpx2>=2.12",
+  "ruff>=0.14",
+  "mypy>=1.18",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["orbita_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "TID"]
+# Комментарии и docstring на русском (ADR-016), поэтому правила о «неоднозначных»
+# кириллических буквах отключены: иначе они срабатывают на каждой строке текста.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+# Версия интерпретатора не фиксируется: проверка идёт под тем Python, которым проект
+# запускают (3.11 локально, 3.12 в образе), и должна проходить под обоими.
+strict = true
+files = ["orbita_api", "tests"]
+
+[[tool.mypy.overrides]]
+# boto3 и botocore поставляются без аннотаций; отдельный пакет стабов тянуть ради
+# одной пробы доступности не нужно.
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true

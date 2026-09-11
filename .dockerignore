@@ -1,0 +1,21 @@
+# Шаблоны сопоставляются от корня контекста, поэтому вложенные папки требуют `**/`.
+.git
+.github
+.venv
+docs
+reports
+scenarios
+Данные
+Расчетный модуль
+*.pdf
+*.png
+*.md
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+.env
+.env.*
+!deploy/.env.example

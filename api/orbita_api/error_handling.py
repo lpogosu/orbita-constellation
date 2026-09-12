@@ -14,8 +14,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from orbita_api.schemas.errors import (
+    IDEMPOTENCY_CONFLICT_CODE,
     NOT_FOUND_CODE,
     NOT_IMPLEMENTED_CODE,
+    RUN_NOT_CANCELLABLE_CODE,
     ErrorCode,
     ErrorDetail,
     ErrorResponse,
@@ -44,6 +46,27 @@ class EntityNotFoundError(Exception):
         self.entity = entity
         self.entity_id = entity_id
         super().__init__(f"{entity} {entity_id} не найден")
+
+
+class IdempotencyConflictError(Exception):
+    """Ключ `Idempotency-Key` уже использован другим запросом: ответ 409 (`05_API.md` §3).
+
+    Повторить запрос с тем же ключом и другим телом значит попросить два разных расчёта
+    под одним именем; вернуть первый результат было бы молчаливой подменой ответа.
+    """
+
+    def __init__(self, key: str) -> None:
+        self.key = key
+        super().__init__(f"Ключ идемпотентности {key} занят другим запросом")
+
+
+class RunNotCancellableError(Exception):
+    """Запуск уже завершён, отменять нечего: ответ 409."""
+
+    def __init__(self, run_id: UUID, status: str) -> None:
+        self.run_id = run_id
+        self.status = status
+        super().__init__(f"Запуск {run_id} уже в состоянии {status}")
 
 
 class ScenarioRejectedError(Exception):
@@ -134,6 +157,39 @@ async def handle_entity_not_found(request: Request, exc: Exception) -> JSONRespo
     )
 
 
+async def handle_idempotency_conflict(request: Request, exc: Exception) -> JSONResponse:
+    """Ответ 409: ключ идемпотентности занят запросом с другим телом."""
+    conflict = cast(IdempotencyConflictError, exc)
+    body = ErrorResponse(
+        error=ErrorDetail(
+            code=IDEMPOTENCY_CONFLICT_CODE,
+            message="Ключ Idempotency-Key уже использован другим запросом",
+            path="Idempotency-Key",
+            details={"key": conflict.key},
+        ),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=jsonable_encoder(body),
+    )
+
+
+async def handle_run_not_cancellable(request: Request, exc: Exception) -> JSONResponse:
+    """Ответ 409: расчёт закончился раньше, чем пришла отмена."""
+    conflict = cast(RunNotCancellableError, exc)
+    body = ErrorResponse(
+        error=ErrorDetail(
+            code=RUN_NOT_CANCELLABLE_CODE,
+            message="Запуск уже завершён и не может быть отменён",
+            details={"id": str(conflict.run_id), "status": conflict.status},
+        ),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=jsonable_encoder(body),
+    )
+
+
 async def handle_scenario_rejected(request: Request, exc: Exception) -> JSONResponse:
     """Ошибки валидации ядра — те же ошибки входа, что и ошибки разбора запроса: 400."""
     body = ValidationErrorResponse(errors=cast(ScenarioRejectedError, exc).errors)
@@ -148,3 +204,5 @@ def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(EndpointNotImplementedError, handle_not_implemented)
     app.add_exception_handler(EntityNotFoundError, handle_entity_not_found)
     app.add_exception_handler(ScenarioRejectedError, handle_scenario_rejected)
+    app.add_exception_handler(IdempotencyConflictError, handle_idempotency_conflict)
+    app.add_exception_handler(RunNotCancellableError, handle_run_not_cancellable)

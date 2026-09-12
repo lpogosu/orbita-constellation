@@ -35,11 +35,27 @@ NOT_IMPLEMENTED_CODE: Final[NotImplementedCode] = "NOT_IMPLEMENTED"
 NotFoundCode: TypeAlias = Literal["NOT_FOUND"]
 NOT_FOUND_CODE: Final[NotFoundCode] = "NOT_FOUND"
 
+# `05_API.md` §3 требует 409 для конфликта `Idempotency-Key`, а `03_GLOSSARY.md` §3.6 кода
+# для него не даёт. Как и `NOT_FOUND`, он живёт литералом до появления в глоссарии.
+IdempotencyConflictCode: TypeAlias = Literal["IDEMPOTENCY_KEY_CONFLICT"]
+IDEMPOTENCY_CONFLICT_CODE: Final[IdempotencyConflictCode] = "IDEMPOTENCY_KEY_CONFLICT"
+
+# Отмена завершённого запуска — тот же класс конфликта: запрос корректен, но состояние
+# ресурса его не допускает.
+RunNotCancellableCode: TypeAlias = Literal["RUN_NOT_CANCELLABLE"]
+RUN_NOT_CANCELLABLE_CODE: Final[RunNotCancellableCode] = "RUN_NOT_CANCELLABLE"
+
 
 class ErrorDetail(BaseModel):
     """Одна ошибка: код, человекочитаемое сообщение, поле и доказательство."""
 
-    code: ErrorCode | NotImplementedCode | NotFoundCode = Field(description="Код ошибки")
+    code: (
+        ErrorCode
+        | NotImplementedCode
+        | NotFoundCode
+        | IdempotencyConflictCode
+        | RunNotCancellableCode
+    ) = Field(description="Код ошибки")
     message: str = Field(description="Сообщение для пользователя")
     path: str | None = Field(
         default=None,
@@ -73,7 +89,11 @@ class ValidationErrorResponse(BaseModel):
 _RESPONSE_BY_STATUS: Final[dict[int, tuple[type[BaseModel], str]]] = {
     400: (ValidationErrorResponse, "Ошибки входа, все найденные списком"),
     404: (ErrorResponse, "Сущность не найдена"),
-    409: (ErrorResponse, "Конфликт Idempotency-Key: ключ занят другим запросом"),
+    409: (
+        ErrorResponse,
+        "Состояние ресурса не допускает запрос: занятый Idempotency-Key или отмена "
+        "завершённого запуска",
+    ),
     422: (ErrorResponse, "EXPERIMENT_BUDGET_EXCEEDED: sweep не укладывается в бюджет"),
     501: (ErrorResponse, "NOT_IMPLEMENTED: endpoint объявлен, реализации ещё нет"),
     503: (ErrorResponse, "STORAGE_UNAVAILABLE: хранилище недоступно, degraded mode запрещён"),

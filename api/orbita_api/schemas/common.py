@@ -5,7 +5,7 @@
 """
 
 from enum import StrEnum
-from typing import TypeAlias
+from typing import Final, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,6 +30,13 @@ class RunStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+# Из этих состояний запуск уже не выйдет: поток событий закрывается, отменять нечего,
+# результат либо есть, либо его не будет (`03_GLOSSARY.md` §3.3).
+TERMINAL_RUN_STATUSES: Final[frozenset[RunStatus]] = frozenset(
+    {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED},
+)
 
 
 class RunStage(StrEnum):

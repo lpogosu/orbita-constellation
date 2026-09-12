@@ -18,6 +18,7 @@ from orbita_api.routers import (
     scenarios,
     variants,
 )
+from orbita_api.runtime import build_runtime
 from orbita_api.settings import get_settings
 
 # Схемы, которые FastAPI сам добавляет ради ответа 422 у endpoint с параметрами.
@@ -38,12 +39,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     registry = build_registry(settings)
     storage = build_storage_registry(settings)
     engine = build_engine(settings.postgres_dsn)
+    sessionmaker = build_sessionmaker(engine)
     app.state.probe_registry = registry
     app.state.storage_registry = storage
-    app.state.sessionmaker = build_sessionmaker(engine)
+    app.state.sessionmaker = sessionmaker
+    app.state.run_runtime = build_runtime(settings, sessionmaker)
     try:
         yield
     finally:
+        await app.state.run_runtime.aclose()
         await registry.aclose()
         await storage.aclose()
         await engine.dispose()

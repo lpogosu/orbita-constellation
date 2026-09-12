@@ -1,4 +1,4 @@
-"""Выборки таблицы `runs`."""
+"""Выборки и запись таблицы `runs`."""
 
 from collections.abc import Sequence
 from uuid import UUID
@@ -10,13 +10,41 @@ from orbita_api.db import models
 
 
 class RunRepository:
-    """Запуски расчёта. Создание запусков появится вместе с очередью."""
+    """Запуски расчёта. Ни одного правила предметной области: только запросы."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    def add(self, run: models.Run) -> None:
+        self._session.add(run)
+
     async def get(self, run_id: UUID) -> models.Run | None:
         return await self._session.get(models.Run, run_id)
+
+    async def find_active(
+        self,
+        config_hash: str,
+        engine_version: str,
+    ) -> models.Run | None:
+        """Запуск, который уже отвечает на тот же вопрос (ADR-011).
+
+        Ищутся состояния из `ACTIVE_RUN_STATUSES`: успешный переиспользуется целиком, а
+        стоящий в очереди или считающийся даст тот же результат, и второй расчёт той же
+        конфигурации занял бы воркер впустую. Частичный уникальный индекс по той же паре
+        гарантирует, что такой запуск не более одного.
+        """
+        statement = (
+            select(models.Run)
+            .where(
+                models.Run.config_hash == config_hash,
+                models.Run.engine_version == engine_version,
+                models.Run.status.in_(models.ACTIVE_RUN_STATUSES),
+            )
+            .order_by(models.Run.created_at.desc())
+            .limit(1)
+        )
+        result = await self._session.scalars(statement)
+        return result.first()
 
     async def list_recent_for_project(
         self,

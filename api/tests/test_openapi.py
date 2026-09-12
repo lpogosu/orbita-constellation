@@ -47,8 +47,8 @@ SERVICE_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
 )
 
 # Endpoint с реализацией: они ходят в Postgres и проверяются интеграционными тестами
-# (`tests/test_projects.py`). Список сокращается по мере того, как заглушки исчезают, и
-# вместе с последней исчезнет сам тест про 501.
+# (`tests/test_projects.py`, `tests/test_runs.py`). Список сокращается по мере того, как
+# заглушки исчезают, и вместе с последней исчезнет сам тест про 501.
 IMPLEMENTED_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
     {
         ("post", "/api/scenarios/validate"),
@@ -59,6 +59,10 @@ IMPLEMENTED_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("get", "/api/projects/{project_id}/lineage"),
         ("get", "/api/variants/{variant_id}"),
         ("get", "/api/variants/{variant_id}/export"),
+        ("post", "/api/runs"),
+        ("get", "/api/runs/{run_id}"),
+        ("get", "/api/runs/{run_id}/events"),
+        ("post", "/api/runs/{run_id}/cancel"),
     },
 )
 

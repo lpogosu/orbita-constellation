@@ -1,5 +1,11 @@
-"""Конверт ошибок входа: код, путь до поля и полный список (`05_API.md` §3)."""
+"""Конверт ошибок входа: код, путь до поля и полный список (`05_API.md` §3).
 
+Живых хранилищ тесты не требуют: ошибка входа обнаруживается до обращения к базе.
+Приложение всё же поднимается через `with`, потому что обработчики зависят от клиентов,
+созданных в lifespan; сетевых соединений при этом никто не открывает.
+"""
+
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -11,8 +17,9 @@ from orbita_api.main import create_app
 
 
 @pytest.fixture(scope="module")
-def client() -> TestClient:
-    return TestClient(create_app())
+def client() -> Iterator[TestClient]:
+    with TestClient(create_app()) as test_client:
+        yield test_client
 
 
 def test_unknown_routing_policy_names_the_field(client: TestClient) -> None:

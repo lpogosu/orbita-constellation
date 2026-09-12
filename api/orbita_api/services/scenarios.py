@@ -62,6 +62,25 @@ def config_hash(scenario: core.Scenario) -> str:
     return hashlib.sha256(core.canonical_json(scenario).encode("utf-8")).hexdigest()
 
 
+def parse_stored(stored: dict[str, Any]) -> core.Scenario:
+    """Канонический сценарий варианта из JSONB.
+
+    Разбор повторяется при каждом запуске, а не кэшируется: он занимает миллисекунды и
+    заодно доказывает, что сохранённый вариант по-прежнему проходит проверки ядра.
+    """
+    return core.parse(stored)
+
+
+def run_config_hash(scenario: core.Scenario, routing_policy: str) -> str:
+    """Ключ переиспользования готового Run: сценарий и политика вместе (ADR-011).
+
+    Это хэширование, а не расчёт, поэтому оно допустимо в процессе api: маршруты при
+    одинаковом сценарии зависят от политики, и запуски с разными политиками обязаны
+    считаться отдельно.
+    """
+    return core.config_hash(scenario, routing_policy)
+
+
 def describe(scenario: core.Scenario) -> ScenarioValidationResult:
     """Сводка принятого файла для экрана загрузки (`01_SPEC.md` §4.1).
 

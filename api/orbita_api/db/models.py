@@ -25,6 +25,7 @@ from sqlalchemy import (
     MetaData,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -79,6 +80,22 @@ def string_enum(enum_class: type[enum.Enum], constraint_name: str) -> Enum:
         length=ENUM_LENGTH,
         values_callable=lambda members: [str(member.value) for member in members],
     )
+
+
+# Запуски в этих состояниях занимают конфигурацию: готовый переиспользуется (ADR-011),
+# а поставленный в очередь или считающийся уже отвечает на тот же вопрос. Упавшие и
+# отменённые не занимают ничего - их перезапускают.
+ACTIVE_RUN_STATUSES: Final[tuple[RunStatus, ...]] = (
+    RunStatus.QUEUED,
+    RunStatus.RUNNING,
+    RunStatus.SUCCEEDED,
+)
+
+# Предикат частичного индекса. Собирается из того же кортежа, что и запросы сервиса:
+# разойдись они, дедупликация и индекс начали бы считать разные множества запусков.
+ACTIVE_RUN_PREDICATE: Final[str] = "status IN ({})".format(
+    ", ".join(f"'{status.value}'" for status in ACTIVE_RUN_STATUSES),
+)
 
 
 class Base(DeclarativeBase):
@@ -148,8 +165,16 @@ class Run(Base):
     __tablename__ = "runs"
     __table_args__ = (
         # Дедупликация ADR-011: готовый Run переиспользуется только при совпадении
-        # `config_hash` и `engine_version`, поэтому пара уникальна.
-        Index("uq_runs_config_hash_engine_version", "config_hash", "engine_version", unique=True),
+        # `config_hash` и `engine_version`, поэтому пара уникальна. Уникальность частичная:
+        # упавший и отменённый запуск обязаны допускать перезапуск той же конфигурации,
+        # иначе одна ошибка расчёта закрыла бы конфигурацию навсегда.
+        Index(
+            "uq_runs_config_hash_engine_version",
+            "config_hash",
+            "engine_version",
+            unique=True,
+            postgresql_where=text(ACTIVE_RUN_PREDICATE),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -194,8 +219,10 @@ class ClientMetrics(Base):
     availability: Mapped[float] = mapped_column(Float)
     visibility: Mapped[float] = mapped_column(Float)
     max_gap_s: Mapped[int] = mapped_column(Integer)
-    mean_hops: Mapped[float] = mapped_column(Float)
-    max_hops: Mapped[int] = mapped_column(Integer)
+    # Переходы считаются только по отсчётам с маршрутом: у клиента, который не дотянулся
+    # до шлюза ни разу, значения нет, и ноль был бы ложью (`05_API.md` §1).
+    mean_hops: Mapped[float | None] = mapped_column(Float)
+    max_hops: Mapped[int | None] = mapped_column(Integer)
     route_switches: Mapped[int] = mapped_column(Integer)
     target_met: Mapped[bool] = mapped_column()
     outage_count_by_cause: Mapped[dict[str, Any]]
@@ -213,10 +240,11 @@ class ConfigMetrics(Base):
     min_client_availability: Mapped[float] = mapped_column(Float)
     mean_client_availability: Mapped[float] = mapped_column(Float)
     worst_max_gap_s: Mapped[int] = mapped_column(Integer)
-    mean_hops: Mapped[float] = mapped_column(Float)
-    max_hops: Mapped[int] = mapped_column(Integer)
+    mean_hops: Mapped[float | None] = mapped_column(Float)
+    max_hops: Mapped[int | None] = mapped_column(Integer)
     route_switches_total: Mapped[int] = mapped_column(Integer)
-    backup_path_count_min: Mapped[int] = mapped_column(Integer)
+    # Пусто, если резервные маршруты не считались или ни один клиент не имел маршрута.
+    backup_path_count_min: Mapped[int | None] = mapped_column(Integer)
     target_met_clients: Mapped[list[Any]]
 
 

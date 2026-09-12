@@ -14,8 +14,9 @@ jobs:
       matrix:
         package: [core, api, worker]
 
-    # Интеграционные тесты api идут на живой базе; без неё они помечались бы skip и
-    # миграции проверялись бы только руками.
+    # Интеграционные тесты идут на живых хранилищах: локально их поднимает
+    # testcontainers, здесь - сервисы workflow и шаг с контейнерами. Без них тесты
+    # помечают себя skip, и зелёный CI ничего не доказывал бы.
     services:
       postgres:
         image: postgres:16.15-alpine
@@ -27,6 +28,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U orbita -d orbita"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7.4.11-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
@@ -104,6 +114,7 @@ jobs:
         working-directory: ${{ matrix.package }}
         env:
           ORBITA_TEST_DATABASE_URL: postgresql://orbita:orbita@localhost:5432/orbita
+          ORBITA_TEST_REDIS_URL: redis://localhost:6379/0
           ORBITA_TEST_MINIO_ENDPOINT: http://localhost:9000
           ORBITA_TEST_MINIO_ACCESS_KEY: orbita
           ORBITA_TEST_MINIO_SECRET_KEY: orbita-secret

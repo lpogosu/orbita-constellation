@@ -3,7 +3,8 @@ import asyncio
 from orbita_core import ENGINE_VERSION
 
 from orbita_worker.jobs import ping
-from orbita_worker.settings import HEALTH_CHECK_INTERVAL_S, WORKER_HEALTH_KEY, WorkerSettings
+from orbita_worker.keys import WORKER_HEALTH_KEY
+from orbita_worker.settings import HEALTH_CHECK_INTERVAL_S, WorkerSettings
 
 
 def test_ping_reports_engine_version_and_job_id() -> None:

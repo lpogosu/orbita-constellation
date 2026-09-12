@@ -5,7 +5,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from orbita_api.schemas.common import OutageCause, ParameterChange, RoutingPolicy
+from orbita_api.schemas.common import (
+    OutageCause,
+    OutageChangeKind,
+    ParameterChange,
+    RoutingPolicy,
+)
 from orbita_api.schemas.scenario import Scenario
 
 RESULT_SCHEMA_VERSION: Final[str] = "cosmo-A-result-1.0"
@@ -86,6 +91,52 @@ class ClientDelta(BaseModel):
     max_gap_delta_s: int
 
 
+class OutageChange(BaseModel):
+    """Один перерыв, которого не было, не стало или у которого сдвинулись границы.
+
+    У появившегося перерыва нет базовых границ, у исчезнувшего — сравниваемых. Причина и
+    отказавшие аппараты описывают ту сторону, чей перерыв показан: для появившегося и
+    изменившегося это расчёт «после», для исчезнувшего — базовый, другой стороны у него
+    нет.
+    """
+
+    kind: OutageChangeKind
+    base_start_s: int | None = Field(default=None, description="Начало перерыва «до»")
+    base_end_s: int | None = Field(default=None, description="Конец перерыва «до», исключая")
+    other_start_s: int | None = Field(default=None, description="Начало перерыва «после»")
+    other_end_s: int | None = Field(
+        default=None,
+        description="Конец перерыва «после», исключая",
+    )
+    primary_cause: OutageCause
+    causes: list[OutageCause]
+    failed_satellites: list[str]
+
+
+class ClientComparison(ClientDelta):
+    """Что изменилось у клиентского пункта между базовым запуском и сравниваемым.
+
+    Расширяет дельты метрик разбором перерывов: экран «Отказы» показывает по каждому
+    клиенту не только «стало хуже на столько-то», но и какой именно перерыв появился,
+    где маршрут уцелел и с какого момента результаты разошлись (`14_SCREENS.md` §3.3).
+    """
+
+    outage_diff: list[OutageChange]
+    affected: bool = Field(
+        description="Появился или изменился перерыв либо упала доступность",
+    )
+    route_kept_ticks: int = Field(description="Отсчёты, где маршрут совпал узел в узел")
+    route_rebuilt_ticks: int = Field(description="Отсчёты, где маршрут есть, но другой")
+    first_divergence_t_s: int | None = Field(
+        default=None,
+        description="Первый отсчёт, где результат «после» отличается от «до»",
+    )
+    first_new_outage_t_s: int | None = Field(
+        default=None,
+        description="Первый отсчёт, где маршрут был до изменения и пропал после",
+    )
+
+
 class Recommendation(BaseModel):
     """Детерминированный вывод из метрик (ADR-006)."""
 
@@ -124,8 +175,15 @@ class ComparisonEntry(BaseModel):
     deltas: dict[str, float] = Field(
         description="Отличия метрик конфигурации от базового запуска; у базового пусто",
     )
-    per_client: list[ClientDelta] = Field(
+    per_client: list[ClientComparison] = Field(
         description="Отличия по каждому клиентскому пункту; у базового пусто",
+    )
+    affected_clients: list[str] = Field(
+        description="Пункты с новыми или изменившимися перерывами; у базового пусто",
+    )
+    first_divergence_t_s: int | None = Field(
+        default=None,
+        description="Самый ранний отсчёт расхождения по всем пунктам; у базового null",
     )
 
 

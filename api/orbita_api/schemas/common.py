@@ -68,6 +68,18 @@ class OutageCause(StrEnum):
     INTERNAL_INCONSISTENCY = "INTERNAL_INCONSISTENCY"
 
 
+class OutageChangeKind(StrEnum):
+    """Что стало с перерывом между базовым запуском и сравниваемым (`04_CORE.md` §7).
+
+    Совпавшие перерывы своего значения не имеют: они в сравнение не попадают, иначе
+    список изменений на экране разбора отказа состоял бы в основном из них.
+    """
+
+    ADDED = "added"
+    REMOVED = "removed"
+    CHANGED = "changed"
+
+
 class EdgeKind(StrEnum):
     """Вид ребра графа отсчёта.
 

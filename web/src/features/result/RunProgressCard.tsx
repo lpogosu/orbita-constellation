@@ -51,6 +51,9 @@ export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgr
             {run.error?.message ??
               'Сервис не сообщил причину. Повторный запуск того же варианта безопасен: результат определяется сценарием и политикой.'}
           </p>
+          {run.status === 'failed' && (
+            <p className="text-small text-ink-muted">Остановился на стадии «{STAGES[run.stage]}»</p>
+          )}
           {run.error?.path != null && (
             <p className="font-mono text-small text-ink-muted">{run.error.path}</p>
           )}

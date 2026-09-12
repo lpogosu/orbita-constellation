@@ -4,6 +4,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { networkApi } from '@/api/network';
 import type { BackupPaths } from '@/api/types';
 import { OUTAGES_PATH } from '@/app/sections';
+import { useHealth } from '@/app/use-health';
+import { DegradedBanner } from '@/components/layout/DegradedBanner';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
 import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
@@ -33,6 +35,7 @@ import type { FailureDraft } from './FailureModal';
 import { NetworkStateCard } from './NetworkStateCard';
 import { SaveVariantModal } from './SaveVariantModal';
 import { clientSites, withFailures, withGatewayOutages } from './draft';
+import { STAGE_LABEL } from './use-run';
 import { useNetworkScene } from './use-network-scene';
 
 /** Координаты блоков из макета «03 · Сеть» (узел `33:249`) на полотне 1920×1080. */
@@ -51,6 +54,7 @@ export function NetworkPage() {
   // Экран открывают ссылкой «показать этот момент»: вариант, расчёт и отсчёт берутся из
   // адреса, а не начинаются с нуля.
   const scene = useNetworkScene(projectId, useSceneEntry(search));
+  const health = useHealth();
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
@@ -289,15 +293,23 @@ export function NetworkPage() {
 
   if (scene.projectError !== null) {
     return (
-      <div className="absolute inset-x-[25px] top-[134px] h-[722px]">
-        <ErrorBlock title="Проект не открылся" message={scene.projectError} onRetry={scene.reloadProject} />
-      </div>
+      <>
+        {health.health?.degraded_mode === true && (
+          <DegradedBanner health={health.health} onRefresh={health.refresh} />
+        )}
+        <div className="absolute inset-x-[25px] top-[134px] h-[722px]">
+          <ErrorBlock title="Проект не открылся" message={scene.projectError} onRetry={scene.reloadProject} />
+        </div>
+      </>
     );
   }
 
   if (draft === null || variant === null || scene.project === null) {
     return (
       <LoadingBlock label="Загружаем проект">
+        {health.health?.degraded_mode === true && (
+          <DegradedBanner health={health.health} onRefresh={health.refresh} />
+        )}
         <div className="absolute inset-x-[25px] top-[134px] flex gap-[21px]">
           <Skeleton className="h-[722px] w-[424px]" />
           <Skeleton className="h-[722px] flex-1" />
@@ -311,6 +323,9 @@ export function NetworkPage() {
 
   return (
     <>
+      {health.health?.degraded_mode === true && (
+        <DegradedBanner health={health.health} onRefresh={health.refresh} />
+      )}
       <ConfigCard
         {...LAYOUT.left}
         draft={draft}
@@ -474,7 +489,7 @@ export function NetworkPage() {
                     ? (
                         <ErrorBlock
                           title="Расчёт не завершился"
-                          message={run.error?.message ?? 'Причина не пришла'}
+                          message={`${run.error?.message ?? 'Причина не пришла'} · стадия «${STAGE_LABEL[run.stage]}»`}
                           onRetry={startRun}
                           retryLabel="Повторить расчёт"
                           compact

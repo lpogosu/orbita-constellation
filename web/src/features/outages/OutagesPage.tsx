@@ -459,7 +459,9 @@ export function OutagesPage() {
             onClick={() => { setView(value); }}
             className={cx(
               'h-[46px] w-[111px] rounded-[12px] text-base font-semibold transition-colors duration-150',
-              view === value ? 'bg-accent-violet text-ink-onAccent' : 'text-ink-secondary',
+              view === value
+                ? 'bg-accent-violet text-ink-onAccent shadow-glow-violet'
+                : 'text-ink-secondary',
             )}
           >
             {label}

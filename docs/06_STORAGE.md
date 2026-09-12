@@ -97,7 +97,11 @@ jobs                id, kind, payload jsonb, status, attempts, enqueued_at,
 artifacts           id, run_id, kind, uri, size_bytes, created_at, expires_at
 ```
 
-Индексы: `runs(config_hash, engine_version)` уникальный для дедупликации;
+Индексы: `runs(config_hash, engine_version)` уникальный **частичный** — только для
+`status IN ('queued', 'running', 'succeeded')`, чтобы упавший или отменённый Run можно
+было перезапустить той же конфигурацией; `client_metrics.mean_hops`, `max_hops` и
+`config_metrics.mean_hops`, `max_hops`, `backup_path_count_min` обнуляемы (клиент без
+единого пути);
 `experiment_points(experiment_id)`; `outage_intervals(run_id, client_id)`.
 Очередь живёт в Redis (arq), таблица `jobs` — журнал для истории, повторов и аудита.
 
@@ -135,6 +139,7 @@ arq:queue                          очередь задач
 run:{id}                           pub/sub прогресса
 preview:{config_hash}:{t_s}        кэш snapshot, TTL 1 ч
 idem:{key}                         idempotency → run_id, TTL 24 ч
+run:{id}:cancel                    флаг отмены расчёта, TTL 1 ч
 ```
 
 MinIO-бакет `orbita`, ключи:

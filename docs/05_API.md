@@ -76,7 +76,7 @@
 
 ### ComparisonEntry (ответ `POST /api/comparisons`)
 ```json
-{ "run_id": "uuid", "variant_id": "uuid", "is_base": false,
+{ "run_id": "uuid", "variant_id": "uuid", "variant_title": "P2 RAAN 72", "routing_policy": "bfs_shortest",
   "config": { "...ConfigMetrics..." }, "clients": [ { "...ClientMetrics..." } ],
   "changed_parameters": [ { "path": "design.planes[1].raan_deg", "from": 60, "to": 72 } ],
   "deltas": { "min_client_availability": 0.036, "worst_max_gap_s": -1440 },
@@ -171,7 +171,7 @@
   Под ключом хранится и отпечаток тела: тот же ключ с другой политикой или вариантом —
   409 `IDEMPOTENCY_KEY_CONFLICT`.
 - Если Redis недоступен, расчёт выполняется в процессе api (degraded mode), ответ несёт
-  заголовок `X-Degraded-Mode: true`; в сущность Run признак не входит.
+  заголовок `X-Degraded-Mode: true`, и то же значение хранится в поле `Run.degraded_mode` (§1).
 - Готовый Run переиспользуется при совпадении `config_hash` и `engine_version` (ADR-011).
 - Preview не создаёт Variant и Run; результат кэшируется в Redis на 1 ч по `config_hash + t_s`.
 

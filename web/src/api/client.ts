@@ -32,29 +32,50 @@ export class TransportError extends Error {
 
 const UNKNOWN_ERROR_MESSAGE = 'Сервис вернул ответ, который не удалось разобрать';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
-  let response: Response;
-  try {
-    response = await fetch(path, { ...init, headers });
-  } catch (cause) {
-    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
-  }
-
+  const response = await send(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const details = toErrorDetails(body);
-    throw new ApiError(
-      response.status,
-      details,
-      details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${response.status})`,
-    );
+    throw failure(response.status, body);
   }
 
   return body as T;
+}
+
+/**
+ * Ответ файлом: Evidence Pack приходит zip-архивом, а ошибка — тем же конвертом JSON,
+ * что и у остальных endpoint, поэтому разбор ошибки здесь общий с `request`.
+ */
+export async function requestBlob(path: string): Promise<Blob> {
+  const response = await send(path, { headers: new Headers({ Accept: 'application/zip' }) });
+
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    throw failure(response.status, body);
+  }
+
+  return response.blob();
+}
+
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch (cause) {
+    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
+  }
+}
+
+function failure(status: number, body: unknown): ApiError {
+  const details = toErrorDetails(body);
+  return new ApiError(
+    status,
+    details,
+    details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${status})`,
+  );
 }
 
 function toErrorDetails(body: unknown): readonly ErrorDetail[] {
@@ -71,7 +92,7 @@ function toErrorDetails(body: unknown): readonly ErrorDetail[] {
   return [];
 }
 
-function jsonBody(payload: unknown): RequestInit {
+export function jsonBody(payload: unknown): RequestInit {
   return {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

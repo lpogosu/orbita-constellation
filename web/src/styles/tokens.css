@@ -111,3 +111,46 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-script: 'Caveat', 'Inter Variable', cursive;
 }
+
+/**
+ * Цвета графиков и шкал — переменные Figma `chart/*` экранов «05 · Сравнение вариантов» и
+ * «07 · Исследования». Отдельный блок, потому что роль «нет связи» на шкале и роль
+ * «ошибка» в интерфейсе близки по смыслу, но не обязаны совпадать по значению.
+ */
+:root,
+:root[data-theme='dark'] {
+  --chart-ok: #3fe9b0;
+  --chart-empty: #1e2b57;
+  --chart-no-sat: #ff5c6e;
+  --chart-no-gateway: #ffa05c;
+  --chart-isl-break: #8e9bc9;
+  --chart-grid: rgba(102, 142, 255, 0.18);
+  --chart-axis: #7b88bc;
+  --chart-target: rgba(242, 245, 255, 0.8);
+  --accent-cyan: #45e3c4;
+
+  /* Шкала «хуже — лучше» тепловой карты: пять опор от красного к зелёному. */
+  --heat-1: #ff5c6e;
+  --heat-2: #f08a52;
+  --heat-3: #d8b45c;
+  --heat-4: #a6c76a;
+  --heat-5: #3fe9b0;
+}
+
+:root[data-theme='light'] {
+  --chart-ok: #0b8a63;
+  --chart-empty: #dbe2f5;
+  --chart-no-sat: #c22645;
+  --chart-no-gateway: #9a4f0c;
+  --chart-isl-break: #7c88b4;
+  --chart-grid: rgba(52, 84, 170, 0.18);
+  --chart-axis: #5a6693;
+  --chart-target: rgba(15, 26, 61, 0.7);
+  --accent-cyan: #0b7a58;
+
+  --heat-1: #c22645;
+  --heat-2: #b35c14;
+  --heat-3: #8f7411;
+  --heat-4: #5a7f1f;
+  --heat-5: #0b8a63;
+}

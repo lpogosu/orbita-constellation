@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '@/components/layout/AppLayout';
+import { ComparePage } from '@/features/compare/ComparePage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
 import { SectionUnderConstruction } from '@/pages/SectionUnderConstruction';
 import { NAV_SECTIONS, NETWORK_PATH, PROJECTS_PATH, sectionByPath } from './sections';
@@ -29,6 +30,7 @@ export function App() {
             path={`${NETWORK_PATH}/:projectId`}
             element={<SectionUnderConstruction section={sectionByPath(NETWORK_PATH)} />}
           />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="*" element={<Navigate to={PROJECTS_PATH} replace />} />
         </Route>
       </Routes>

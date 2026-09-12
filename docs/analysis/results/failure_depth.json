@@ -1,0 +1,159 @@
+{
+  "description": "Одновременные отказы на полной группировке: жадный худший случай и случайные наборы, политика bfs_shortest",
+  "target_availability": 0.9,
+  "base_min_client_availability": 0.9666666666666667,
+  "greedy_worst_case": [
+    {
+      "failed_count": 1,
+      "failed": [
+        "S19"
+      ],
+      "added": "S19",
+      "min_client_availability": 0.9430555555555555,
+      "target_met": true
+    },
+    {
+      "failed_count": 2,
+      "failed": [
+        "S19",
+        "S29"
+      ],
+      "added": "S29",
+      "min_client_availability": 0.9152777777777777,
+      "target_met": true
+    },
+    {
+      "failed_count": 3,
+      "failed": [
+        "S19",
+        "S29",
+        "S22"
+      ],
+      "added": "S22",
+      "min_client_availability": 0.8861111111111111,
+      "target_met": false
+    },
+    {
+      "failed_count": 4,
+      "failed": [
+        "S19",
+        "S29",
+        "S22",
+        "S18"
+      ],
+      "added": "S18",
+      "min_client_availability": 0.8611111111111112,
+      "target_met": false
+    },
+    {
+      "failed_count": 5,
+      "failed": [
+        "S19",
+        "S29",
+        "S22",
+        "S18",
+        "S20"
+      ],
+      "added": "S20",
+      "min_client_availability": 0.8361111111111111,
+      "target_met": false
+    },
+    {
+      "failed_count": 6,
+      "failed": [
+        "S19",
+        "S29",
+        "S22",
+        "S18",
+        "S20",
+        "S23"
+      ],
+      "added": "S23",
+      "min_client_availability": 0.8111111111111111,
+      "target_met": false
+    }
+  ],
+  "random": [
+    {
+      "failed_count": 1,
+      "draws": 20,
+      "median_min_availability": 0.9458333333333333,
+      "worst_min_availability": 0.9444444444444444,
+      "best_min_availability": 0.9527777777777777,
+      "draws_meeting_target": 20
+    },
+    {
+      "failed_count": 2,
+      "draws": 20,
+      "median_min_availability": 0.9277777777777778,
+      "worst_min_availability": 0.9180555555555555,
+      "best_min_availability": 0.9319444444444445,
+      "draws_meeting_target": 20
+    },
+    {
+      "failed_count": 3,
+      "draws": 20,
+      "median_min_availability": 0.9055555555555556,
+      "worst_min_availability": 0.8958333333333334,
+      "best_min_availability": 0.9152777777777777,
+      "draws_meeting_target": 18
+    },
+    {
+      "failed_count": 4,
+      "draws": 20,
+      "median_min_availability": 0.8805555555555555,
+      "worst_min_availability": 0.8708333333333333,
+      "best_min_availability": 0.8888888888888888,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 5,
+      "draws": 20,
+      "median_min_availability": 0.8618055555555556,
+      "worst_min_availability": 0.8458333333333333,
+      "best_min_availability": 0.875,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 6,
+      "draws": 20,
+      "median_min_availability": 0.8375,
+      "worst_min_availability": 0.825,
+      "best_min_availability": 0.8472222222222222,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 7,
+      "draws": 20,
+      "median_min_availability": 0.8131944444444444,
+      "worst_min_availability": 0.8027777777777778,
+      "best_min_availability": 0.8291666666666667,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 8,
+      "draws": 20,
+      "median_min_availability": 0.7895833333333333,
+      "worst_min_availability": 0.7777777777777778,
+      "best_min_availability": 0.8041666666666667,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 9,
+      "draws": 20,
+      "median_min_availability": 0.7631944444444444,
+      "worst_min_availability": 0.7472222222222222,
+      "best_min_availability": 0.7763888888888889,
+      "draws_meeting_target": 0
+    },
+    {
+      "failed_count": 10,
+      "draws": 20,
+      "median_min_availability": 0.7409722222222223,
+      "worst_min_availability": 0.7208333333333333,
+      "best_min_availability": 0.7666666666666667,
+      "draws_meeting_target": 0
+    }
+  ],
+  "random_seed": 20260401
+}

@@ -299,6 +299,96 @@ nginx-прокси со статической страницей.
 Коммит:     feat(web): карта в полярной проекции и таймлайн доступности
 ```
 
+### Backend-карточки M4–M6 (интерфейс ждёт макетов, поэтому весь объём в ядре и API)
+
+Зависимости: `M4-A ← M2-D`; `M5-A ← M2-D`; `M5-B ← M5-A, M4-A`; `M6-A ← M2-D`;
+`M6-B ← M2-C, M5-A`. Разрешённые тройки: `M4-A + M5-A + M6-A`; затем `M5-B + M6-B`.
+Ревьюер после `M5-B` и после `M6-B`.
+
+### M4-A. Outage Detective: сравнение перерывов до и после
+```text
+Задача:     сравнение двух Run по перерывам: новые, исчезнувшие, изменившиеся интервалы по клиенту,
+            затронутые направления, где маршрут сохранился, первый разрыв для перехода
+Документы:  04_CORE.md §4, §7; 02_DECISIONS.md ADR-005; 05_API.md «Сравнение»; 01_SPEC.md §4.3, §10
+Контракт:   POST /api/comparisons {run_ids:[base, other]} → per_client: outage_diff[], affected,
+            route_kept_ticks, first_outage_t_s; core: orbita_core.compare.outage_diff(a, b)
+Ожидание:   01_full vs 03_satellite_outages: затронуты клиенты с новыми перерывами, у каждого нового
+            перерыва причина и failed_satellites из доказательств
+Негативные: Run на разных сетках → 400 INVALID_SCENARIO_FIELD с path environment.step_s;
+            незавершённый Run → RUN_NOT_READY
+Тесты:      синтетические пары Run в ядре; интеграционный на двух сценариях
+Проверка:   cd core && pytest -q tests/test_compare.py && make up && pytest api/tests/test_comparisons.py
+Коммит:     feat(api): сравнение перерывов до и после отказа
+```
+
+### M5-A. Эксперименты: sweep с бюджетом
+```text
+Задача:     Experiment/ExperimentPoint, сетка по одному или двум параметрам (raan_deg, phase_deg,
+            launch_stage), бюджет по точкам и времени, fan-out задач в arq, прогресс, лучшие точки,
+            materialize точки в Variant
+Документы:  04_CORE.md §7 (sweep); 05_API.md «Сравнение и исследования»; 06_STORAGE.md §3, §7; ADR-013
+Контракт:   POST /api/experiments, GET /api/experiments/{id}, GET /api/experiments/{id}/points,
+            POST /api/experiments/{id}/points/{point_id}/materialize; core: orbita_core.sweep.grid(axes)
+Ожидание:   sweep 5 × 5 по RAAN и phase одной плоскости на hidden_like завершается, точки с
+            min_client_availability, дедупликация по config_hash, materialize создаёт Variant с diff
+Негативные: превышение max_points → 422 EXPERIMENT_BUDGET_EXCEEDED; отмена эксперимента
+Тесты:      сетка и границы бюджета в ядре; интеграционный sweep 3 × 3
+Проверка:   make up && pytest api/tests/test_experiments.py
+Коммит:     feat(api): эксперименты sweep с бюджетом и материализацией точек
+```
+
+### M5-B. Рекомендация и Evidence Pack
+```text
+Задача:     Recommendation из ranking по кандидатам (варианты проекта и точки эксперимента),
+            evidence pack zip, recommendation в экспорте
+Документы:  04_CORE.md §6; ADR-006, ADR-012; 05_API.md §1 Recommendation, §5
+Контракт:   GET /api/runs/{id}/recommendation?base_run_id=; GET /api/runs/{id}/evidence-pack
+Ожидание:   рекомендация с конкретной дельтой по каждому клиенту и changed_parameters из diff вариантов;
+            zip содержит export.json, metrics.json, outages.json, comparison.json, recommendation.json
+Негативные: ни один кандидат не достиг цели → target_reached false и ближайшая точка
+Тесты:      ранжирование на трёх вариантах; содержимое zip
+Проверка:   make up && pytest api/tests/test_recommendation.py
+Коммит:     feat(api): рекомендация по метрикам и evidence pack
+```
+
+### M6-A. Resilience X-Ray: критичность аппаратов
+```text
+Задача:     контрфактический прогон по каждому спутнику в воркере с прогрессом, дельты
+            min_client_availability и worst_max_gap_s, affected_clients, min_cut_frequency,
+            мосты и двусвязные компоненты графа отсчёта в ядре (Tarjan), MAGE как необязательный путь
+Документы:  04_CORE.md §3.5, §5.3; ADR-007; 05_API.md analysis/criticality; 06_STORAGE.md §4
+Контракт:   POST /api/analysis/criticality {run_id} → job; результат по каждому спутнику;
+            core: orbita_core.resilience.criticality(scenario, policy, progress), graph.bridges(plan, tick)
+Ожидание:   на 01_full_constellation прогон по всем аппаратам ≤ 30 с; спутники из минимального
+            разреза имеют criticality > 0
+Негативные: отмена во время прогона → cancelled
+Тесты:      мосты против NetworkX; критичность на синтетическом графе с единственным мостом
+Проверка:   cd core && pytest -q tests/test_resilience.py && make up && pytest api/tests/test_criticality.py
+Коммит:     feat(core,api): критичность аппаратов, мосты и двусвязные компоненты
+```
+
+### M6-B. Experiment Lineage с дельтами
+```text
+Задача:     дельты метрик на рёбрах lineage из Postgres и Memgraph, узлы с latest_run_id,
+            запись DERIVED_FROM при сохранении варианта и при materialize
+Документы:  06_STORAGE.md §4; ADR-011; 05_API.md lineage
+Контракт:   GET /api/projects/{id}/lineage с delta_min_availability и delta_worst_max_gap_s на рёбрах
+Ожидание:   после двух Run у родителя и потомка ребро несёт дельты; при недоступном Memgraph
+            ответ строится из Postgres без ошибки
+Тесты:      интеграционный с двумя вариантами и Run
+Проверка:   make up && pytest api/tests/test_lineage.py
+Коммит:     feat(api): происхождение вариантов с дельтами метрик
+```
+
+### M7. Hardening (одна карточка после ревью M6)
+```text
+Задача:     лимиты 06_STORAGE.md §7 (размер JSON, N, max_points, время sweep), таймауты задач,
+            повторы, чистка частичных артефактов, README с порядком демонстрации через API,
+            make demo с четырьмя сценариями и одним Run на каждый
+Проверка:   чистый клон → make up → make demo; gitleaks; размер репозитория
+Коммит:     chore(hardening): лимиты, таймауты и демонстрация из чистого клона
+```
+
 ## 7. Форма отчёта рабочего агента
 
 ```text

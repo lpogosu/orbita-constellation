@@ -8,6 +8,7 @@
 from orbita_api.schemas.common import (
     EdgeKind,
     OutageCause,
+    OutageChangeKind,
     ParameterChange,
     ParameterValue,
     RoutingPolicy,
@@ -44,6 +45,7 @@ from orbita_api.schemas.projects import (
 )
 from orbita_api.schemas.results import (
     RESULT_SCHEMA_VERSION,
+    ClientComparison,
     ClientDelta,
     ClientMetrics,
     ComparisonEntry,
@@ -52,6 +54,7 @@ from orbita_api.schemas.results import (
     ConfigMetrics,
     CriticalityReport,
     CriticalityRequest,
+    OutageChange,
     OutageInterval,
     Recommendation,
     RouteRecord,
@@ -98,6 +101,7 @@ __all__ = [
     "SCENARIO_SCHEMA_VERSION",
     "TITLE_MAX_LENGTH",
     "BackupPaths",
+    "ClientComparison",
     "ClientDelta",
     "ClientMetrics",
     "ClientRoute",
@@ -126,6 +130,8 @@ __all__ = [
     "LineageGraph",
     "LineageNode",
     "OutageCause",
+    "OutageChange",
+    "OutageChangeKind",
     "OutageInterval",
     "ParameterChange",
     "ParameterValue",

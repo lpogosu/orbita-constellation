@@ -1,9 +1,15 @@
 """Сравнение запусков и рекомендация по конфигурации (ADR-006, ADR-012).
 
-Оба ответа собираются из метрик, уже записанных в Postgres, и из diff канонических
-сценариев вариантов: ни расчёта, ни генерации текста здесь нет. Порядок предпочтения и
-границы применимости даёт ядро (`orbita_core.ranking`), этот слой только переводит строки
-таблиц в его датаклассы и обратно в контракт.
+Метрики, дельты и рекомендация собираются из того, что уже записано в Postgres, и из diff
+канонических сценариев вариантов: ни расчёта, ни генерации текста здесь нет. Порядок
+предпочтения и границы применимости даёт ядро (`orbita_core.ranking`), разбор перерывов —
+`orbita_core.compare`; этот слой только переводит строки таблиц в датаклассы ядра и
+обратно в контракт.
+
+Разбор перерывов дополнительно поднимает маршруты обоих запусков из их выгрузок
+(`RunContext`): в метриках маршрутов нет, а вопрос «где путь уцелел, а где был
+перестроен» без них не отвечается. Пересчёта это не требует — маршруты уже лежат в
+артефакте запуска.
 
 Сравнивать между собой можно лишь расчёты одной задачи: разные сетка времени, дальность
 ISL или угол возвышения означают разные задачи, и дельта между ними ничего не измеряет
@@ -12,19 +18,25 @@ ISL или угол возвышения означают разные зада�
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 from uuid import UUID
 
 from orbita_core import ranking
+from orbita_core.compare import ClientComparison as CoreClientComparison
+from orbita_core.compare import OutageChange as CoreOutageChange
+from orbita_core.compare import compare_client
 from orbita_core.diagnosis import OutageCause as CoreOutageCause
 from orbita_core.metrics import ClientMetrics as CoreClientMetrics
 from orbita_core.metrics import ConfigMetrics as CoreConfigMetrics
+from orbita_core.metrics import OutageInterval as CoreOutageInterval
 from orbita_core.ranking import Candidate, RunConditions
 from orbita_core.scenario import Scenario as CoreScenario
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from orbita_api.adapters.registry import StorageRegistry
 from orbita_api.db import models
 from orbita_api.error_handling import EntityNotFoundError, InvalidRequestError
 from orbita_api.repositories import (
@@ -33,15 +45,23 @@ from orbita_api.repositories import (
     RunRepository,
     VariantRepository,
 )
-from orbita_api.schemas.common import ParameterChange, RoutingPolicy
+from orbita_api.schemas.common import (
+    OutageCause,
+    OutageChangeKind,
+    ParameterChange,
+    RoutingPolicy,
+)
 from orbita_api.schemas.errors import ErrorCode, ErrorDetail
 from orbita_api.schemas.results import (
+    ClientComparison,
     ClientDelta,
     ComparisonEntry,
     ComparisonResult,
+    OutageChange,
     Recommendation,
 )
 from orbita_api.services import diff, results, scenarios
+from orbita_api.services.results import ClientPaths
 
 VARIANT_ENTITY: Final[str] = "Вариант"
 
@@ -88,6 +108,62 @@ async def summary(session: AsyncSession, run_id: UUID) -> RunSummary:
         config=config,
         clients=await repository.clients_of(run_id),
     )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class RunHistory:
+    """Поведение запуска во времени: маршруты по отсчётам и перерывы по клиентам.
+
+    Метрики отвечают, насколько стало хуже, но не отвечают, где именно: для этого нужны
+    сами маршруты. Сравнение по значению отключено, потому что маршруты — это списки на
+    весь горизонт, а сравнивать историю целиком незачем.
+    """
+
+    paths: ClientPaths
+    outages: dict[str, list[CoreOutageInterval]]
+    step_s: int
+
+    def client_outages(self, client_id: str) -> list[CoreOutageInterval]:
+        """Перерывы клиента; пустой список означает связь без единого разрыва."""
+        return self.outages.get(client_id, [])
+
+
+def _core_outage(row: models.OutageInterval) -> CoreOutageInterval:
+    """Строка таблицы перерывов как датакласс ядра: сравнение работает на типах ядра."""
+    evidence: dict[str, Any] = dict(row.evidence)
+    return CoreOutageInterval(
+        client_id=row.client_id,
+        start_s=row.start_s,
+        end_s=row.end_s,
+        duration_s=row.end_s - row.start_s,
+        truncated_by_horizon=row.truncated_by_horizon,
+        primary_cause=CoreOutageCause(str(row.primary_cause)),
+        causes=tuple(CoreOutageCause(str(cause)) for cause in row.causes),
+        client_visible_satellites=tuple(evidence["client_visible_satellites"]),
+        gateway_visible_satellites=tuple(evidence["gateway_visible_satellites"]),
+        failed_satellites=tuple(evidence["failed_satellites"]),
+        client_component_id=evidence["client_component_id"],
+        gateway_component_id=evidence["gateway_component_id"],
+        last_path=tuple(evidence["last_path"]) or None,
+        next_path=tuple(evidence["next_path"]) or None,
+    )
+
+
+async def history(
+    session: AsyncSession,
+    storage: StorageRegistry,
+    run_id: UUID,
+) -> RunHistory:
+    """Маршруты и перерывы завершённого запуска.
+
+    Маршруты берутся из контекста запуска — то есть из сохранённой выгрузки, а не из
+    нового расчёта: результат уже посчитан, и повторять сутки ради сравнения незачем.
+    """
+    context = await results.load_context(session, storage, run_id)
+    grouped: dict[str, list[CoreOutageInterval]] = defaultdict(list)
+    for row in await MetricsRepository(session).outages_of(run_id):
+        grouped[row.client_id].append(_core_outage(row))
+    return RunHistory(paths=context.paths, outages=dict(grouped), step_s=context.step_s)
 
 
 def _require_same_grid(base: RunSummary, other: RunSummary) -> None:
@@ -152,26 +228,85 @@ def _config_deltas(base: models.ConfigMetrics, other: models.ConfigMetrics) -> d
     return deltas
 
 
-def _client_deltas(base: RunSummary, other: RunSummary) -> list[ClientDelta]:
-    """Дельты по клиентам в порядке базового запуска.
+def _outage_change(change: CoreOutageChange) -> OutageChange:
+    return OutageChange(
+        kind=OutageChangeKind(str(change.kind)),
+        base_start_s=change.base_start_s,
+        base_end_s=change.base_end_s,
+        other_start_s=change.other_start_s,
+        other_end_s=change.other_end_s,
+        primary_cause=OutageCause(str(change.primary_cause)),
+        causes=[OutageCause(str(cause)) for cause in change.causes],
+        failed_satellites=list(change.failed_satellites),
+    )
+
+
+def _client_comparison(
+    base_row: models.ClientMetrics,
+    other_row: models.ClientMetrics,
+    comparison: CoreClientComparison,
+) -> ClientComparison:
+    return ClientComparison(
+        client_id=base_row.client_id,
+        availability_delta=other_row.availability - base_row.availability,
+        max_gap_delta_s=other_row.max_gap_s - base_row.max_gap_s,
+        outage_diff=[_outage_change(change) for change in comparison.outage_diff],
+        affected=comparison.affected,
+        route_kept_ticks=comparison.route_kept_ticks,
+        route_rebuilt_ticks=comparison.route_rebuilt_ticks,
+        first_divergence_t_s=comparison.first_divergence_t_s,
+        first_new_outage_t_s=comparison.first_new_outage_t_s,
+    )
+
+
+def _client_deltas(
+    base: RunSummary,
+    other: RunSummary,
+    base_history: RunHistory,
+    other_history: RunHistory,
+) -> list[ClientComparison]:
+    """Дельты и разбор перерывов по клиентам в порядке базового запуска.
 
     Считаются только для пунктов, которые есть в обоих сценариях: у появившегося или
     исчезнувшего пункта нет второй половины разности.
     """
     other_clients = {row.client_id: row for row in other.clients}
-    return [
-        ClientDelta(
-            client_id=row.client_id,
-            availability_delta=other_clients[row.client_id].availability - row.availability,
-            max_gap_delta_s=other_clients[row.client_id].max_gap_s - row.max_gap_s,
+    entries: list[ClientComparison] = []
+    for row in base.clients:
+        other_row = other_clients.get(row.client_id)
+        if other_row is None:
+            continue
+        comparison = compare_client(
+            row.client_id,
+            base_paths=base_history.paths[row.client_id],
+            other_paths=other_history.paths[row.client_id],
+            base_outages=base_history.client_outages(row.client_id),
+            other_outages=other_history.client_outages(row.client_id),
+            step_s=base_history.step_s,
         )
-        for row in base.clients
-        if row.client_id in other_clients
+        entries.append(_client_comparison(row, other_row, comparison))
+    return entries
+
+
+def _first_divergence(per_client: Sequence[ClientComparison]) -> int | None:
+    """Самый ранний отсчёт расхождения по всем клиентам: с него начинается разбор."""
+    moments = [
+        item.first_divergence_t_s for item in per_client if item.first_divergence_t_s is not None
     ]
+    return min(moments) if moments else None
 
 
-def _entry(base: RunSummary, item: RunSummary) -> ComparisonEntry:
+def _entry(
+    base: RunSummary,
+    item: RunSummary,
+    histories: dict[UUID, RunHistory],
+) -> ComparisonEntry:
     is_base = item.run.id == base.run.id
+    per_client = (
+        []
+        if is_base
+        else _client_deltas(base, item, histories[base.run.id], histories[item.run.id])
+    )
     return ComparisonEntry(
         run_id=item.run.id,
         variant_id=item.variant.id,
@@ -181,19 +316,31 @@ def _entry(base: RunSummary, item: RunSummary) -> ComparisonEntry:
         clients=[results.to_client_metrics(row) for row in item.clients],
         changed_parameters=[] if is_base else _changed_parameters(base, item),
         deltas={} if is_base else _config_deltas(base.config, item.config),
-        per_client=[] if is_base else _client_deltas(base, item),
+        per_client=per_client,
+        affected_clients=[entry.client_id for entry in per_client if entry.affected],
+        first_divergence_t_s=_first_divergence(per_client),
     )
 
 
-async def compare(session: AsyncSession, run_ids: Sequence[UUID]) -> ComparisonResult:
-    """Метрики запусков рядом с дельтами относительно первого из них."""
+async def compare(
+    session: AsyncSession,
+    storage: StorageRegistry,
+    run_ids: Sequence[UUID],
+) -> ComparisonResult:
+    """Метрики запусков рядом с дельтами и разбором перерывов относительно первого."""
     summaries = [await summary(session, run_id) for run_id in run_ids]
     base = summaries[0]
     for item in summaries[1:]:
         _require_same_grid(base, item)
+    # История поднимается после проверки сетки: запускам на разных сетках сравнение
+    # откажет, и разбирать их маршруты было бы работой впустую.
+    histories = {
+        item.run.id: await history(session, storage, item.run.id)
+        for item in {item.run.id: item for item in summaries}.values()
+    }
     return ComparisonResult(
         base_run_id=base.run.id,
-        entries=[_entry(base, item) for item in summaries],
+        entries=[_entry(base, item, histories) for item in summaries],
     )
 
 

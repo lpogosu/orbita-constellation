@@ -16,9 +16,11 @@ import {
 type Area = Readonly<{ x: number; y: number; width: number; height: number }>;
 type Section = 'projects' | 'network' | 'outages' | 'comparison' | 'result';
 const COMPLETED_STORAGE_KEY = 'orbita.onboarding.completed.v1';
+const PENDING_STEP_STORAGE_KEY = 'orbita.onboarding.pending-step.v1';
 // Router может перемонтировать layout при переходе между секциями. Автотур должен
 // запускаться лишь один раз на загрузку вкладки, пока ручной `?` остаётся повторяемым.
 let automaticStartUsed = false;
+let automaticResumeUsed = false;
 
 interface TourStep {
   readonly title: string;
@@ -42,7 +44,7 @@ const STEPS: readonly TourStep[] = [
   },
   {
     title: 'Проверьте сводку',
-    description: 'Число спутников, плоскостей и наземных пунктов — если всё сходится, открывайте проект.',
+    description: 'Проверьте число спутников, плоскостей и пунктов. Затем выберите пример или загрузите JSON — продолжим на карте сети.',
     highlight: { x: 1162, y: 444, width: 737, height: 616 },
     tooltip: { x: 730, y: 452 },
     section: 'projects',
@@ -129,41 +131,74 @@ export function OnboardingTour() {
   const nextButton = useRef<HTMLButtonElement>(null);
   const step = STEPS[stepIndex];
 
+  const clearPending = useCallback((): void => {
+    try {
+      localStorage.removeItem(PENDING_STEP_STORAGE_KEY);
+    } catch {
+      // Приватный режим не должен мешать управлению туром.
+    }
+  }, []);
+
   const complete = useCallback((): void => {
+    clearPending();
     try {
       localStorage.setItem(COMPLETED_STORAGE_KEY, '1');
     } catch {
       // Приватный режим не должен мешать закрыть тур.
     }
     setIsOpen(false);
-  }, []);
+  }, [clearPending]);
 
-  const start = useCallback((): void => {
-    setStepIndex(0);
-    navigate(PROJECTS_PATH);
-    // Даём ProjectsPage занять полотно перед показом первого spotlight.
+  const start = useCallback((index = 0): void => {
+    const initialStep = STEPS[index];
+    if (initialStep === undefined) {
+      return;
+    }
+    setStepIndex(index);
+    navigate(routeFor(initialStep, selection) ?? PROJECTS_PATH);
+    // Даём странице целевого раздела занять полотно перед первым spotlight.
     requestAnimationFrame(() => {
       setIsOpen(true);
     });
-  }, [navigate]);
+  }, [navigate, selection]);
 
   useEffect(() => {
-    if (automaticStartUsed) {
-      return;
-    }
+    let pending: number | null = null;
     try {
       if (localStorage.getItem(COMPLETED_STORAGE_KEY) === '1') {
         return;
       }
+      const rawPending = localStorage.getItem(PENDING_STEP_STORAGE_KEY);
+      const parsed = rawPending === null ? Number.NaN : Number.parseInt(rawPending, 10);
+      pending = Number.isInteger(parsed) && parsed > 0 && parsed < STEPS.length ? parsed : null;
     } catch {
       // При запрете localStorage тур всё равно запускается как для первого входа.
     }
+
+    if (pending !== null) {
+      if (selection.projectId === null || automaticResumeUsed) {
+        return;
+      }
+      automaticResumeUsed = true;
+      const frame = requestAnimationFrame(() => {
+        start(pending ?? 0);
+      });
+      return () => {
+        cancelAnimationFrame(frame);
+      };
+    }
+
+    if (automaticStartUsed) {
+      return;
+    }
     automaticStartUsed = true;
-    const frame = requestAnimationFrame(start);
+    const frame = requestAnimationFrame(() => {
+      start(0);
+    });
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [start]);
+  }, [selection.projectId, start]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -183,7 +218,17 @@ export function OnboardingTour() {
   }, [complete, isOpen, stepIndex]);
 
   const open = (): void => {
-    start();
+    clearPending();
+    start(0);
+  };
+
+  const pauseUntilScenario = (nextIndex: number): void => {
+    try {
+      localStorage.setItem(PENDING_STEP_STORAGE_KEY, String(nextIndex));
+    } catch {
+      // Без localStorage пользователь всё равно может продолжить через кнопку `?`.
+    }
+    setIsOpen(false);
   };
 
   const moveTo = (nextIndex: number): void => {
@@ -192,15 +237,18 @@ export function OnboardingTour() {
       return;
     }
     const route = routeFor(nextStep, selection);
-    if (route !== null) {
-      navigate(route);
+    if (route === null) {
+      pauseUntilScenario(nextIndex);
+      return;
     }
+    navigate(route);
     setStepIndex(nextIndex);
   };
 
   if (step === undefined) {
     return null;
   }
+  const mustSelectScenario = stepIndex === 1 && selection.projectId === null;
 
   return (
     <>
@@ -271,7 +319,7 @@ export function OnboardingTour() {
                 }}
                 className="h-[44px] w-[140px] rounded-[12px] bg-[#7c5cff] text-[15px] font-semibold text-[#f5f7ff] shadow-[0_8px_14px_rgba(124,92,255,0.36)] transition-[filter,transform] hover:brightness-110 active:translate-y-px"
               >
-                {stepIndex === STEPS.length - 1 ? 'Готово' : 'Далее'}
+                {stepIndex === STEPS.length - 1 ? 'Готово' : mustSelectScenario ? 'Выбрать сценарий' : 'Далее'}
               </button>
             </div>
           </section>

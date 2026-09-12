@@ -188,7 +188,8 @@ function drawPlanes(
   ctx.save();
   ctx.lineWidth = 1.5;
   ctx.setLineDash([6, 6]);
-  ctx.globalAlpha = 0.55;
+  // Орбиты остаются ориентиром, но не должны конкурировать с Землёй и маршрутом.
+  ctx.globalAlpha = 0.28;
 
   for (const [planeId, satellites] of byPlane) {
     const ordered = [...satellites].sort(

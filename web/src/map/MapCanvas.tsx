@@ -100,9 +100,9 @@ export function MapCanvas({
       const view: MapView = {
         centerX: width / 2,
         centerY: height / 2,
-        // Экватор на половине радиуса карты: вторая половина отдана южному полушарию,
-        // и ни один пункт не приходится обрезать по краю.
-        radiusEquator: Math.min(width, height) * 0.24,
+        // Диск должен быть главным объектом экрана. Раньше 0.24 оставлял слишком
+        // много пустого поля и маршрут превращался в россыпь мелких точек.
+        radiusEquator: Math.min(width, height) * 0.34,
         hemisphere,
       };
 

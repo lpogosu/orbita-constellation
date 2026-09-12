@@ -17,8 +17,11 @@ const SURFACE_RATIO = 262.89 / 762;
 const RINGS = 64;
 
 const GLOBE_SRC = '/assets/globe-polar.webp';
-const SATELLITE_SRC = '/assets/map-satellite.webp';
-const GATEWAY_SRC = '/assets/map-gateway.webp';
+// Use the production cut-outs with a real alpha channel. The older WebP files
+// (`map-satellite.webp`/`map-gateway.webp`) contain a baked navy rectangle, which
+// becomes visible whenever the sprite is drawn over the globe.
+const SATELLITE_SRC = '/assets/orbita-satellite-mini-base.png';
+const GATEWAY_SRC = '/assets/orbita-gateway-dish.png';
 
 export interface MapSprites {
   readonly globe: HTMLImageElement;

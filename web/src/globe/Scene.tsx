@@ -72,10 +72,10 @@ export function Scene({
 
   return (
     <>
-      <ambientLight color={0x2a3f6b} intensity={0.8} />
+      <ambientLight color={0x5274b5} intensity={0.92} />
       <directionalLight
         color={0xeaf1ff}
-        intensity={2.9}
+        intensity={1.45}
         position={[LIGHT_DIRECTION.x * 10, LIGHT_DIRECTION.y * 10, LIGHT_DIRECTION.z * 10]}
       />
 
@@ -154,6 +154,7 @@ export function Scene({
           selectedClientId={model.selectedClientId}
           components={model.components}
           palette={palette}
+          showLabels={layers.labels}
           hoveredId={hoveredId}
           onHover={(hit) => {
             onHover(hit === null ? null : { ...hit, kind: 'site' });

@@ -112,7 +112,7 @@ export function Satellites({
             : SATELLITE_PANEL_MATERIAL;
 
         return (
-          <group key={satellite.id} position={position} quaternion={quaternion}>
+          <group key={satellite.id} position={position} quaternion={quaternion} scale={1.35}>
             <group>
               <mesh geometry={SATELLITE_BODY_GEOMETRY} material={bodyMaterial} />
               <mesh geometry={SATELLITE_COLLAR_GEOMETRY} material={collarMaterial} position={[0, -0.01, 0]} />
@@ -138,12 +138,12 @@ export function Satellites({
               />
             </group>
 
-            <sprite scale={[0.1, 0.1, 1]}>
+            <sprite scale={[0.075, 0.075, 1]}>
               <spriteMaterial
                 map={glowTexture()}
                 color={failed ? palette.failed : color}
                 transparent
-                opacity={muted ? 0.15 : 0.85}
+                opacity={muted ? 0.1 : 0.5}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
               />
@@ -171,7 +171,7 @@ export function Satellites({
             />
 
             {label && (
-              <Html center occlude distanceFactor={1.4} position={[0, 0.028, 0]} className="pointer-events-none">
+              <Html center occlude={!showLabels} distanceFactor={1.4} position={[0, 0.028, 0]} className="pointer-events-none">
                 <span
                   className="whitespace-nowrap rounded-sm bg-surface-sunken px-[4px] py-[1px] text-[10px] font-semibold"
                   style={{ color: hovered ? palette.label : palette.labelMuted }}

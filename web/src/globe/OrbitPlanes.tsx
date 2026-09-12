@@ -48,7 +48,7 @@ export function OrbitPlanes({ planes, planeIds, inclinationDeg, altitudeKm, pale
           color={planeColor(palette, planeIds, ring.id)}
           lineWidth={1.4}
           transparent
-          opacity={0.55}
+          opacity={0.34}
           dashed
           dashSize={0.045}
           gapSize={0.03}

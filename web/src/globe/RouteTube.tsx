@@ -34,7 +34,7 @@ export function RouteTube({ path, positions, groundIds, color, glowColor, radius
     [curve, radius],
   );
   const glowGeometry = useMemo(
-    () => (curve === null ? null : new THREE.TubeGeometry(curve, 100, radius * 3.6, 8, false)),
+    () => (curve === null ? null : new THREE.TubeGeometry(curve, 100, radius * 2.4, 8, false)),
     [curve, radius],
   );
 
@@ -48,7 +48,7 @@ export function RouteTube({ path, positions, groundIds, color, glowColor, radius
         <meshBasicMaterial color={color} />
       </mesh>
       <mesh geometry={glowGeometry}>
-        <meshBasicMaterial color={glowColor} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <meshBasicMaterial color={glowColor} transparent opacity={0.1} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
     </group>
   );

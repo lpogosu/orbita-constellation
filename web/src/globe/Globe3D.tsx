@@ -143,7 +143,8 @@ export function Globe3D({
         frameloop="demand"
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.12;
+          // ACES при 1.12 выбеливал ледяную текстуру и съедал рельеф.
+          gl.toneMappingExposure = 0.94;
         }}
         onPointerMissed={() => {
           setMenu(null);

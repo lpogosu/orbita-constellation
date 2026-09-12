@@ -34,8 +34,9 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
       roughness: 1,
       metalness: 0.08,
       emissiveMap: textures.night,
-      emissive: textures.night === null ? new THREE.Color(0x000000) : new THREE.Color(0xdae7ff),
-      emissiveIntensity: 1,
+      color: new THREE.Color(0x9bb6df),
+      emissive: textures.night === null ? new THREE.Color(0x000000) : new THREE.Color(0x355b9a),
+      emissiveIntensity: 0.28,
     });
     if (textures.night !== null) {
       // Ночные огни видны только на тёмной стороне: без этой вставки эмиссивная карта
@@ -51,7 +52,7 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
             `#include <emissivemap_fragment>
              vec3 _globeL = normalize((viewMatrix * vec4(uLight, 0.0)).xyz);
              float _globeNdl = dot(normalize(vNormal), _globeL);
-             totalEmissiveRadiance *= smoothstep(0.04, -0.26, _globeNdl) * 1.7;`,
+             totalEmissiveRadiance *= smoothstep(0.04, -0.26, _globeNdl) * 0.85;`,
           );
       };
     }
@@ -65,7 +66,7 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
     return new THREE.MeshStandardMaterial({
       map: textures.clouds,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.22,
       depthWrite: false,
       roughness: 0.95,
       metalness: 0,
@@ -90,7 +91,8 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
             float i = pow(0.72 - dot(vN, vP), 3.4);
             i = clamp(i, 0.0, 2.0);
             vec3 c = mix(glowA, glowB, clamp(i * 0.5, 0.0, 1.0));
-            gl_FragColor = vec4(c, 1.0) * i * 1.55;
+            // Keep the rim present without turning the globe into a neon bubble.
+            gl_FragColor = vec4(c, 1.0) * i * 0.62;
             #include <colorspace_fragment>
           }`,
         side: THREE.BackSide,
@@ -119,7 +121,7 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
         </mesh>
       )}
       <mesh material={atmosphereMaterial}>
-        <sphereGeometry args={[1.135, 96, 64]} />
+        <sphereGeometry args={[1.075, 96, 64]} />
       </mesh>
     </group>
   );

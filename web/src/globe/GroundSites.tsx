@@ -23,6 +23,7 @@ interface GroundSitesProps {
   readonly selectedClientId: string | null;
   readonly components: ComponentSplit | null;
   readonly palette: MapPalette;
+  readonly showLabels: boolean;
   readonly hoveredId: string | null;
   readonly onHover: (hit: ScreenHit | null) => void;
   readonly onSelect: (siteId: string) => void;
@@ -38,6 +39,7 @@ export function GroundSites({
   selectedClientId,
   components,
   palette,
+  showLabels,
   hoveredId,
   onHover,
   onSelect,
@@ -96,7 +98,7 @@ export function GroundSites({
                 map={glowTexture()}
                 color={glowColor}
                 transparent
-                opacity={0.75}
+                opacity={0.45}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
               />
@@ -127,14 +129,16 @@ export function GroundSites({
               }}
             />
 
-            <Html center occlude distanceFactor={1.4} position={[0, 0.07, 0]} className="pointer-events-none">
-              <span
-                className="whitespace-nowrap rounded-sm bg-surface-sunken px-[5px] py-[2px] font-display text-[11px] font-bold"
-                style={{ color: hovered || selected ? palette.label : palette.labelMuted }}
-              >
-                {site.id}
-              </span>
-            </Html>
+            {(showLabels || hovered || selected || outlined) && (
+              <Html center occlude={!showLabels} distanceFactor={1.4} position={[0, 0.07, 0]} className="pointer-events-none">
+                <span
+                  className="whitespace-nowrap rounded-sm bg-surface-sunken px-[5px] py-[2px] font-display text-[11px] font-bold"
+                  style={{ color: hovered || selected ? palette.label : palette.labelMuted }}
+                >
+                  {site.id}
+                </span>
+              </Html>
+            )}
           </group>
         );
       })}

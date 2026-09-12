@@ -216,9 +216,14 @@ async def _read_channel(
 
         if message is not None:
             silence_s = 0.0
-            current = RunProgressEvent.model_validate_json(message["data"])
-            yield current
-            if current.status in TERMINAL_RUN_STATUSES:
+            event = RunProgressEvent.model_validate_json(message["data"])
+            # Событие несёт состояние целиком, поэтому повтор уже отданного клиенту
+            # состояния ничего не добавляет: так бывает, когда подписка успела прочитать
+            # ту же смену стадии из Postgres.
+            if event != current:
+                current = event
+                yield event
+            if event.status in TERMINAL_RUN_STATUSES:
                 return
             continue
 

@@ -1,0 +1,341 @@
+import { useMemo } from 'react';
+import type { EChartsOption } from 'echarts';
+
+import type { ExperimentPoint } from '@/api/types';
+import { EChart } from '@/components/chart/EChart';
+import { Card } from '@/components/ui/Card';
+import { cx } from '@/lib/cx';
+import { useTokenColors } from '@/theme/use-token-colors';
+import { axisValues, METRICS, metricById } from './points';
+import type { MetricDescriptor, PointMetric } from './points';
+
+const LEFT = 465;
+const TOP = 200;
+const CHART_WIDTH = 872;
+const CHART_HEIGHT = 336;
+
+interface HeatmapCardProps {
+  readonly points: readonly ExperimentPoint[];
+  readonly xPath: string;
+  readonly yPath: string | null;
+  readonly axisTitle: (path: string) => string;
+  readonly metric: PointMetric;
+  readonly target: number;
+  readonly selectedPointId: string | null;
+  readonly onSelect: (point: ExperimentPoint) => void;
+  readonly onMetric: (metric: PointMetric) => void;
+}
+
+/**
+ * «Тепловая карта конфигураций» (узел `143:1128`). Значение подписано в каждой ячейке, а
+ * цвет только помогает найти область: цвет — не единственный признак, иначе карта нечитаема
+ * при нарушении цветовосприятия (`07_UI.md`).
+ *
+ * Пунктирная рамка ячейки всегда означает одно и то же — точка достигла цели по худшему
+ * клиенту, — независимо от того, какой метрикой карта покрашена.
+ */
+export function HeatmapCard({
+  points,
+  xPath,
+  yPath,
+  axisTitle,
+  metric,
+  target,
+  selectedPointId,
+  onSelect,
+  onMetric,
+}: HeatmapCardProps) {
+  const color = useTokenColors();
+  const descriptor = metricById(metric);
+
+  const xValues = useMemo(() => axisValues(points, xPath), [points, xPath]);
+  const yValues = useMemo(
+    () => (yPath === null ? [] : axisValues(points, yPath)),
+    [points, yPath],
+  );
+
+  const option = useMemo<EChartsOption>(
+    () =>
+      yPath === null
+        ? lineOption({ points, xPath, xValues, descriptor, target, color })
+        : heatmapOption({
+            points,
+            xPath,
+            yPath,
+            xValues,
+            yValues,
+            descriptor,
+            target,
+            selectedPointId,
+            color,
+          }),
+    [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color],
+  );
+
+  const ordered = useMemo(() => orderedPoints(points, xPath, yPath), [points, xPath, yPath]);
+
+  return (
+    <Card
+      sceneX={LEFT}
+      sceneY={TOP}
+      className="absolute h-[420px] w-[918px]"
+      style={{ left: LEFT, top: TOP }}
+    >
+      <h2 className="absolute left-[23px] top-[17px] text-[18px] font-semibold text-ink-primary">
+        Тепловая карта конфигураций
+      </h2>
+
+      <div className="absolute right-[23px] top-[13px] flex h-[30px] items-center rounded-sm border border-line bg-surface-input p-[2px]">
+        {METRICS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={item.id === metric}
+            onClick={() => { onMetric(item.id); }}
+            className={cx(
+              'h-[26px] rounded-[7px] px-[14px] text-[12px] font-semibold transition-colors duration-150',
+              item.id === metric
+                ? 'bg-accent-violet text-ink-onAccent'
+                : 'text-ink-secondary hover:text-ink-primary',
+            )}
+          >
+            {item.title}
+          </button>
+        ))}
+      </div>
+
+      <div className="absolute left-[23px] top-[58px]">
+        <EChart
+          width={CHART_WIDTH}
+          height={CHART_HEIGHT}
+          option={option}
+          ariaLabel={
+            yPath === null
+              ? `График ${descriptor.title} по параметру ${axisTitle(xPath)}`
+              : `Тепловая карта ${descriptor.title} по параметрам ${axisTitle(xPath)} и ${axisTitle(yPath)}`
+          }
+          onSelect={({ dataIndex }) => {
+            const point = ordered[dataIndex];
+            if (point !== undefined) {
+              onSelect(point);
+            }
+          }}
+        />
+      </div>
+    </Card>
+  );
+}
+
+/** Порядок точек в ряду ECharts: по нему клик по ячейке находит свою точку. */
+function orderedPoints(
+  points: readonly ExperimentPoint[],
+  xPath: string,
+  yPath: string | null,
+): ExperimentPoint[] {
+  const xValues = axisValues(points, xPath);
+  if (yPath === null) {
+    return xValues
+      .map((x) => points.find((point) => point.params[xPath] === x))
+      .filter((point): point is ExperimentPoint => point !== undefined);
+  }
+
+  const yValues = axisValues(points, yPath);
+  const ordered: ExperimentPoint[] = [];
+  for (const y of yValues) {
+    for (const x of xValues) {
+      const point = points.find(
+        (item) => item.params[xPath] === x && item.params[yPath] === y,
+      );
+      if (point !== undefined) {
+        ordered.push(point);
+      }
+    }
+  }
+  return ordered;
+}
+
+interface HeatmapArgs {
+  points: readonly ExperimentPoint[];
+  xPath: string;
+  yPath: string;
+  xValues: readonly number[];
+  yValues: readonly number[];
+  descriptor: MetricDescriptor;
+  target: number;
+  selectedPointId: string | null;
+  color: (name: string) => string;
+}
+
+function heatmapOption({
+  points,
+  xPath,
+  yPath,
+  xValues,
+  yValues,
+  descriptor,
+  target,
+  selectedPointId,
+  color,
+}: HeatmapArgs): EChartsOption {
+  const scale = [1, 2, 3, 4, 5].map((step) => color(`--heat-${step}`));
+  const cellInk = color('--chart-cell-ink');
+  const items: { value: [number, number, number]; itemStyle: Record<string, unknown> }[] = [];
+  const captions: string[] = [];
+
+  for (const [yIndex, y] of yValues.entries()) {
+    for (const [xIndex, x] of xValues.entries()) {
+      const point = points.find(
+        (item) => item.params[xPath] === x && item.params[yPath] === y,
+      );
+      const raw = point === undefined ? null : descriptor.read(point);
+      if (point === undefined || raw === null) {
+        continue;
+      }
+      const reached = (point.min_client_availability ?? 0) >= target;
+      items.push({
+        value: [xIndex, yIndex, descriptor.chartValue(raw)],
+        itemStyle: {
+          borderColor: point.id === selectedPointId ? color('--text-primary') : color('--chart-target'),
+          borderWidth: reached || point.id === selectedPointId ? 2 : 0,
+          borderType: point.id === selectedPointId ? 'solid' : 'dashed',
+          borderRadius: 8,
+        },
+      });
+      captions.push(
+        `${descriptor.format(raw)}|${reached ? 'цель достигнута' : 'ниже цели'}`,
+      );
+    }
+  }
+
+  const values = items.map((item) => item.value[2]);
+
+  return {
+    animation: false,
+    textStyle: { fontFamily: 'Inter Variable, Inter, sans-serif' },
+    grid: { left: 78, right: 12, top: 26, bottom: 66 },
+    tooltip: {
+      backgroundColor: color('--surface-raised'),
+      borderColor: color('--border-default'),
+      textStyle: { color: color('--text-primary'), fontSize: 13 },
+      formatter: (params: unknown) => {
+        const index = (params as { dataIndex: number }).dataIndex;
+        const [value, caption] = (captions[index] ?? '').split('|');
+        return `${descriptor.title}: ${value ?? '—'}<br />${caption ?? ''}`;
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: xValues.map(String),
+      splitArea: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+    },
+    yAxis: {
+      type: 'category',
+      data: yValues.map(String),
+      splitArea: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+    },
+    visualMap: {
+      min: values.length === 0 ? 0 : Math.min(...values),
+      max: values.length === 0 ? 1 : Math.max(...values),
+      calculable: false,
+      orient: 'horizontal',
+      left: 78,
+      bottom: 4,
+      itemWidth: 12,
+      itemHeight: 180,
+      textStyle: { color: color('--chart-axis'), fontSize: 11 },
+      inRange: { color: descriptor.better === 'up' ? scale : [...scale].reverse() },
+    },
+    series: [
+      {
+        type: 'heatmap',
+        data: items,
+        label: {
+          show: true,
+          formatter: (params: unknown) => {
+            const index = (params as { dataIndex: number }).dataIndex;
+            const [value, caption] = (captions[index] ?? '').split('|');
+            return `{v|${value ?? ''}}\n{c|${caption ?? ''}}`;
+          },
+          rich: {
+            v: { fontSize: 14, fontWeight: 'bold', color: cellInk, lineHeight: 18 },
+            c: { fontSize: 9, color: cellInk, lineHeight: 12, opacity: 0.75 },
+          },
+        },
+        emphasis: { itemStyle: { shadowBlur: 8, shadowColor: color('--shadow-glow-blue') } },
+      },
+    ],
+  };
+}
+
+function lineOption({
+  points,
+  xPath,
+  xValues,
+  descriptor,
+  target,
+  color,
+}: {
+  points: readonly ExperimentPoint[];
+  xPath: string;
+  xValues: readonly number[];
+  descriptor: MetricDescriptor;
+  target: number;
+  color: (name: string) => string;
+}): EChartsOption {
+  const data = xValues.map((x) => {
+    const point = points.find((item) => item.params[xPath] === x);
+    const raw = point === undefined ? null : descriptor.read(point);
+    return raw === null ? null : descriptor.chartValue(raw);
+  });
+
+  return {
+    animation: false,
+    textStyle: { fontFamily: 'Inter Variable, Inter, sans-serif' },
+    grid: { left: 60, right: 20, top: 26, bottom: 40 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: color('--surface-raised'),
+      borderColor: color('--border-default'),
+      textStyle: { color: color('--text-primary'), fontSize: 13 },
+    },
+    xAxis: {
+      type: 'category',
+      data: xValues.map(String),
+      axisLine: { lineStyle: { color: color('--chart-grid') } },
+      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      axisLabel: { color: color('--chart-axis'), fontSize: 12 },
+      splitLine: { lineStyle: { color: color('--chart-grid') } },
+    },
+    series: [
+      {
+        type: 'line',
+        data,
+        smooth: false,
+        symbolSize: 10,
+        lineStyle: { color: color('--accent-violet-light'), width: 2 },
+        itemStyle: { color: color('--accent-violet-light') },
+        ...(descriptor.better === 'up'
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none' as const,
+                data: [{ yAxis: target * 100 }],
+                lineStyle: { color: color('--chart-target'), type: 'dashed' as const, width: 2 },
+                label: { formatter: 'цель', color: color('--text-secondary'), fontSize: 12 },
+              },
+            }
+          : {}),
+      },
+    ],
+  };
+}

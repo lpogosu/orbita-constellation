@@ -96,6 +96,36 @@ export function renderEarth(
   return canvas;
 }
 
+/** Draw the same natural texture in the flat operational projection.  Keeping
+ * this beside `renderEarth` ensures the two 2D modes use exactly one source of
+ * geographic truth rather than visually similar but differently aligned maps. */
+export function drawFlatEarth(
+  ctx: CanvasRenderingContext2D,
+  sprites: MapSprites,
+  view: { readonly kind: 'flat'; readonly left: number; readonly top: number; readonly width: number; readonly height: number },
+): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(view.left, view.top, view.width, view.height, 18);
+  ctx.clip();
+  ctx.drawImage(sprites.equirect, view.left, view.top, view.width, view.height);
+  const shade = ctx.createLinearGradient(view.left, view.top, view.left, view.top + view.height);
+  shade.addColorStop(0, 'rgba(4, 14, 36, 0)');
+  shade.addColorStop(1, 'rgba(4, 14, 36, 0.08)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(view.left, view.top, view.width, view.height);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(73, 163, 255, 0.46)';
+  ctx.lineWidth = 1.25;
+  ctx.shadowColor = 'rgba(62, 157, 255, 0.45)';
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.roundRect(view.left, view.top, view.width, view.height, 18);
+  ctx.stroke();
+  ctx.restore();
+}
+
 let equirectPixels: { readonly image: HTMLImageElement; readonly pixels: ImageData } | null = null;
 
 function renderPolarSurface(

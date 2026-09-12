@@ -13,6 +13,7 @@ import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
 import { MapModeToggle } from '@/map/MapModeToggle';
+import { MapProjectionToggle } from '@/map/MapProjectionToggle';
 import { splitComponents } from '@/map/components';
 import { useMapMode } from '@/map/map-mode';
 import { DEFAULT_LAYERS } from '@/map/model';
@@ -296,6 +297,8 @@ export function NetworkPage() {
     [model, tS],
   );
 
+  const [mapProjection, setMapProjection] = useState<'terrain' | 'scheme'>('scheme');
+
   const fallBackTo2d = useCallback(() => {
     setMapMode('2d');
   }, [setMapMode]);
@@ -362,6 +365,7 @@ export function NetworkPage() {
             model={model}
             layers={layers}
             hemisphere={hemisphere}
+            projection={mapProjection}
             width={LAYOUT.map.width}
             height={LAYOUT.map.height}
             onSelectSite={selectClient}
@@ -401,6 +405,11 @@ export function NetworkPage() {
         <div className="pointer-events-none absolute right-[14px] top-[10px]">
           <MapModeToggle mode={mapMode} onChange={setMapMode} />
         </div>
+        {mapMode === '2d' && (
+          <div className="pointer-events-none absolute right-[140px] top-[14px]">
+            <MapProjectionToggle projection={mapProjection} onChange={setMapProjection} />
+          </div>
+        )}
 
         <MapLegend planeIds={model.planeIds} planeColors={palette.planes} />
 

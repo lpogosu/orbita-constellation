@@ -3,7 +3,7 @@ import { ChevronRight, FolderClosed } from 'lucide-react';
 import type { Project } from '@/api/types';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
-import { formatMoment } from '@/lib/format';
+import { formatUtcMoment } from '@/lib/run-format';
 
 /**
  * Мест в макете ровно четыре: четыре строки по 50 px с шагом 54 внутри 290-пиксельной
@@ -112,7 +112,7 @@ function ProjectRow({ project, onOpen }: { project: Project; onOpen: () => void 
         {project.title}
       </span>
       <span className="absolute left-[44px] top-[28px] block w-[473px] truncate text-caption leading-[16px] text-ink-muted">
-        — вариантов · создан {formatMoment(project.created_at)}
+        — вариантов · создан {formatUtcMoment(project.created_at)}
       </span>
       <span
         className="absolute left-[547px] top-[14px] block w-[90px] text-right text-[15px] font-semibold leading-[20px] text-ink-muted"

@@ -8,10 +8,11 @@ import type { OrbitState } from '@/globe/Globe3D';
 import { cx } from '@/lib/cx';
 import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
-import type { SatelliteAction } from '@/map/MapCanvas';
+import type { MapProjection, SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
 import { MapModeToggle } from '@/map/MapModeToggle';
+import { MapProjectionToggle } from '@/map/MapProjectionToggle';
 import { splitComponents } from '@/map/components';
 import { useMapMode } from '@/map/map-mode';
 import type { MapMode } from '@/map/map-mode';
@@ -64,6 +65,7 @@ export function OutagesPage() {
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
   const [mapMode, setMapMode] = useMapMode();
+  const [mapProjection, setMapProjection] = useState<MapProjection>('scheme');
   // Общая камера двух глобусов в режиме «Рядом»: без неё «до» и «после» пришлось бы
   // вращать по отдельности, и сравнивать маршруты на глаз стало бы неудобно.
   const [orbit, setOrbit] = useState<OrbitState | null>(null);
@@ -524,6 +526,8 @@ export function OutagesPage() {
             planeColors={palette.planes}
             mode={mapMode}
             onModeChange={setMapMode}
+            projection={mapProjection}
+            onProjectionChange={setMapProjection}
             planes={draft.design.planes}
             inclinationDeg={draft.environment.inclination_deg}
             altitudeKm={draft.environment.altitude_km}
@@ -547,6 +551,8 @@ export function OutagesPage() {
             planeColors={palette.planes}
             mode={mapMode}
             onModeChange={setMapMode}
+            projection={mapProjection}
+            onProjectionChange={setMapProjection}
             planes={draft.design.planes}
             inclinationDeg={draft.environment.inclination_deg}
             altitudeKm={draft.environment.altitude_km}
@@ -576,6 +582,8 @@ export function OutagesPage() {
           planeColors={palette.planes}
           mode={mapMode}
           onModeChange={setMapMode}
+          projection={mapProjection}
+          onProjectionChange={setMapProjection}
           planes={draft.design.planes}
           inclinationDeg={draft.environment.inclination_deg}
           altitudeKm={draft.environment.altitude_km}
@@ -684,6 +692,8 @@ function MapSlot({
   planeColors,
   mode,
   onModeChange,
+  projection,
+  onProjectionChange,
   planes,
   inclinationDeg,
   altitudeKm,
@@ -706,6 +716,8 @@ function MapSlot({
   planeColors: readonly string[];
   mode: MapMode;
   onModeChange: (mode: MapMode) => void;
+  projection: MapProjection;
+  onProjectionChange: (projection: MapProjection) => void;
   planes: readonly Plane[];
   inclinationDeg: number;
   altitudeKm: number;
@@ -731,6 +743,7 @@ function MapSlot({
           model={model}
           layers={layers}
           hemisphere={hemisphere}
+          projection={projection}
           width={width}
           height={height}
           onSelectSite={onSelectSite}
@@ -772,6 +785,11 @@ function MapSlot({
       <div className="pointer-events-none absolute right-[14px] top-[10px]">
         <MapModeToggle mode={mode} onChange={onModeChange} />
       </div>
+      {mode === '2d' && (
+        <div className="pointer-events-none absolute right-[140px] top-[14px]">
+          <MapProjectionToggle projection={projection} onChange={onProjectionChange} />
+        </div>
+      )}
     </div>
   );
 }

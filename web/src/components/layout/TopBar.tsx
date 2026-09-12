@@ -1,8 +1,8 @@
-import { Moon, Sun } from 'lucide-react';
+import { Moon, SquareArrowOutUpRight, Sun } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { cx } from '@/lib/cx';
-import { isSectionActive, NAV_SECTIONS, PROJECTS_PATH, sectionHref } from '@/app/sections';
+import { isSectionActive, NAV_SECTIONS, PROJECTS_PATH, RESULT_PATH, sectionHref } from '@/app/sections';
 import { useProjectSelection } from '@/app/project-selection';
 import { useTheme } from '@/theme/use-theme';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -54,9 +54,20 @@ export function TopBar() {
 
       <ProjectSwitcher />
 
-      <p className="absolute left-[1555px] top-[36px] h-[20px] w-[220px] text-right text-micro font-medium leading-[22px] text-ink-primary">
-        СВЯЗЬ ДАЛЬШЕ ГРАНИЦ
-      </p>
+      {selection.runId === null ? (
+        <p className="absolute left-[1555px] top-[36px] h-[20px] w-[220px] text-right text-micro font-medium leading-[22px] text-ink-primary">
+          СВЯЗЬ ДАЛЬШЕ ГРАНИЦ
+        </p>
+      ) : (
+        <Link
+          to={`${RESULT_PATH}/${encodeURIComponent(selection.runId)}`}
+          title="Открыть подробный результат текущего расчёта"
+          className="absolute left-[1555px] top-[26px] flex h-[40px] w-[220px] items-center justify-end gap-[7px] rounded-sm px-[10px] text-[12px] font-semibold text-accent-blue transition-colors hover:bg-surface-row-active"
+        >
+          <SquareArrowOutUpRight aria-hidden="true" className="size-[16px]" />
+          Результат расчёта
+        </Link>
+      )}
 
       <button
         type="button"

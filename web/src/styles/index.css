@@ -118,6 +118,15 @@
     clip-path: inset(0 round var(--radius-2xl));
   }
 
+  :root[data-theme='light'] .card-glass {
+    /* The light scene remains visible through the card without competing with
+       dense operational text.  This mirrors the depth of the dark glass cards
+       instead of leaving the light theme as a flat white template. */
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(239, 246, 255, 0.76)),
+      var(--scenery-page);
+    border-color: rgba(52, 84, 170, 0.34);
+  }
+
   /* Единственная прокрутка на экране — внутри блока. Полоса тонкая и по токенам границ. */
   .scroll-area {
     overflow-y: auto;

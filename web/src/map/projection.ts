@@ -13,13 +13,27 @@ export const EARTH_RADIUS_KM = 6371;
 /** Полюс в центре карты. Южный центр нужен южным пунктам: иначе они уходят на край. */
 export type Hemisphere = 'north' | 'south';
 
-export interface MapView {
+export interface PolarMapView {
+  readonly kind: 'polar';
   readonly centerX: number;
   readonly centerY: number;
   /** Радиус экватора в пикселях полотна; южный полюс — на `2 × radiusEquator`. */
   readonly radiusEquator: number;
   readonly hemisphere: Hemisphere;
 }
+
+/** Flat equirectangular view for the schematic 2D mode.  It deliberately has
+ * no "far side": a flat operations map must keep every spacecraft and route
+ * inspectable instead of hiding half of the constellation behind a globe. */
+export interface FlatMapView {
+  readonly kind: 'flat';
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export type MapView = PolarMapView | FlatMapView;
 
 export interface Geo {
   readonly latDeg: number;
@@ -64,6 +78,15 @@ export function colatitude(latDeg: number, hemisphere: Hemisphere): number {
  * азимуте и своей кошироте, аппарат просто отодвинут от неё наружу.
  */
 export function project(view: MapView, geo: Geo, lift = 0): Point {
+  if (view.kind === 'flat') {
+    const longitude = ((geo.lonDeg + 180) % 360 + 360) % 360;
+    return {
+      x: view.left + (longitude / 360) * view.width,
+      // Orbital height becomes a restrained visual lift so the tracks read as
+      // waves above the surface rather than as a second, unrelated map.
+      y: view.top + ((90 - geo.latDeg) / 180) * view.height - lift * 18,
+    };
+  }
   const radius = (colatitude(geo.latDeg, view.hemisphere) / 90) * view.radiusEquator
     + lift * view.radiusEquator;
   const angle = geo.lonDeg * DEG;
@@ -78,6 +101,12 @@ export function project(view: MapView, geo: Geo, lift = 0): Point {
 
 /** Обратная задача: экранная точка → широта и долгота. Нужна подсказке пустого места. */
 export function unproject(view: MapView, point: Point): Geo {
+  if (view.kind === 'flat') {
+    return {
+      latDeg: 90 - ((point.y - view.top) / view.height) * 180,
+      lonDeg: ((point.x - view.left) / view.width) * 360 - 180,
+    };
+  }
   const dx = point.x - view.centerX;
   const dy = point.y - view.centerY;
   const flip = view.hemisphere === 'north' ? -1 : 1;

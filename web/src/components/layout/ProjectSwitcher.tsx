@@ -110,6 +110,10 @@ export function ProjectSwitcher() {
 
   const project = detail.data;
   const variant = project?.variants.find((item) => item.id === variantId);
+  // The base variant often has the same title as the project. Rendering it twice
+  // made the compact header look like a moving breadcrumb while a draft/run was
+  // refreshed, without conveying any additional information.
+  const showVariant = variant !== undefined && variant.title !== project?.project.title;
 
   return (
     <div ref={root} className={BOX}>
@@ -143,14 +147,18 @@ export function ProjectSwitcher() {
               </span>
             )}
             {project !== null && (
-              <span className="flex min-w-0 flex-1 items-center gap-[6px]">
+              <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-[6px]">
                 <span className="truncate text-[13px] font-semibold text-ink-primary">
                   {project.project.title}
                 </span>
-                <ChevronRight aria-hidden="true" className="size-[14px] shrink-0 text-ink-muted" />
-                <span className="truncate text-[13px] font-medium text-ink-secondary">
-                  {variant?.title ?? 'все варианты'}
-                </span>
+                {showVariant && (
+                  <>
+                    <ChevronRight aria-hidden="true" className="size-[14px] shrink-0 text-ink-muted" />
+                    <span className="truncate text-[13px] font-medium text-ink-secondary">
+                      {variant.title}
+                    </span>
+                  </>
+                )}
               </span>
             )}
           </>

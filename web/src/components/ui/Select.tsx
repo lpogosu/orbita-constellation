@@ -36,7 +36,7 @@ const MIN_HEIGHT = 132;
 const MAX_HEIGHT = 260;
 
 const TRIGGER =
-  'flex items-center gap-[8px] text-left transition-colors duration-150 ' +
+  'flex min-w-0 items-center gap-[8px] overflow-hidden text-left transition-colors duration-150 ' +
   'disabled:cursor-not-allowed disabled:opacity-45';
 
 /**
@@ -212,7 +212,7 @@ export function Select({
       >
         {icon}
         <span
-          className={cx('min-w-0 flex-1 truncate', selected === undefined && 'text-ink-muted')}
+          className={cx('min-w-0 flex-1 overflow-hidden truncate whitespace-nowrap', selected === undefined && 'text-ink-muted')}
           title={selected?.title ?? placeholder}
         >
           {selected?.title ?? placeholder ?? '—'}

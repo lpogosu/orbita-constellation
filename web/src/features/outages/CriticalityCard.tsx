@@ -71,7 +71,7 @@ export function CriticalityCard(props: CriticalityCardProps) {
         <div className="mt-[10px]" style={{ height: bodyHeight }}>
           <UnavailableBlock
             title="Нужен завершённый расчёт"
-            hint="Критичность считается по готовому прогону: сначала «Применить отказ» или выберите базу сравнения."
+            hint="Выберите готовый прогон или примените отказ — тогда можно рассчитать критичность."
             compact
           />
         </div>

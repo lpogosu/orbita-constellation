@@ -165,26 +165,25 @@ function Verdict({
   onOpenDetails: () => void;
 }) {
   const availabilityDelta = recommendation.deltas['min_client_availability'];
+  const change = availabilityDelta === undefined
+    ? ''
+    : ` минимум ${availabilityDelta >= 0 ? 'выше' : 'ниже'} на ${formatPoints(availabilityDelta)}.`;
+  const summary = winnerIsBase
+    ? `База остаётся лучшей:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`
+    : `${winnerTitle} — лучший вариант:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`;
 
   return (
     /* Длинные списки открываются явно в окне деталей, а не скрываются за прокруткой
        небольшой карточки рекомендации. */
     <div className="absolute left-[27px] top-[31px] flex h-[184px] w-[446px] flex-col">
-      <h2 className="line-clamp-2 shrink-0 text-[20px] font-bold leading-[1.1] tracking-[-0.55px] text-accent-cyan">
+      <h2 className="shrink-0 text-[20px] font-bold leading-[1.1] tracking-[-0.55px] text-accent-cyan">
         {winnerIsBase
           ? 'Изменение не улучшает худшего клиента'
           : `Вариант ${winnerLetter} — лучший`}
       </h2>
 
-      <p className="mt-[3px] line-clamp-2 shrink-0 text-[13px] leading-[1.35] text-ink-secondary">
-        {winnerIsBase ? 'Лучшим остаётся база' : winnerTitle}
-        {availabilityDelta === undefined
-          ? ''
-          : `: min доступность ${availabilityDelta >= 0 ? 'выше' : 'ниже'} на ${formatPoints(availabilityDelta)}`}
-        .{' '}
-        {recommendation.target_reached
-          ? 'Цель достигнута: ни один клиент не ниже целевой доступности.'
-          : 'Цель не достигнута: хотя бы один клиент остаётся ниже целевой доступности.'}
+      <p className="mt-[3px] shrink-0 text-[13px] leading-[1.35] text-ink-secondary">
+        {summary}
       </p>
 
       <p className="mt-[10px] shrink-0 text-[10px] font-semibold tracking-[0.8px] text-ink-muted">

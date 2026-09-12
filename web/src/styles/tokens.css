@@ -94,7 +94,7 @@
   --surface-raised: rgba(255, 255, 255, 0.96);
   --surface-input: #ffffff;
   --surface-sunken: rgba(255, 255, 255, 0.88);
-  --surface-glass: rgba(252, 253, 255, 0.94);
+  --surface-glass: rgba(252, 253, 255, 0.82);
   --surface-chip: rgba(20, 32, 80, 0.08);
   --surface-row-active: rgba(106, 79, 238, 0.12);
   --surface-row-stripe: rgba(20, 32, 80, 0.04);
@@ -149,10 +149,10 @@
   --shadow-glow-blue: 0 0 16px rgba(21, 89, 196, 0.3);
 
   /* Ночные фотосцены на светлом фоне дают нечитаемый текст, поэтому здесь их нет. */
-  --scenery-page: none;
-  --scenery-panorama: none;
-  --scrim-page: transparent;
-  --scrim-panorama: transparent;
+  --scenery-page: url('/assets/scenery-light-v1.png');
+  --scenery-panorama: url('/assets/scenery-light-v1.png');
+  --scrim-page: rgba(244, 247, 255, 0.48);
+  --scrim-panorama: rgba(246, 249, 255, 0.28);
 }
 
 :root {

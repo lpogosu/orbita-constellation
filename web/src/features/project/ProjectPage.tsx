@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Check, FileText, Layers, Package, Plus } from 'lucide-react';
+import { Calendar, Check, FileText, Layers, Plus, SquareArrowOutUpRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
@@ -146,21 +146,18 @@ export function ProjectPage() {
         disabled={latestSucceeded === null}
         onClick={() => {
           if (latestSucceeded !== null) {
-            save(
-              runEvidencePackPath(latestSucceeded.run.id),
-              exportFileName([project.title, latestSucceeded.variantLabel], 'zip'),
-            );
+            navigate(`${RESULT_PATH}/${latestSucceeded.run.id}`);
           }
         }}
-        title="Архив по последнему успешному расчёту проекта"
+        title="Открыть подробный экран последнего успешного расчёта"
         className={cx(
           'absolute left-[1676px] top-[122px] flex h-[46px] w-[205px] items-center justify-center gap-[8px] rounded-md',
           'border border-line bg-surface-raised text-[13px] font-semibold text-ink-primary',
           'transition-colors duration-150 hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-45',
         )}
       >
-        <Package aria-hidden="true" className="size-[16px]" />
-        Evidence Pack
+        <SquareArrowOutUpRight aria-hidden="true" className="size-[16px]" />
+        Открыть результат
       </button>
 
       {actionError !== null && (

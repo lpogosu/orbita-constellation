@@ -113,12 +113,13 @@ export function VariantsCard({
               <li
                 key={row.variant.id}
                 className={cx(
-                  'relative h-[44px] rounded-[9px] text-[13px]',
-                  row.active && 'border border-[var(--border-accent)] bg-[var(--surface-accent-soft)]',
+                  'relative h-[50px] rounded-[10px] border border-transparent text-[13px]',
+                  row.active && 'border-[var(--border-accent)] bg-[var(--surface-accent-soft)] shadow-[0_4px_14px_rgba(106,79,238,0.12)]',
                 )}
                 style={{
-                  backgroundColor:
-                    !row.active && index % 2 === 1 ? 'var(--surface-row-stripe)' : undefined,
+                  backgroundColor: !row.active
+                    ? index % 2 === 1 ? 'var(--surface-row-stripe)' : 'var(--surface-sunken)'
+                    : undefined,
                 }}
               >
                 <Cell left={COLUMNS.index} className="font-bold text-ink-muted">
@@ -147,7 +148,7 @@ export function VariantsCard({
                 </Cell>
 
                 <Cell left={COLUMNS.parent} width={140} className="font-medium text-ink-secondary">
-                  <span className="truncate">{row.parentTitle ?? DASH}</span>
+                  <span className="truncate">{row.parentTitle ?? 'исходный'}</span>
                 </Cell>
 
                 <Cell left={COLUMNS.hash} width={130} className="font-mono text-[12px] text-ink-muted">
@@ -175,7 +176,7 @@ export function VariantsCard({
                   )}
                 </Cell>
 
-                <span className="absolute top-[7px] flex gap-[8px]" style={{ left: COLUMNS.actions - 17 }}>
+                <span className="absolute top-[9px] flex gap-[8px]" style={{ left: COLUMNS.actions - 17 }}>
                   <RowAction
                     label="Открыть в сети"
                     icon={<Radar aria-hidden="true" className="size-[16px]" />}
@@ -268,7 +269,7 @@ function Cell({
 }) {
   return (
     <span
-      className={cx('absolute top-[14px] flex items-baseline overflow-hidden', className)}
+      className={cx('absolute top-[17px] flex items-baseline overflow-hidden', className)}
       style={{ left: left - 17, width }}
     >
       {children}

@@ -78,7 +78,7 @@ export function ConfigCard(props: ConfigCardProps) {
         options={props.variants.map((variant) => ({ value: variant.id, title: variant.title }))}
         onChange={props.onSelectVariant}
         placeholder="Вариант не выбран"
-        triggerClassName="h-[52px] w-full rounded-lg border border-line bg-surface-input pl-[22px] pr-[16px] text-title-l font-semibold text-ink-primary hover:border-line-strong"
+        triggerClassName="h-[52px] w-full rounded-lg border border-line bg-surface-input pl-[22px] pr-[16px] text-[20px] font-semibold leading-none text-ink-primary hover:border-line-strong"
       />
 
       <p className="mt-[10px] text-base font-semibold text-ink-primary">Этап запуска</p>

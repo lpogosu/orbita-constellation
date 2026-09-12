@@ -1,5 +1,5 @@
 import type { GroundSite, SnapshotSatellite } from '@/api/types';
-import { renderEarth } from './earth-layer';
+import { drawFlatEarth, renderEarth } from './earth-layer';
 import type { MapSprites } from './earth-layer';
 import type { MapLayers, MapModel } from './model';
 import { planeColor } from './palette';
@@ -55,13 +55,13 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
     const geo = geoFromEcef(satellite.x_km, satellite.y_km, satellite.z_km);
     const lift = radiusInEarthRadii(satellite.x_km, satellite.y_km, satellite.z_km) - 1;
     positions.set(satellite.id, project(view, geo, lift));
-    if (colatitude(geo.latDeg, view.hemisphere) > 90) {
+    if (view.kind === 'polar' && colatitude(geo.latDeg, view.hemisphere) > 90) {
       farSide.add(satellite.id);
     }
   }
   for (const site of model.sites) {
     positions.set(site.id, project(view, { latDeg: site.lat_deg, lonDeg: site.lon_deg }));
-    if (colatitude(site.lat_deg, view.hemisphere) > 90) {
+    if (view.kind === 'polar' && colatitude(site.lat_deg, view.hemisphere) > 90) {
       farSide.add(site.id);
     }
   }
@@ -72,21 +72,24 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
 
   // Орбиты проходят за Землёй, как в макете: центральный диск сохраняет
   // читаемый силуэт, а линии появляются по краю и не режут карту пополам.
-  if (sprites !== null) {
+  if (sprites !== null && view.kind === 'polar') {
     const earth = renderEarth(sprites, view.hemisphere, view.radiusEquator, input.dpr);
     const side = earth.width / input.dpr;
     ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
   }
+  if (sprites !== null && view.kind === 'flat') {
+    drawFlatEarth(ctx, sprites, view);
+  }
   drawGraticule(ctx, input, palette);
 
   if (layers.allContacts) {
-    drawContacts(ctx, model, layers, palette, positions);
+    drawContacts(ctx, model, layers, palette, positions, view.kind === 'flat');
   }
   if (layers.backup && model.backupRoute.length > 1) {
-    drawPath(ctx, model.backupRoute, positions, palette.backup, 2.5, [7, 6]);
+    drawPath(ctx, model.backupRoute, positions, palette.backup, view.kind === 'flat' ? 3.2 : 2.5, [7, 6]);
   }
   if (model.selectedRoute.length > 1) {
-    drawPath(ctx, model.selectedRoute, positions, palette.route, 3, []);
+    drawPath(ctx, model.selectedRoute, positions, palette.route, view.kind === 'flat' ? 4 : 3, []);
   }
 
   const muted = mutedByComponents(model);
@@ -134,6 +137,12 @@ function drawGraticule(
   ctx.strokeStyle = palette.grid;
   ctx.lineWidth = 1;
 
+  if (view.kind === 'flat') {
+    drawFlatGraticule(ctx, input, palette);
+    ctx.restore();
+    return;
+  }
+
   for (let colat = 30; colat <= 180; colat += 30) {
     const radius = (colat / 90) * view.radiusEquator;
     ctx.beginPath();
@@ -180,6 +189,45 @@ function drawGraticule(
   ctx.restore();
 }
 
+function drawFlatGraticule(ctx: CanvasRenderingContext2D, input: DrawInput, palette: MapPalette): void {
+  const { view } = input;
+  if (view.kind !== 'flat') {
+    return;
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(view.left, view.top, view.width, view.height);
+  ctx.clip();
+  ctx.setLineDash([3, 5]);
+  for (let longitude = 0; longitude <= 360; longitude += 30) {
+    const x = view.left + (longitude / 360) * view.width;
+    ctx.moveTo(x, view.top);
+    ctx.lineTo(x, view.top + view.height);
+  }
+  for (let latitude = -60; latitude <= 60; latitude += 30) {
+    const y = view.top + ((90 - latitude) / 180) * view.height;
+    ctx.moveTo(view.left, y);
+    ctx.lineTo(view.left + view.width, y);
+  }
+  ctx.strokeStyle = palette.grid;
+  ctx.globalAlpha = 0.8;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = palette.labelMuted;
+  ctx.font = `500 11px ${SANS}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText('180°', view.left + 6, view.top + 6);
+  ctx.textAlign = 'right';
+  ctx.fillText('180°', view.left + view.width - 6, view.top + 6);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('0°', view.left + view.width / 2, view.top + view.height - 6);
+  ctx.restore();
+}
+
 /** Плоскость — замкнутая ломаная через свои аппараты в порядке `slot_deg` сценария. */
 function drawPlanes(
   ctx: CanvasRenderingContext2D,
@@ -223,13 +271,14 @@ function drawPlanes(
     // визуальную плотность Figma и не перетягивает внимание у маршрута.
     ctx.lineCap = 'round';
     ctx.setLineDash([7, 7]);
-    ctx.globalAlpha = 0.1;
-    ctx.lineWidth = 4;
+    const flat = view.kind === 'flat';
+    ctx.globalAlpha = flat ? 0.24 : 0.1;
+    ctx.lineWidth = flat ? 5.5 : 4;
     ctx.shadowColor = color;
     ctx.shadowBlur = 8;
     ctx.stroke();
-    ctx.globalAlpha = 0.38;
-    ctx.lineWidth = 1.25;
+    ctx.globalAlpha = flat ? 0.82 : 0.38;
+    ctx.lineWidth = flat ? 1.8 : 1.25;
     ctx.shadowBlur = 0;
     ctx.stroke();
   }
@@ -253,6 +302,7 @@ function traceOrbitArc(
   const segments = Math.max(3, Math.ceil(angle / (Math.PI / 30)));
   const sinAngle = Math.sin(angle);
 
+  let previous: Point | null = null;
   for (let step = skipFirst ? 1 : 0; step <= segments; step += 1) {
     const t = step / segments;
     const left = sinAngle < 1e-5 ? 1 - t : Math.sin((1 - t) * angle) / sinAngle;
@@ -263,11 +313,13 @@ function traceOrbitArc(
     const length = Math.hypot(x, y, z) || 1;
     const radius = fromLength + (toLength - fromLength) * t;
     const point = project(view, geoFromEcef(x / length, y / length, z / length), radius / EARTH_RADIUS_KM - 1);
-    if (step === 0 && !skipFirst) {
+    const crossesDateLine = view.kind === 'flat' && previous !== null && Math.abs(point.x - previous.x) > view.width * 0.5;
+    if ((step === 0 && !skipFirst) || crossesDateLine) {
       ctx.moveTo(point.x, point.y);
     } else {
       ctx.lineTo(point.x, point.y);
     }
+    previous = point;
   }
 }
 
@@ -277,12 +329,13 @@ function drawContacts(
   layers: MapLayers,
   palette: MapPalette,
   positions: ReadonlyMap<string, Point>,
+  flat: boolean,
 ): void {
   ctx.save();
   ctx.lineCap = 'round';
-  drawContactSet(ctx, model, positions, 'isl', palette.isl, [5, 6]);
+  drawContactSet(ctx, model, positions, 'isl', palette.isl, [5, 6], flat);
   if (layers.ground) {
-    drawContactSet(ctx, model, positions, 'ground', palette.groundLink, []);
+    drawContactSet(ctx, model, positions, 'ground', palette.groundLink, [], flat);
   }
   ctx.restore();
 }
@@ -295,6 +348,7 @@ function drawContactSet(
   kind: 'isl' | 'ground',
   color: string,
   dash: readonly number[],
+  flat: boolean,
 ): void {
   ctx.beginPath();
   let hasSegments = false;
@@ -317,14 +371,14 @@ function drawContactSet(
 
   ctx.strokeStyle = color;
   ctx.setLineDash([...dash]);
-  ctx.globalAlpha = kind === 'isl' ? 0.12 : 0.1;
-  ctx.lineWidth = 3.2;
+  ctx.globalAlpha = flat ? (kind === 'isl' ? 0.28 : 0.22) : (kind === 'isl' ? 0.12 : 0.1);
+  ctx.lineWidth = flat ? 4.2 : 3.2;
   ctx.shadowColor = color;
   ctx.shadowBlur = 7;
   ctx.stroke();
 
-  ctx.globalAlpha = kind === 'isl' ? 0.72 : 0.6;
-  ctx.lineWidth = kind === 'isl' ? 1.15 : 1;
+  ctx.globalAlpha = flat ? (kind === 'isl' ? 0.92 : 0.82) : (kind === 'isl' ? 0.72 : 0.6);
+  ctx.lineWidth = flat ? (kind === 'isl' ? 1.65 : 1.45) : (kind === 'isl' ? 1.15 : 1);
   ctx.shadowBlur = 0;
   ctx.stroke();
 }
@@ -566,7 +620,8 @@ function drawSite(
   ctx.font = `700 ${hovered || selected ? 17 : 15}px ${DISPLAY}`;
   ctx.textBaseline = 'bottom';
   // Подпись уводится от центра карты, чтобы не легла на Землю поверх маршрута.
-  const away = point.x >= view.centerX ? 1 : -1;
+  const mapCenterX = view.kind === 'polar' ? view.centerX : view.left + view.width / 2;
+  const away = point.x >= mapCenterX ? 1 : -1;
   ctx.textAlign = away > 0 ? 'left' : 'right';
   fillTextInside(ctx, site.id, point.x + away * (SITE_RING + 8), point.y - SITE_RING, input);
 

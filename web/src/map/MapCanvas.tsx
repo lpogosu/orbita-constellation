@@ -10,6 +10,8 @@ import { readPalette } from './palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere, MapView } from './projection';
 
+export type MapProjection = 'terrain' | 'scheme';
+
 export interface SatelliteAction {
   readonly label: string;
   readonly onSelect: () => void;
@@ -21,6 +23,7 @@ interface MapCanvasProps {
   readonly model: MapModel;
   readonly layers: MapLayers;
   readonly hemisphere: Hemisphere;
+  readonly projection?: MapProjection;
   readonly width: number;
   readonly height: number;
   readonly onSelectSite: (siteId: string) => void;
@@ -38,6 +41,7 @@ export function MapCanvas({
   model,
   layers,
   hemisphere,
+  projection = 'scheme',
   width,
   height,
   onSelectSite,
@@ -55,6 +59,9 @@ export function MapCanvas({
   const [hover, setHover] = useState<MapHit | null>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [flatViewport, setFlatViewport] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
+  const dragRef = useRef<{ readonly startX: number; readonly startY: number; readonly offsetX: number; readonly offsetY: number; moved: boolean } | null>(null);
+  const draggedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -98,13 +105,26 @@ export function MapCanvas({
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
 
-      const view: MapView = {
+      const baseFlatWidth = width - 68;
+      const baseFlatHeight = height - 174;
+      const flatWidth = baseFlatWidth * flatViewport.scale;
+      const flatHeight = baseFlatHeight * flatViewport.scale;
+      const view: MapView = projection === 'scheme'
+        ? {
+            kind: 'flat',
+            left: (width - flatWidth) / 2 + flatViewport.offsetX,
+            top: 92 + (baseFlatHeight - flatHeight) / 2 + flatViewport.offsetY,
+            width: flatWidth,
+            height: flatHeight,
+          }
+        : {
         centerX: width / 2,
         centerY: height / 2,
         // Диск должен быть главным объектом экрана. Раньше 0.24 оставлял слишком
         // много пустого поля и маршрут превращался в россыпь мелких точек.
         radiusEquator: Math.min(width, height) * 0.29 * zoom,
         hemisphere,
+        kind: 'polar',
       };
 
       resultRef.current = drawScene(ctx, {
@@ -125,7 +145,7 @@ export function MapCanvas({
     return () => {
       cancelAnimationFrame(frameRef.current);
     };
-  }, [model, layers, hemisphere, width, height, sprites, hover, palette, zoom]);
+  }, [model, layers, hemisphere, projection, width, height, sprites, hover, palette, zoom, flatViewport]);
 
   const locate = useCallback((event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -155,6 +175,26 @@ export function MapCanvas({
         role="img"
         aria-label="Карта группировки в полярной проекции"
         onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (projection === 'scheme' && drag !== null) {
+            const deltaX = event.clientX - drag.startX;
+            const deltaY = event.clientY - drag.startY;
+            if (Math.abs(deltaX) + Math.abs(deltaY) > 4) {
+              drag.moved = true;
+              draggedRef.current = true;
+            }
+            setFlatViewport((current) => {
+              const maxX = ((width - 68) * current.scale - (width - 68)) / 2;
+              const maxY = ((height - 174) * current.scale - (height - 174)) / 2;
+              return {
+                ...current,
+                offsetX: Math.min(maxX, Math.max(-maxX, drag.offsetX + deltaX)),
+                offsetY: Math.min(maxY, Math.max(-maxY, drag.offsetY + deltaY)),
+              };
+            });
+            setHover(null);
+            return;
+          }
           setHover(locate(event));
         }}
         onPointerLeave={() => {
@@ -162,12 +202,63 @@ export function MapCanvas({
         }}
         onWheel={(event) => {
           event.preventDefault();
+          if (projection === 'scheme') {
+            const box = event.currentTarget.getBoundingClientRect();
+            const pointerX = ((event.clientX - box.left) / box.width) * width;
+            const pointerY = ((event.clientY - box.top) / box.height) * height;
+            setFlatViewport((current) => {
+              const scale = Math.min(2.8, Math.max(1, current.scale * (event.deltaY < 0 ? 1.16 : 0.86)));
+              const oldWidth = (width - 68) * current.scale;
+              const oldHeight = (height - 174) * current.scale;
+              const oldLeft = (width - oldWidth) / 2 + current.offsetX;
+              const oldTop = 92 + ((height - 174) - oldHeight) / 2 + current.offsetY;
+              const nextWidth = (width - 68) * scale;
+              const nextHeight = (height - 174) * scale;
+              const nextOffsetX = pointerX - ((pointerX - oldLeft) / oldWidth) * nextWidth - (width - nextWidth) / 2;
+              const nextOffsetY = pointerY - ((pointerY - oldTop) / oldHeight) * nextHeight - 92 - ((height - 174) - nextHeight) / 2;
+              const maxX = ((width - 68) * scale - (width - 68)) / 2;
+              const maxY = ((height - 174) * scale - (height - 174)) / 2;
+              return {
+                scale,
+                offsetX: Math.min(maxX, Math.max(-maxX, nextOffsetX)),
+                offsetY: Math.min(maxY, Math.max(-maxY, nextOffsetY)),
+              };
+            });
+            return;
+          }
           setZoom((current) => {
             const factor = event.deltaY < 0 ? 1.1 : 0.9;
             return Math.min(1.45, Math.max(0.72, current * factor));
           });
         }}
+        onPointerDown={(event) => {
+          if (projection !== 'scheme' || event.button !== 0) {
+            return;
+          }
+          draggedRef.current = false;
+          dragRef.current = {
+            startX: event.clientX,
+            startY: event.clientY,
+            offsetX: flatViewport.offsetX,
+            offsetY: flatViewport.offsetY,
+            moved: false,
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current !== null) {
+            draggedRef.current = dragRef.current.moved;
+            dragRef.current = null;
+          }
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }}
         onClick={(event) => {
+          if (draggedRef.current) {
+            draggedRef.current = false;
+            return;
+          }
           const found = locate(event);
           if (found === null) {
             setMenu(null);

@@ -32,7 +32,12 @@ export class TransportError extends Error {
 
 const UNKNOWN_ERROR_MESSAGE = 'Сервис вернул ответ, который не удалось разобрать';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * Единственная точка, через которую идут все запросы. Экспортируется, чтобы модули
+ * отдельных экранов (`network.ts`, `outages.ts`) не заводили свой разбор ошибок: конверт
+ * `05_API.md` §3 разбирается здесь и только здесь.
+ */
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
@@ -71,10 +76,10 @@ function toErrorDetails(body: unknown): readonly ErrorDetail[] {
   return [];
 }
 
-function jsonBody(payload: unknown): RequestInit {
+export function jsonBody(payload: unknown, headers: Record<string, string> = {}): RequestInit {
   return {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(payload),
   };
 }

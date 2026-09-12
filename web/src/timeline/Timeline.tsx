@@ -248,6 +248,18 @@ export function Timeline({
         </output>
       </div>
 
+      {completedTicks !== null && totalTicks > 0 && (
+        <div
+          aria-hidden="true"
+          className="absolute z-10 h-[3px] rounded-pill bg-accent-violet transition-[width] duration-300"
+          style={{
+            left: TRACK_LEFT + LABEL_WIDTH,
+            top: rowsTop - 6,
+            width: (trackWidth * Math.min(Math.max(completedTicks, 0), totalTicks)) / totalTicks,
+          }}
+        />
+      )}
+
       {placeholder !== undefined ? (
         <div className="absolute inset-x-0 bottom-0 top-[56px]">{placeholder}</div>
       ) : (
@@ -306,18 +318,6 @@ export function Timeline({
               />
             </div>
           ))}
-
-          {completedTicks !== null && totalTicks > 0 && (
-            <div
-              aria-hidden="true"
-              className="absolute h-[3px] rounded-pill bg-accent-violet"
-              style={{
-                left: TRACK_LEFT + LABEL_WIDTH,
-                top: rowsTop - 6,
-                width: (trackWidth * completedTicks) / totalTicks,
-              }}
-            />
-          )}
 
           <div
             aria-hidden="true"

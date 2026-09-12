@@ -1,5 +1,6 @@
 import { ArrowLeftRight, ChevronRight } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { getRecommendation } from '@/api/comparisons';
 import type { ComparisonEntry, Recommendation } from '@/api/types';
@@ -169,7 +170,7 @@ function Verdict({
     /* Длинные списки открываются явно в окне деталей, а не скрываются за прокруткой
        небольшой карточки рекомендации. */
     <div className="absolute left-[27px] top-[31px] flex h-[184px] w-[446px] flex-col">
-      <h2 className="shrink-0 truncate text-title-l font-bold tracking-[-0.8px] text-accent-cyan">
+      <h2 className="line-clamp-2 shrink-0 text-[20px] font-bold leading-[1.1] tracking-[-0.55px] text-accent-cyan">
         {winnerIsBase
           ? 'Изменение не улучшает худшего клиента'
           : `Вариант ${winnerLetter} — лучший`}
@@ -219,7 +220,7 @@ function RecommendationDetailsModal({
   recommendation: Recommendation;
   onClose: () => void;
 }) {
-  return (
+  const modal = (
     <Modal
       title="Детали рекомендации"
       subtitle="Изменения показаны относительно базового варианта."
@@ -292,4 +293,10 @@ function RecommendationDetailsModal({
       </section>
     </Modal>
   );
+
+  // Карточка рекомендации обрезает overflow ради стеклянной маски. Детали
+  // должны жить поверх всего полотна, иначе при раскрытии они остаются в
+  // пределах 288 px карточки и становятся недоступны.
+  const canvas = document.querySelector('.app-canvas');
+  return canvas === null ? modal : createPortal(modal, canvas);
 }

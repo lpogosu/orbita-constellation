@@ -16,7 +16,7 @@ import { MapModeToggle } from '@/map/MapModeToggle';
 import { splitComponents } from '@/map/components';
 import { useMapMode } from '@/map/map-mode';
 import { DEFAULT_LAYERS } from '@/map/model';
-import type { MapLayers, MapModel } from '@/map/model';
+import type { MapHit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
@@ -75,7 +75,7 @@ export function NetworkPage() {
     if (variantParam !== null && variantParam !== variant?.id) {
       selectVariant(variantParam);
     }
-  }, [search, variant, selectVariant]);
+  }, [search, variant?.id, selectVariant]);
 
   useEffect(() => {
     const next = new URLSearchParams(search);
@@ -89,7 +89,7 @@ export function NetworkPage() {
     if (next.toString() !== search.toString()) {
       setSearch(next, { replace: true });
     }
-  }, [variant, run, tS, search, setSearch]);
+  }, [variant?.id, run?.id, tS, search, setSearch]);
 
   const clients = useMemo(() => (draft === null ? [] : clientSites(draft)), [draft]);
 
@@ -291,6 +291,15 @@ export function NetworkPage() {
     [navigate, projectId, run, tS, variant],
   );
 
+  const renderMapTooltip = useCallback(
+    (hit: MapHit) => <MapTooltip hit={hit} model={model} tS={tS} />,
+    [model, tS],
+  );
+
+  const fallBackTo2d = useCallback(() => {
+    setMapMode('2d');
+  }, [setMapMode]);
+
   if (scene.projectError !== null) {
     return (
       <>
@@ -357,7 +366,7 @@ export function NetworkPage() {
             height={LAYOUT.map.height}
             onSelectSite={selectClient}
             satelliteActions={satelliteActions}
-            renderTooltip={(hit) => <MapTooltip hit={hit} model={model} tS={tS} />}
+            renderTooltip={renderMapTooltip}
           />
         ) : (
           <Suspense
@@ -375,8 +384,8 @@ export function NetworkPage() {
               height={LAYOUT.map.height}
               onSelectSite={selectClient}
               satelliteActions={satelliteActions}
-              renderTooltip={(hit) => <MapTooltip hit={hit} model={model} tS={tS} />}
-              onUnavailable={() => { setMapMode('2d'); }}
+              renderTooltip={renderMapTooltip}
+              onUnavailable={fallBackTo2d}
             />
           </Suspense>
         )}

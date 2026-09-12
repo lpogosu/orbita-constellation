@@ -118,7 +118,7 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
 
   useEffect(() => {
     select({ projectId, variantId: variant?.id ?? null, runId: run?.id ?? null });
-  }, [select, projectId, variant, run]);
+  }, [select, projectId, variant?.id, run?.id]);
 
   useEffect(() => {
     let active = true;
@@ -221,7 +221,7 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
       return run.total_ticks;
     }
     return draft === null ? 0 : Math.round(draft.environment.horizon_s / draft.environment.step_s);
-  }, [run, draft]);
+  }, [run?.total_ticks, draft]);
 
   const seek = useCallback((next: number) => {
     setTS(next);
@@ -236,11 +236,11 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
       return;
     }
     let active = true;
-    const readyRun = run !== null && run.status === 'succeeded' && !dirty ? run : null;
+    const readyRunId = run?.status === 'succeeded' && !dirty ? run.id : null;
 
-    if (readyRun !== null) {
+    if (readyRunId !== null) {
       setSnapshotSource('run');
-      void networkApi.getSnapshot(readyRun.id, tS).then(
+      void networkApi.getSnapshot(readyRunId, tS).then(
         (fresh) => {
           if (active) {
             setSnapshot(fresh);
@@ -280,10 +280,11 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
       active = false;
       window.clearTimeout(previewTimer.current);
     };
-  }, [draft, dirty, run, tS, policy, snapshotAttempt]);
+  }, [draft, dirty, policy, run?.id, run?.status, snapshotAttempt, tS]);
 
   useEffect(() => {
-    if (run === null || run.status !== 'succeeded') {
+    const completedRunId = run?.status === 'succeeded' ? run.id : null;
+    if (completedRunId === null) {
       setTimeline(null);
       setMetrics(null);
       setOutages(null);
@@ -292,9 +293,9 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
     let active = true;
     setResultsError(null);
     void Promise.all([
-      networkApi.getTimeline(run.id),
-      networkApi.getMetrics(run.id),
-      outagesApi.getOutages(run.id),
+      networkApi.getTimeline(completedRunId),
+      networkApi.getMetrics(completedRunId),
+      outagesApi.getOutages(completedRunId),
     ]).then(
       ([freshTimeline, freshMetrics, freshOutages]) => {
         if (active) {
@@ -312,7 +313,7 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
     return () => {
       active = false;
     };
-  }, [run, resultsAttempt]);
+  }, [resultsAttempt, run?.id, run?.status]);
 
   const setDraft = useCallback((scenario: Scenario) => {
     setDraftState(scenario);

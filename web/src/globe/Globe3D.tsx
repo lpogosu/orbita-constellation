@@ -4,6 +4,7 @@ import { RotateCcw } from 'lucide-react';
 import type { ComponentRef, ReactNode } from 'react';
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -73,7 +74,7 @@ export interface Globe3DProps {
  * сети, слои и колбэки выбора, что 2D-карта (`web/src/map/MapCanvas.tsx`), плюс параметры
  * орбиты сценария, которых у 2D-модели нет и не должно быть.
  */
-export function Globe3D({
+function Globe3DView({
   model,
   layers,
   planes,
@@ -230,6 +231,11 @@ export function Globe3D({
     </div>
   );
 }
+
+// SSE присылает частые обновления только прогресса расчёта. Пока снимок и
+// параметры сцены не менялись, не отдаём Canvas на повторную reconciliation:
+// иначе тяжёлая WebGL-сцена визуально "дребезжит" на каждом проценте.
+export const Globe3D = memo(Globe3DView);
 
 interface CameraRigHandle {
   readonly reset: () => void;

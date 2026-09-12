@@ -11,7 +11,8 @@ import sys
 
 from arq import create_pool
 
-from orbita_worker.settings import QUEUE_NAME, redis_settings
+from orbita_worker.keys import QUEUE_NAME
+from orbita_worker.settings import redis_settings
 
 RESULT_TIMEOUT_S = 15.0
 

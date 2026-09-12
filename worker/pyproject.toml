@@ -7,9 +7,16 @@ name = "orbita-worker"
 version = "0.1.0"
 description = "Фоновые задачи ОРБИТЫ: суточные расчёты, sweep, criticality, Evidence Pack"
 requires-python = ">=3.11"
-dependencies = ["arq>=0.26"]
+dependencies = [
+  "arq>=0.26",
+  "redis>=5.1",
+  "sqlalchemy[asyncio]>=2.0.35",
+]
 
-# orbita-core ставится из исходников соседней папки (`pip install ./core ./worker`).
+# orbita-core и orbita-api ставятся из исходников соседних папок
+# (`pip install ./core ./api ./worker`); в индексе пакетов их нет.
+# Зависимость от orbita-api односторонняя: воркер берёт оттуда модели и репозитории —
+# таблицы у процессов общие, — а api импортирует отсюда только задачу расчёта.
 
 [project.optional-dependencies]
 dev = [

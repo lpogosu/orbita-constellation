@@ -13,21 +13,27 @@ export function TopBar() {
     <header className="relative h-[92px] shrink-0 border-b border-line-strong bg-[var(--topbar-bg)]">
       <Panorama />
 
-      <div className="relative flex h-full items-center gap-6 px-10">
-        <div className="flex shrink-0 items-center gap-3.5">
-          <img src="/assets/logo-mark.png" alt="" className="h-[60px] w-[78px] object-contain" />
-          <span className="font-display text-[40px] font-bold leading-none tracking-[3.2px] text-ink-primary">
+      {/* Ниже 1536 px шапка ужимается: макет нарисован для 1920, но обязан работать с
+          1366 без горизонтальной прокрутки. */}
+      <div className="relative flex h-full items-center gap-4 px-5 2xl:gap-6 2xl:px-10">
+        <div className="flex shrink-0 items-center gap-2.5 2xl:gap-3.5">
+          <img
+            src="/assets/logo-mark.png"
+            alt=""
+            className="h-11 w-14 object-contain 2xl:h-[60px] 2xl:w-[78px]"
+          />
+          <span className="font-display text-[26px] font-bold leading-none tracking-[2px] text-ink-primary 2xl:text-[40px] 2xl:tracking-[3.2px]">
             ОРБИТА
           </span>
         </div>
 
-        <nav aria-label="Разделы" className="flex items-center gap-5">
+        <nav aria-label="Разделы" className="flex items-center gap-1 2xl:gap-5">
           {NAV_SECTIONS.map((section) => (
             <NavItem key={section.path} to={section.path} label={section.title} />
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-6">
+        <div className="ml-auto flex shrink-0 items-center gap-4 2xl:gap-6">
           <ProjectContext />
           <p className="hidden text-micro font-medium tracking-[0.66px] text-ink-primary 2xl:block">
             СВЯЗЬ ДАЛЬШЕ ГРАНИЦ
@@ -59,10 +65,10 @@ function NavItem({ to, label }: { to: string; label: string }) {
       to={to}
       className={({ isActive }) =>
         cx(
-          'flex flex-col items-center justify-center gap-1 rounded-pill pb-[9px] pt-[11px] text-[22px] font-medium transition-colors duration-150',
+          'flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-pill pb-[9px] pt-[11px] text-[17px] font-medium transition-colors duration-150 2xl:text-[22px]',
           isActive
-            ? 'border border-line bg-surface-raised px-[38px] text-ink-primary'
-            : 'px-[28px] text-ink-secondary hover:text-ink-primary',
+            ? 'border border-line bg-surface-raised px-4 text-ink-primary 2xl:px-[38px]'
+            : 'px-3 text-ink-secondary hover:text-ink-primary 2xl:px-[28px]',
         )
       }
     >
@@ -87,7 +93,7 @@ function NavItem({ to, label }: { to: string; label: string }) {
 function ProjectContext() {
   return (
     <div
-      className="hidden h-11 w-[272px] items-center gap-2 rounded-sm border border-line bg-surface-input px-3.5 opacity-70 xl:flex"
+      className="hidden h-11 w-[272px] items-center gap-2 rounded-sm border border-line bg-surface-input px-3.5 opacity-70 2xl:flex"
       title="Откройте проект, чтобы переключать его варианты"
     >
       <FolderClosed aria-hidden="true" className="size-4 text-ink-muted" />

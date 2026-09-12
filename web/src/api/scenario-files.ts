@@ -1,18 +1,15 @@
 import { TransportError } from './client';
 
-/** Разобранный файл сценария: сам документ проверяет сервис, браузер держит его как есть. */
-export interface ScenarioFile {
-  /** Имя файла — то, что инженер видит в проводнике и в карточке сценария. */
+/**
+ * Пример сценария из каталога `scenarios/` репозитория. Документ хранится как есть:
+ * его форму проверяет сервис, а не браузер.
+ */
+export interface ScenarioExample {
+  /** Имя файла — то, что инженер видит в каталоге и в карточке сценария. */
   readonly name: string;
-  /** Путь или источник, показанный под именем. */
-  readonly origin: string;
-  readonly document: unknown;
-}
-
-/** Пример сценария из каталога `scenarios/` репозитория. */
-export interface ScenarioExample extends ScenarioFile {
   /** `meta.title` файла; пусто, если поле отсутствует — придумывать название нельзя. */
   readonly title: string;
+  readonly document: unknown;
 }
 
 /**
@@ -47,9 +44,8 @@ async function listExampleNames(): Promise<string[]> {
 }
 
 async function fetchExample(name: string): Promise<ScenarioExample> {
-  const path = `${DIRECTORY}${encodeURIComponent(name)}`;
-  const document = await fetchJson(path);
-  return { name, origin: path, document, title: readScenarioTitle(document) };
+  const document = await fetchJson(`${DIRECTORY}${encodeURIComponent(name)}`);
+  return { name, document, title: readScenarioTitle(document) };
 }
 
 async function fetchJson(path: string): Promise<unknown> {

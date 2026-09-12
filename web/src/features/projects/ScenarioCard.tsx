@@ -176,7 +176,7 @@ function AcceptedState({
 
       <section className="px-2">
         <h3 className="text-[18px] font-semibold text-ink-primary">Параметры сценария</h3>
-        <dl className="mt-4 grid grid-cols-4 gap-x-2 gap-y-[18px]">
+        <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-[18px] 2xl:grid-cols-4">
           <Param icon={<Rocket aria-hidden="true" className="size-[22px]" />} term="Аппараты">
             {formatCount(summary.satellite_count, 'спутник', 'спутника', 'спутников')}
           </Param>
@@ -233,9 +233,9 @@ function AcceptedState({
           </p>
         )}
         <Divider />
-        <div className="mt-4 flex gap-5">
+        <div className="mt-4 flex flex-wrap gap-5">
           <Button
-            className="w-[385px]"
+            className="min-w-[240px] flex-1 2xl:max-w-[385px]"
             disabled={creating}
             onClick={onOpenProject}
             iconAfter={<ChevronRight aria-hidden="true" className="size-[22px]" />}
@@ -244,7 +244,7 @@ function AcceptedState({
           </Button>
           <Button
             variant="secondary"
-            className="w-[260px]"
+            className="min-w-[220px] flex-1 2xl:max-w-[260px]"
             disabled
             title="Доступно, когда открыт проект: файл станет его новым вариантом"
           >

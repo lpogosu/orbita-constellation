@@ -5,6 +5,13 @@ import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/sta
 import { Card } from '@/components/ui/Card';
 import { formatMoment } from '@/lib/format';
 
+/**
+ * Сколько строк показывает карточка. `GET /api/projects` отдаёт весь список без
+ * пагинации и без параметра `limit`, поэтому ограничение живёт на экране, а число
+ * скрытых проектов названо честно.
+ */
+const RECENT_LIMIT = 6;
+
 interface RecentProjectsCardProps {
   projects: readonly Project[] | null;
   error: string | null;
@@ -52,7 +59,7 @@ export function RecentProjectsCard({
 
         {error === null && projects !== null && projects.length > 0 && (
           <ul>
-            {projects.map((project) => (
+            {projects.slice(0, RECENT_LIMIT).map((project) => (
               <li key={project.id}>
                 <button
                   type="button"
@@ -74,6 +81,11 @@ export function RecentProjectsCard({
                 </button>
               </li>
             ))}
+            {projects.length > RECENT_LIMIT && (
+              <li className="px-3.5 pt-2 text-caption text-ink-muted" data-numeric>
+                Показаны {RECENT_LIMIT} последних из {projects.length}
+              </li>
+            )}
           </ul>
         )}
       </div>

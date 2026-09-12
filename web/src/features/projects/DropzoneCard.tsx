@@ -20,7 +20,7 @@ export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardP
   return (
     <Card
       className={cx(
-        'h-[498px] transition-colors duration-150',
+        'min-h-[498px] transition-colors duration-150',
         dragging && 'border-line-strong shadow-glow-blue',
       )}
       onDragOver={(event) => {
@@ -47,14 +47,14 @@ export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardP
         )}
       />
 
-      <div className="relative flex h-full items-center gap-10 px-[39px]">
-        <figure className="relative w-[396px] shrink-0">
+      <div className="relative flex min-h-[498px] items-center gap-6 px-[39px] py-10 2xl:gap-10">
+        <figure className="relative w-[260px] shrink-0 2xl:w-[396px]">
           <img
             src="/assets/mascot-json.png"
             alt="Спутник-маскот ОРБИТЫ держит файл сценария"
             className="w-full"
           />
-          <figcaption className="mt-2 -rotate-[4deg] pl-6 font-script text-[30px] leading-[1.12] tracking-[0.4px] text-ink-secondary">
+          <figcaption className="mt-2 -rotate-[4deg] pl-3 font-script text-[24px] leading-[1.12] tracking-[0.4px] text-ink-secondary 2xl:pl-6 2xl:text-[30px]">
             Те же возможности.
             <br />
             Больше открытий!
@@ -62,8 +62,10 @@ export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardP
         </figure>
 
         <div className="min-w-0 flex-1">
-          <h2 className="text-heading-m font-bold text-ink-primary">Загрузите сценарий JSON</h2>
-          <p className="mt-3 max-w-[36ch] text-title-l text-ink-secondary">
+          <h2 className="text-[26px] font-bold leading-[1.2] tracking-[-0.4px] text-ink-primary 2xl:text-heading-m">
+            Загрузите сценарий JSON
+          </h2>
+          <p className="mt-3 max-w-[36ch] text-body text-ink-secondary 2xl:text-title-l">
             {dragging ? 'Отпустите файл — начнётся проверка.' : 'Перетащите файл сюда или выберите его на компьютере.'}
           </p>
 

@@ -98,24 +98,28 @@ export function ProjectsPage() {
       />
       <div className="grid gap-[29px] xl:grid-cols-[1115fr_721fr]">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-start justify-between gap-8 px-[18px]">
-            <div>
+          <div className="px-[18px]">
+            {/* Заголовок и поле названия стоят одной строкой, подзаголовок — под ними:
+                так же, как в макете. */}
+            <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-6">
               <h1 className="text-heading-xl font-bold text-ink-primary">Новый расчёт</h1>
-              <p className="mt-3 text-title-l text-ink-secondary">
-                Загрузите сценарий JSON или выберите один из примеров, чтобы начать работу.
-              </p>
+              <ProjectTitleField
+                value={title}
+                disabled={review.kind !== 'accepted'}
+                placeholder={
+                  review.kind === 'accepted'
+                    ? 'Название из meta.title файла'
+                    : 'Сначала выберите сценарий'
+                }
+                onChange={(value) => {
+                  setTitleEdited(true);
+                  setTitle(value);
+                }}
+              />
             </div>
-            <ProjectTitleField
-              value={title}
-              disabled={review.kind !== 'accepted'}
-              placeholder={
-                review.kind === 'accepted' ? 'Название из meta.title файла' : 'Сначала выберите сценарий'
-              }
-              onChange={(value) => {
-                setTitleEdited(true);
-                setTitle(value);
-              }}
-            />
+            <p className="mt-4 text-title-l text-ink-secondary">
+              Загрузите сценарий JSON или выберите один из примеров, чтобы начать работу.
+            </p>
           </div>
 
           <div className="mt-6">

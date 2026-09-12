@@ -29,7 +29,7 @@ export function sourceName(source: ScenarioSource): string {
 export function sourceOrigin(source: ScenarioSource): string {
   return source.kind === 'file'
     ? `Файл с компьютера · ${formatBytes(source.file.size)}`
-    : `Пример из каталога сценариев · ${source.example.origin}`;
+    : 'Пример из каталога сценариев репозитория';
 }
 
 /**

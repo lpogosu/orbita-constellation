@@ -92,9 +92,10 @@ function ExampleCard({
           : 'border-transparent hover:border-line',
       )}
     >
-      <img src={cover} alt="" className="h-[161px] w-full object-cover" />
-      <span className="flex h-[66px] flex-col items-center justify-center gap-0.5 bg-surface-raised px-2 text-center">
-        <span className="truncate text-title-m font-semibold text-ink-primary">
+      <img src={cover} alt="" className="min-h-0 w-full flex-1 object-cover" />
+      <span className="flex min-h-[66px] w-full shrink-0 flex-col justify-center gap-0.5 overflow-hidden bg-surface-raised px-3 py-2 text-center">
+        {/* Название длиннее карточки переносится на две строки, а не режется посередине. */}
+        <span className="line-clamp-2 text-[17px] font-semibold leading-[1.2] text-ink-primary">
           {example.title === '' ? example.name : example.title}
         </span>
         <span className="truncate font-mono text-[10px] text-ink-muted">{example.name}</span>

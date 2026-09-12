@@ -38,7 +38,7 @@ export function Button({
     <button
       type={type}
       className={cx(
-        'inline-flex items-center justify-center gap-3 font-semibold leading-[1.3]',
+        'inline-flex items-center justify-center gap-3 whitespace-nowrap font-semibold leading-[1.3]',
         'transition-[filter,opacity] duration-150 hover:brightness-110',
         'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:brightness-100',
         VARIANT[variant],

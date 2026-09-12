@@ -78,7 +78,7 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card-scenery relative w-full max-w-[700px] rounded-2xl border border-line-strong px-8 pb-8 pt-6 shadow-card"
+        className="card-scenery relative w-full max-w-[880px] rounded-2xl border border-line-strong px-8 pb-8 pt-6 shadow-card"
       >
         <button
           type="button"

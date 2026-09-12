@@ -8,6 +8,7 @@ import { runEvidencePackPath, runExportPath } from '@/api/runs';
 import type { Run, RoutingPolicy, Variant } from '@/api/types';
 import { COMPARISON_PATH, sectionHref } from '@/app/sections';
 import { Card } from '@/components/ui/Card';
+import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 import { downloadFile, exportFileName } from '@/lib/download';
 import { ROUTING_POLICIES, policyLabel } from '@/lib/run-format';
@@ -154,23 +155,22 @@ export function SaveExportCard({
           <History aria-hidden="true" className="size-[16px]" />
           {recompute.progressLabel ?? 'Пересчитать с другой политикой'}
         </button>
-        <label className="flex h-full items-center pr-[12px]">
-          <span className="sr-only">Политика маршрутизации для нового расчёта</span>
-          <select
-            value={recompute.policy}
-            onChange={(event) => {
-              recompute.onPolicyChange(event.target.value as RoutingPolicy);
-            }}
-            disabled={recompute.progressLabel !== null}
-            className="cursor-pointer rounded-sm bg-transparent py-[4px] text-[12px] font-semibold text-accent-violet-light disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {ROUTING_POLICIES.map((policy) => (
-              <option key={policy} value={policy} className="bg-surface-raised text-ink-primary">
-                {policyLabel(policy)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Политика маршрутизации для нового расчёта"
+          className="mr-[12px] shrink-0"
+          value={recompute.policy}
+          disabled={recompute.progressLabel !== null}
+          onChange={(value) => {
+            recompute.onPolicyChange(value as RoutingPolicy);
+          }}
+          options={ROUTING_POLICIES.map((policy) => ({
+            value: policy,
+            title: policyLabel(policy),
+          }))}
+          triggerClassName="h-[34px] w-[136px] rounded-sm border border-transparent pl-[10px] pr-[6px] text-caption font-semibold text-accent-violet-light hover:border-line"
+          menuAlign="end"
+          menuWidth={196}
+        />
       </div>
 
       {(downloadError ?? recompute.error) !== null && (

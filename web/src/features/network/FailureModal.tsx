@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { GatewayOutage, SatelliteFailure, Scenario } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 import { formatTick } from '@/lib/run-format';
 import { gatewaySites } from './draft';
@@ -19,6 +20,9 @@ interface FailureModalProps {
   readonly onClose: () => void;
   readonly onAdd: (failure: FailureDraft, keepOpen: boolean) => void;
 }
+
+/** Одна высота, один радиус и одни отступы полей — те же, что в модале ошибок сценария. */
+const FIELD = 'h-[52px] w-full rounded-md border border-line bg-surface-input px-4 text-base';
 
 /**
  * Модал «Отказ спутника» (`14_SCREENS.md` §2.5, узел макета `133:1628`). Границы задаются
@@ -84,6 +88,9 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
       subtitle="Отказ попадёт в черновик варианта — расчёт запускается отдельно"
       align="start"
       width={760}
+      // Список объекта раскрывается панелью поверх формы: прокрутка тела окна обрезала бы
+      // её по своему краю, а содержимое этого окна и так помещается целиком.
+      scrollBody={false}
       onClose={onClose}
       footer={
         <>
@@ -102,7 +109,7 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
       }
     >
       <Field label="Тип отказа">
-        <div className="flex h-[46px] items-center gap-[2px] rounded-sm border border-line-subtle bg-surface-track p-[3px]">
+        <div className="flex h-[52px] items-center gap-[2px] rounded-md border border-line-subtle bg-surface-track p-1">
           {(
             [
               ['satellite', 'Спутник'],
@@ -115,7 +122,7 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
               aria-pressed={kind === value}
               onClick={() => { setKind(value); }}
               className={cx(
-                'h-[38px] flex-1 rounded-[10px] text-small font-semibold transition-colors duration-150',
+                'h-full flex-1 rounded-sm text-small font-semibold transition-colors duration-150',
                 kind === value ? 'bg-accent-violet text-ink-onAccent' : 'text-ink-secondary',
               )}
             >
@@ -127,60 +134,72 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
 
       <Field label="Объект">
         {kind === 'satellite' ? (
-          <select
+          <Select
+            label="Аппарат"
             value={satelliteId}
-            onChange={(event) => { setSatelliteId(event.target.value); }}
-            className="h-[48px] w-full rounded-sm border border-line bg-surface-input px-[15px] text-base text-ink-primary"
-          >
-            {scenario.design.satellites.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.id} · плоскость {item.plane_id} · очередь {item.launch_batch}
-              </option>
-            ))}
-          </select>
+            onChange={setSatelliteId}
+            placeholder="Аппаратов в сценарии нет"
+            triggerClassName={cx(FIELD, 'font-medium text-ink-primary hover:border-line-strong')}
+            options={scenario.design.satellites.map((item) => ({
+              value: item.id,
+              title: item.id,
+              meta: `плоскость ${item.plane_id} · очередь ${item.launch_batch}`,
+            }))}
+          />
         ) : (
-          <select
+          <Select
+            label="Шлюз"
             value={gatewayId}
-            onChange={(event) => { setGatewayId(event.target.value); }}
-            className="h-[48px] w-full rounded-sm border border-line bg-surface-input px-[15px] text-base text-ink-primary"
-          >
-            {gateways.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.id} · {item.name}
-              </option>
-            ))}
-          </select>
+            onChange={setGatewayId}
+            placeholder="Шлюзов в сценарии нет"
+            triggerClassName={cx(FIELD, 'font-medium text-ink-primary hover:border-line-strong')}
+            options={gateways.map((item) => ({ value: item.id, title: item.id, meta: item.name }))}
+          />
         )}
       </Field>
 
-      <div className="grid grid-cols-3 gap-[20px]">
-        <Field label="Начало">
-          <TimeInput valueS={startS} stepS={stepS} maxS={horizonS - stepS} onChange={setStartS} />
+      {/* Три поля одного размера в ряду, под ними — ползунки тех двух, что правятся. */}
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        <Field label="Начало" inGrid>
+          <ClockInput label="Начало" valueS={startS} stepS={stepS} onChange={setStartS} />
         </Field>
-        <Field label="Длительность">
-          <TimeInput
-            valueS={durationS}
-            stepS={stepS}
-            maxS={horizonS - startS}
-            onChange={setDurationS}
-          />
+        <Field label="Длительность" inGrid>
+          <ClockInput label="Длительность" valueS={durationS} stepS={stepS} onChange={setDurationS} />
         </Field>
-        <Field label="Окончание">
-          <p className="flex h-[48px] items-center rounded-sm border border-line bg-surface-sunken px-[15px] text-base text-ink-secondary" data-numeric>
-            {formatTick(endS)} <span className="ml-[8px] text-caption text-ink-muted">исключая</span>
+        <Field label="Окончание" inGrid>
+          <p className={cx(FIELD, 'flex items-center text-ink-secondary')} data-numeric>
+            {formatTick(endS)}
           </p>
         </Field>
+
+        <Slider
+          label="Начало по шкале суток"
+          valueS={startS}
+          stepS={stepS}
+          maxS={horizonS - stepS}
+          onChange={setStartS}
+        />
+        <Slider
+          label="Длительность по шкале суток"
+          valueS={durationS}
+          stepS={stepS}
+          maxS={horizonS - startS}
+          onChange={setDurationS}
+        />
+        <p className="flex h-[52px] items-center text-caption text-ink-muted">
+          Граница исключая: в {formatTick(endS)} аппарат уже работает.
+        </p>
       </div>
 
       {inactiveSatellite !== null && kind === 'satellite' && (
-        <p className="mt-[16px] rounded-sm border border-[rgba(255,160,92,0.38)] bg-[rgba(255,160,92,0.14)] px-[15px] py-[11px] text-small text-status-warning">
+        <p className="mt-4 rounded-md border border-[rgba(255,160,92,0.38)] bg-[rgba(255,160,92,0.14)] px-4 py-3 text-small text-status-warning">
           {inactiveSatellite.id} не активен на этапе {scenario.design.launch_stage} (очередь{' '}
           {inactiveSatellite.launch_batch}) — отказ не повлияет на расчёт
         </p>
       )}
 
       {problems.length > 0 && (
-        <ul className="mt-[16px] space-y-[6px]">
+        <ul className="mt-4 space-y-2">
           {problems.map((problem) => (
             <li key={problem} className="text-small text-status-danger">
               {problem}
@@ -192,44 +211,71 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  inGrid = false,
+  children,
+}: {
+  label: string;
+  /** В ряду из трёх полей отступ сверху задаёт сетка, а не само поле. */
+  inGrid?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <label className="mt-[16px] block first:mt-0">
-      <span className="mb-[8px] block text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
+    <div className={inGrid ? 'block' : 'mt-4 block first:mt-0'}>
+      <span className="mb-2 block text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
         {label}
       </span>
       {children}
-    </label>
+    </div>
   );
 }
 
-/** Ввод момента в `ЧЧ:ММ` с шагом сетки: ползунок по суткам и поле рядом. */
-function TimeInput({
+/** Момент в `ЧЧ:ММ`: значение округляется до шага сетки, на котором считается расчёт. */
+function ClockInput({
+  label,
+  valueS,
+  stepS,
+  onChange,
+}: {
+  label: string;
+  valueS: number;
+  stepS: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={label}
+      value={formatTick(valueS)}
+      onChange={(event) => {
+        const parsed = parseClock(event.target.value);
+        if (parsed !== null) {
+          onChange(Math.round(parsed / stepS) * stepS);
+        }
+      }}
+      className={cx(FIELD, 'text-ink-primary transition-colors duration-150 focus:border-line-strong')}
+      data-numeric
+    />
+  );
+}
+
+function Slider({
+  label,
   valueS,
   stepS,
   maxS,
   onChange,
 }: {
+  label: string;
   valueS: number;
   stepS: number;
   maxS: number;
   onChange: (value: number) => void;
 }) {
   return (
-    <span className="block">
-      <input
-        type="text"
-        inputMode="numeric"
-        value={formatTick(valueS)}
-        onChange={(event) => {
-          const parsed = parseClock(event.target.value);
-          if (parsed !== null) {
-            onChange(Math.round(parsed / stepS) * stepS);
-          }
-        }}
-        className="h-[48px] w-full rounded-sm border border-line bg-surface-input px-[15px] text-base text-ink-primary"
-        data-numeric
-      />
+    <span className="flex h-[52px] items-center">
       <input
         type="range"
         min={0}
@@ -237,8 +283,8 @@ function TimeInput({
         step={stepS}
         value={Math.min(valueS, Math.max(maxS, 0))}
         onChange={(event) => { onChange(Number(event.target.value)); }}
-        className="mt-[10px] w-full accent-[var(--accent-violet)]"
-        aria-label="Ползунок по шкале суток"
+        className="w-full accent-[var(--accent-violet)]"
+        aria-label={label}
       />
     </span>
   );

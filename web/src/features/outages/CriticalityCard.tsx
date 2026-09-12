@@ -1,7 +1,8 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Crosshair } from 'lucide-react';
 
 import type { CriticalityState } from './use-comparison';
-import { Skeleton, UnavailableBlock } from '@/components/state/States';
+import { ErrorBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
+import { cx } from '@/lib/cx';
 import { formatPoints } from './format';
 import { formatGap } from '@/lib/run-format';
 
@@ -12,7 +13,9 @@ interface CriticalityCardProps {
   readonly height: number;
   readonly state: CriticalityState;
   readonly runId: string | null;
-  readonly onCheckFailure: (satelliteId: string) => void;
+  /** Аппарат, ради которого открыт экран: он стоит первым и подсвечен на карте. */
+  readonly focusSatelliteId: string | null;
+  readonly onFocusSatellite: (satelliteId: string) => void;
 }
 
 /**
@@ -23,7 +26,19 @@ interface CriticalityCardProps {
  * на экране нет и не будет, пока сервис не начнёт считать.
  */
 export function CriticalityCard(props: CriticalityCardProps) {
-  const { state } = props;
+  const { state, focusSatelliteId } = props;
+  // Выбранный аппарат занимает строку над состоянием, и оно на неё ужимается: карточка
+  // стоит на макетных координатах и вырасти не может.
+  const bodyHeight = focusSatelliteId === null ? 128 : 90;
+
+  const ranked = (state.report?.satellites ?? []).map((item, index) => ({
+    item,
+    rank: index + 1,
+  }));
+  const ordered = [
+    ...ranked.filter((entry) => entry.item.satellite_id === focusSatelliteId),
+    ...ranked.filter((entry) => entry.item.satellite_id !== focusSatelliteId),
+  ].slice(0, 3);
 
   return (
     <div
@@ -52,8 +67,18 @@ export function CriticalityCard(props: CriticalityCardProps) {
         {props.runId !== null && ` · прогон ${props.runId.slice(0, 8)}`}
       </p>
 
+      {focusSatelliteId !== null && (
+        <p className="mt-[8px] flex h-[30px] items-center gap-[8px] rounded-sm border border-[rgba(46,139,251,0.45)] bg-[rgba(46,139,251,0.16)] px-[11px]">
+          <Crosshair aria-hidden="true" className="size-[14px] shrink-0 text-accent-blue" />
+          <span className="truncate text-small font-semibold text-ink-primary">
+            {focusSatelliteId}
+          </span>
+          <span className="ml-auto shrink-0 text-micro text-ink-secondary">выбран на карте</span>
+        </p>
+      )}
+
       {props.runId === null ? (
-        <div className="mt-[10px] h-[128px]">
+        <div className="mt-[10px]" style={{ height: bodyHeight }}>
           <UnavailableBlock
             title="Нужен завершённый расчёт"
             hint="Критичность считается по готовому прогону: сначала «Применить отказ» или выберите базу сравнения."
@@ -61,19 +86,25 @@ export function CriticalityCard(props: CriticalityCardProps) {
           />
         </div>
       ) : state.loading ? (
-        <Skeleton className="mt-[12px] h-[128px] w-full" />
+        <Skeleton className="mt-[12px] w-full" style={{ height: bodyHeight }} />
       ) : state.notImplemented ? (
-        <div className="mt-[10px] h-[128px]">
-          <UnavailableBlock
-            title="Не подключено"
-            hint={`Сервис ответил 501: ${state.error ?? 'endpoint объявлен, реализации ещё нет'}. Ранги появятся, когда анализ заработает.`}
+        <div className="mt-[10px]" style={{ height: bodyHeight }}>
+          <ErrorBlock
+            title="Расчёт критичности ещё не подключён"
+            message={`Сервис ответил 501: ${state.error ?? 'endpoint объявлен, реализации ещё нет'}.`}
+            onRetry={state.request}
             compact
           />
         </div>
       ) : state.error !== null ? (
-        <p role="alert" className="mt-[12px] text-caption text-status-danger">
-          {state.error}
-        </p>
+        <div className="mt-[10px]" style={{ height: bodyHeight }}>
+          <ErrorBlock
+            title="Критичность не получена"
+            message={state.error}
+            onRetry={state.request}
+            compact
+          />
+        </div>
       ) : state.report === null ? (
         <p className="mt-[12px] text-caption text-ink-secondary">
           Нажмите «Рассчитать критичность»: сервис пройдёт по каждому аппарату и вернёт, сколько
@@ -81,15 +112,19 @@ export function CriticalityCard(props: CriticalityCardProps) {
         </p>
       ) : (
         <ul className="mt-[10px] space-y-[2px]">
-          {state.report.satellites.slice(0, 3).map((item, index) => (
+          {ordered.map(({ item, rank }) => (
             <li key={item.satellite_id}>
               <button
                 type="button"
-                onClick={() => { props.onCheckFailure(item.satellite_id); }}
-                className="flex h-[38px] w-full items-center gap-[16px] rounded-sm px-[20px] text-left transition-colors duration-150 hover:bg-surface-rowActive"
+                onClick={() => { props.onFocusSatellite(item.satellite_id); }}
+                className={cx(
+                  'flex h-[38px] w-full items-center gap-[16px] rounded-sm px-[20px] text-left',
+                  'transition-colors duration-150 hover:bg-surface-rowActive',
+                  item.satellite_id === focusSatelliteId && 'bg-surface-rowActive',
+                )}
               >
                 <span className="text-base text-ink-muted" data-numeric>
-                  {index + 1}
+                  {rank}
                 </span>
                 <span
                   title={item.satellite_id}

@@ -70,9 +70,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   if (layers.allContacts) {
     drawContacts(ctx, model, layers, palette, positions);
   }
-  if (model.components !== null) {
-    drawComponents(ctx, model.components, palette, positions);
-  }
   if (layers.backup && model.backupRoute.length > 1) {
     drawPath(ctx, model.backupRoute, positions, palette.backup, 2.5, [7, 6]);
   }
@@ -80,14 +77,21 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
     drawPath(ctx, model.selectedRoute, positions, palette.route, 3, []);
   }
 
+  const muted = mutedByComponents(model);
+
   if (layers.satellites) {
     for (const satellite of model.satellites) {
       const point = positions.get(satellite.id);
       if (point === undefined) {
         continue;
       }
-      drawSatellite(ctx, input, satellite, point);
+      drawSatellite(ctx, input, satellite, point, muted.has(satellite.id));
     }
+  }
+
+  // Маркеры компонент идут поверх аппаратов: под спрайтом обводка не видна.
+  if (model.components !== null && layers.satellites) {
+    drawComponents(ctx, model.components, palette, positions);
   }
 
   for (const site of model.sites) {
@@ -274,6 +278,22 @@ function drawPath(
   ctx.restore();
 }
 
+/** Аппараты вне обеих компонент: они приглушаются, чтобы разбиение читалось сразу. */
+function mutedByComponents(model: MapModel): ReadonlySet<string> {
+  const muted = new Set<string>();
+  const components = model.components;
+  if (components === null) {
+    return muted;
+  }
+  const shown = new Set([...components.clientSide, ...components.gatewaySide]);
+  for (const satellite of model.satellites) {
+    if (!shown.has(satellite.id)) {
+      muted.add(satellite.id);
+    }
+  }
+  return muted;
+}
+
 /**
  * Две изолированные группы аппаратов. Различаются формой обводки, а не только цветом:
  * по цвету одному читателю из двенадцати их не различить.
@@ -318,14 +338,27 @@ function drawSatellite(
   input: DrawInput,
   satellite: SnapshotSatellite,
   point: Point,
+  muted: boolean,
 ): void {
   const { model, palette, layers, sprites } = input;
   const failed = satellite.failed || model.draftFailedSatellites.includes(satellite.id);
   const inRoute = model.selectedRoute.includes(satellite.id);
   const candidate = model.failureCandidates.includes(satellite.id);
+  const highlighted = model.highlightedSatelliteId === satellite.id;
   const hovered = input.hoveredId === satellite.id;
 
   ctx.save();
+  if (muted) {
+    ctx.globalAlpha = 0.25;
+  }
+
+  if (highlighted) {
+    ctx.strokeStyle = palette.highlight;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SATELLITE_WIDTH * 0.62, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   if (candidate) {
     ctx.strokeStyle = palette.clientSelected;
@@ -340,16 +373,18 @@ function drawSatellite(
   if (sprites !== null) {
     const width = SATELLITE_WIDTH;
     const height = (sprites.satellite.height / sprites.satellite.width) * width;
-    ctx.globalAlpha = satellite.active ? 1 : 0.32;
+    const solid = ctx.globalAlpha;
+    ctx.globalAlpha = satellite.active ? solid : solid * 0.32;
     ctx.drawImage(sprites.satellite, point.x - width / 2, point.y - height / 2, width, height);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = solid;
   } else {
     ctx.fillStyle = planeColor(palette, model.planeIds, satellite.plane_id);
-    ctx.globalAlpha = satellite.active ? 1 : 0.32;
+    const solid = ctx.globalAlpha;
+    ctx.globalAlpha = satellite.active ? solid : solid * 0.32;
     ctx.beginPath();
     ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = solid;
   }
 
   if (failed) {
@@ -378,7 +413,7 @@ function drawSatellite(
     ctx.stroke();
   }
 
-  if (layers.labels || hovered || inRoute || failed) {
+  if (layers.labels || hovered || inRoute || failed || highlighted) {
     ctx.fillStyle = hovered ? palette.label : palette.labelMuted;
     ctx.font = `600 11px ${SANS}`;
     ctx.textAlign = 'center';
@@ -398,8 +433,22 @@ function drawSite(
   const { model, palette, sprites, view } = input;
   const selected = site.id === model.selectedClientId;
   const hovered = input.hoveredId === site.id;
+  const components = model.components;
+  const outlined =
+    components !== null &&
+    (components.clientSiteId === site.id || components.gatewaySiteIds.includes(site.id));
 
   ctx.save();
+
+  if (outlined) {
+    ctx.strokeStyle = components.clientSiteId === site.id ? palette.route : palette.backup;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SITE_RING + 9, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   if (site.role === 'gateway' && sprites !== null) {
     const width = 46;

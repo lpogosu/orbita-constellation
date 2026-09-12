@@ -33,7 +33,10 @@ interface NetworkStateCardProps {
   readonly selectedClientId: string | null;
   readonly onSelectClient: (clientId: string) => void;
   readonly onSeek: (tS: number) => void;
-  readonly onShowComponents: (split: ComponentSplit | null) => void;
+  /** Компоненты связности на текущем отсчёте: `null` — клиенту не видно ни одного аппарата. */
+  readonly componentSplit: ComponentSplit | null;
+  readonly componentsShown: boolean;
+  readonly onToggleComponents: () => void;
   readonly backup: BackupPaths | null;
   readonly backupError: string | null;
   readonly onLoadBackup: () => void;
@@ -267,7 +270,12 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
             )}
 
             {currentOutage !== undefined && (
-              <CauseBlock outage={currentOutage} onShowComponents={props.onShowComponents} />
+              <CauseBlock
+                outage={currentOutage}
+                split={props.componentSplit}
+                shown={props.componentsShown}
+                onToggle={props.onToggleComponents}
+              />
             )}
           </>
         )}
@@ -325,10 +333,14 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
 
 function CauseBlock({
   outage,
-  onShowComponents,
+  split,
+  shown,
+  onToggle,
 }: {
   outage: OutageInterval;
-  onShowComponents: (split: ComponentSplit | null) => void;
+  split: ComponentSplit | null;
+  shown: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div className="mt-[14px] rounded-[14px] border border-[rgba(255,92,110,0.38)] bg-[rgba(255,92,110,0.12)] px-[13px] py-[11px]">
@@ -349,18 +361,20 @@ function CauseBlock({
           Последний маршрут: {listOrDash(outage.last_path)} · следующий: {listOrDash(outage.next_path)}
         </li>
       </ul>
-      <button
-        type="button"
-        onClick={() => {
-          onShowComponents({
-            clientSide: outage.client_visible_satellites,
-            gatewaySide: outage.gateway_visible_satellites,
-          });
-        }}
-        className="mt-[10px] text-caption font-semibold text-accent-blue"
-      >
-        Показать компоненты ›
-      </button>
+      {split === null ? (
+        <p className="mt-[10px] text-caption text-ink-muted">
+          у клиента нет видимых спутников на этом отсчёте
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={shown}
+          className="mt-[10px] text-caption font-semibold text-accent-blue"
+        >
+          {shown ? 'Скрыть компоненты' : 'Показать компоненты'} ›
+        </button>
+      )}
     </div>
   );
 }

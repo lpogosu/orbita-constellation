@@ -69,7 +69,7 @@ async def build(
         ENGINE_VERSION_FILE: f"{ENGINE_VERSION}\n",
     }
     if base_run_id is not None:
-        comparison = await comparisons.compare(session, [base_run_id, run_id])
+        comparison = await comparisons.compare(session, storage, [base_run_id, run_id])
         recommendation = await comparisons.recommend(session, run_id, base_run_id)
         files[COMPARISON_FILE] = comparison.model_dump_json(indent=2, by_alias=True)
         files[RECOMMENDATION_FILE] = recommendation.model_dump_json(indent=2, by_alias=True)

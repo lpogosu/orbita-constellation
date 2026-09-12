@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 
-import { LIGHT_DIRECTION } from './geo';
 import type { GlobeTextures } from './textures';
 
 interface EarthProps {
@@ -15,67 +14,35 @@ interface EarthProps {
 }
 
 /**
- * Земля с ночными огнями, облака отдельной сферой и атмосфера с френелем — перенесено из
- * прототипа почти дословно (грабля №1: только `MeshStandardMaterial` + `onBeforeCompile`,
- * свой `ShaderMaterial` для самой Земли не заводится, three сам делает decode → tonemap →
- * encode; атмосфера — отдельный `ShaderMaterial`, у неё нет текстур, поэтому свой шейдер
- * там уместен и не ломает цвет).
+ * Дневная фототекстура выводится напрямую, без PBR-освещения. Иначе глобальный свет,
+ * ночная эмиссия и ACES по-разному окрашивают Землю в тёмной и светлой CSS-темах.
+ * Атмосфера, спутники и линии остаются отдельными 3D-слоями.
  */
 export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackColor, gridColor }: EarthProps) {
   const earthMaterial = useMemo(() => {
     if (textures.day === null) {
       // Нет и не будет: без базовой текстуры показываем ровный цвет поверхности —
       // сетка меридианов рисуется отдельной wireframe-сферой поверх (см. ниже).
-      return new THREE.MeshStandardMaterial({ color: fallbackColor, roughness: 1, metalness: 0.05 });
+      return new THREE.MeshBasicMaterial({ color: fallbackColor });
     }
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshBasicMaterial({
       map: textures.day,
-      roughnessMap: textures.rough,
-      roughness: 1,
-      metalness: 0.02,
-      emissiveMap: textures.night,
-      // Не берём белый множитель: с ярким светом и ACES он выбеливает лёд и облака.
-      // Низкохроматичный холодный серый только приглушает albedo, не меняя собственные
-      // синие, зелёные и тёмные тона дневной текстуры.
-      color: new THREE.Color(0xd4dce4),
-      // Ночная карта уже содержит оттенок городских огней. Ей нужен лишь умеренный
-      // холодный подъём, иначе освещение съедает контраст ночного рельефа.
-      emissive: textures.night === null ? new THREE.Color(0x000000) : new THREE.Color(0xd9e6f2),
-      emissiveIntensity: 0.14,
+      // Не даём tone mapping и exposure менять пиксели исходной фотографии.
+      toneMapped: false,
     });
-    if (textures.night !== null) {
-      // Ночные огни видны только на тёмной стороне: без этой вставки эмиссивная карта
-      // светилась бы одинаково и днём, смывая текстуру (грабля №1 — раскладка тонов и
-      // цветового пространства остаётся стандартным `#include`, добавляется только сила
-      // эмиссии по углу к свету).
-      material.onBeforeCompile = (shader) => {
-        shader.uniforms['uLight'] = { value: LIGHT_DIRECTION.clone() };
-        shader.fragmentShader = shader.fragmentShader
-          .replace('#include <common>', '#include <common>\nuniform vec3 uLight;')
-          .replace(
-            '#include <emissivemap_fragment>',
-            `#include <emissivemap_fragment>
-             vec3 _globeL = normalize((viewMatrix * vec4(uLight, 0.0)).xyz);
-             float _globeNdl = dot(normalize(vNormal), _globeL);
-             totalEmissiveRadiance *= smoothstep(0.04, -0.26, _globeNdl) * 0.85;`,
-          );
-      };
-    }
-    return material;
-  }, [textures.day, textures.rough, textures.night, fallbackColor]);
+  }, [textures.day, fallbackColor]);
 
   const cloudMaterial = useMemo(() => {
     if (textures.clouds === null) {
       return null;
     }
-    return new THREE.MeshStandardMaterial({
+    return new THREE.MeshBasicMaterial({
       map: textures.clouds,
       transparent: true,
       // Белые облака не должны превращать полярные льды в сплошную светлую массу.
       opacity: 0.19,
       depthWrite: false,
-      roughness: 0.95,
-      metalness: 0,
+      toneMapped: false,
     });
   }, [textures.clouds]);
 

@@ -111,15 +111,10 @@
     border: 1px solid var(--border-default);
     box-shadow: var(--shadow-card);
     background-color: var(--bg-page);
-    background-image: linear-gradient(var(--surface-glass), var(--surface-glass)),
-      var(--scenery-page);
-    background-size: auto, 1920px 1080px;
+    /* Фоновая иллюстрация живёт на canvas, а не повторяется в каждой карточке. При
+       дробном zoom её разные background-position давали светлые швы на стыках панелей. */
+    background-image: linear-gradient(var(--surface-glass), var(--surface-glass));
     background-repeat: no-repeat;
-    /* Полотно карточки живёт внутри `.app-canvas` с дробным `zoom` (окно редко кратно
-       1920×1080), и на части масштабов `overflow: hidden` со скруглением у самого угла
-       оставляет волосок неотрезанного фона или декоративной картинки поверх соседней
-       панели — это и есть светлая диагональная полоса на стыке карточек. `clip-path`
-       считает ту же скруглённую рамку отдельно от вёрстки и режет точно по ней. */
     clip-path: inset(0 round var(--radius-2xl));
   }
 

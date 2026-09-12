@@ -64,7 +64,7 @@ export function TimelineCard({ timeline, error, onRetry }: TimelineCardProps) {
       </h2>
 
       {timeline !== null && (
-        <div className="absolute left-[760px] top-[16px] flex w-[510px] flex-wrap justify-end gap-x-[20px] gap-y-[4px]">
+        <div className="absolute left-[540px] top-[16px] flex w-[730px] flex-wrap justify-end gap-x-[20px] gap-y-[4px]">
           <LegendItem color="var(--chart-ok)" label="Связь доступна" />
           {causes.map((cause) => (
             <LegendItem key={cause} color={causeView(cause).color} label={causeView(cause).short} />
@@ -76,8 +76,10 @@ export function TimelineCard({ timeline, error, onRetry }: TimelineCardProps) {
         className="absolute left-[30px] top-[56px] w-[1230px]"
         style={{ height: VISIBLE_ROWS * ROW_HEIGHT + (VISIBLE_ROWS - 1) * ROW_GAP }}
       >
+        {/* Полоса ниже 70 пикселей: состояние идёт строкой, иначе кнопка повтора
+            оказывается за нижним краем карточки. */}
         {error !== null && (
-          <ErrorBlock title="Шкала не загрузилась" message={error} onRetry={onRetry} />
+          <ErrorBlock title="Шкала не загрузилась" message={error} onRetry={onRetry} compact />
         )}
 
         {error === null && timeline === null && (
@@ -96,6 +98,7 @@ export function TimelineCard({ timeline, error, onRetry }: TimelineCardProps) {
           <EmptyState
             title="Шкала пуста"
             hint="Расчёт не вернул ни одного клиента: проверьте роли наземных пунктов в сценарии."
+            compact
           />
         )}
 
@@ -104,7 +107,8 @@ export function TimelineCard({ timeline, error, onRetry }: TimelineCardProps) {
             {tracks.map((track) => (
               <li key={track.clientId} className="relative" style={{ height: ROW_HEIGHT }}>
                 <span
-                  className="absolute left-0 top-0 text-[13px] font-semibold leading-[18px] text-ink-secondary"
+                  title={track.clientId}
+                  className="absolute left-0 top-0 truncate pr-[6px] text-[13px] font-semibold leading-[18px] text-ink-secondary"
                   style={{ width: LABEL_WIDTH }}
                 >
                   {track.clientId}

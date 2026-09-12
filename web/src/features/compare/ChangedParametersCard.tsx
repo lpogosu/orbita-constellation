@@ -89,7 +89,10 @@ export function ChangedParametersCard({ entries }: { entries: readonly Compariso
         </p>
       )}
 
-      <p className="absolute left-[27px] bottom-[14px] text-[11px] text-ink-muted">
+      <p
+        title={base.variant_title}
+        className="absolute inset-x-[27px] bottom-[14px] truncate text-[11px] text-ink-muted"
+      >
         источник: сравнение канонических сценариев · база — {base.variant_title}
       </p>
     </Card>

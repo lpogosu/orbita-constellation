@@ -153,12 +153,15 @@ export function SetupCard({
           {gridPoints === 1 ? 'точка' : 'точек'}
         </p>
       ) : (
+        // Между полями бюджета и кнопкой запуска ровно одна строка: вторая легла бы на
+        // кнопку, поэтому длинное объяснение уходит в подсказку.
         <p
           role="alert"
-          className="absolute left-[23px] top-[577px] flex w-[376px] items-start gap-[6px] text-[11px] text-status-warning"
+          title={budgetProblem}
+          className="absolute left-[23px] top-[577px] flex h-[16px] w-[376px] items-center gap-[6px] text-[11px] text-status-warning"
         >
-          <AlertTriangle aria-hidden="true" className="mt-[1px] size-[12px] shrink-0" />
-          {budgetProblem}
+          <AlertTriangle aria-hidden="true" className="size-[12px] shrink-0" />
+          <span className="min-w-0 truncate">{budgetProblem}</span>
         </p>
       )}
 
@@ -268,7 +271,8 @@ function AxisFields({
       {check.problems.length > 0 && (
         <p
           role="alert"
-          className="absolute left-[23px] w-[376px] text-[11px] text-status-danger"
+          title={check.problems.join('; ')}
+          className="absolute left-[23px] h-[16px] w-[376px] truncate text-[11px] text-status-danger"
           style={{ top: top + 140 }}
         >
           {check.problems.join('; ')}

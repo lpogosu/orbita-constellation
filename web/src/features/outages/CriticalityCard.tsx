@@ -36,13 +36,13 @@ export function CriticalityCard(props: CriticalityCardProps) {
         backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
       }}
     >
-      <div className="flex items-center">
-        <h3 className="text-title-m font-semibold text-ink-primary">Критические аппараты</h3>
+      <div className="flex items-center gap-[12px]">
+        <h3 className="truncate text-title-m font-semibold text-ink-primary">Критические аппараты</h3>
         <button
           type="button"
           onClick={state.request}
           disabled={props.runId === null || state.loading}
-          className="ml-auto text-caption font-semibold text-accent-blue disabled:text-ink-muted"
+          className="ml-auto shrink-0 whitespace-nowrap text-caption font-semibold text-accent-blue disabled:text-ink-muted"
         >
           {state.loading ? 'Считаем…' : state.report === null ? 'Рассчитать критичность' : 'Пересчитать'}
         </button>
@@ -57,6 +57,7 @@ export function CriticalityCard(props: CriticalityCardProps) {
           <UnavailableBlock
             title="Нужен завершённый расчёт"
             hint="Критичность считается по готовому прогону: сначала «Применить отказ» или выберите базу сравнения."
+            compact
           />
         </div>
       ) : state.loading ? (
@@ -66,6 +67,7 @@ export function CriticalityCard(props: CriticalityCardProps) {
           <UnavailableBlock
             title="Не подключено"
             hint={`Сервис ответил 501: ${state.error ?? 'endpoint объявлен, реализации ещё нет'}. Ранги появятся, когда анализ заработает.`}
+            compact
           />
         </div>
       ) : state.error !== null ? (
@@ -89,15 +91,18 @@ export function CriticalityCard(props: CriticalityCardProps) {
                 <span className="text-base text-ink-muted" data-numeric>
                   {index + 1}
                 </span>
-                <span className="flex-1 text-title-m font-semibold text-ink-primary">
+                <span
+                  title={item.satellite_id}
+                  className="min-w-0 flex-1 truncate text-title-m font-semibold text-ink-primary"
+                >
                   {item.satellite_id}
                 </span>
-                <span className="text-base text-ink-secondary" data-numeric>
+                <span className="shrink-0 whitespace-nowrap text-caption text-ink-secondary" data-numeric>
                   {formatPoints(item.delta_min_client_availability)} ·{' '}
                   {formatGap(item.delta_worst_max_gap_s)} · клиентов{' '}
                   {item.affected_clients.length}
                 </span>
-                <ChevronRight aria-hidden="true" className="size-[20px] text-ink-muted" />
+                <ChevronRight aria-hidden="true" className="size-[20px] shrink-0 text-ink-muted" />
               </button>
             </li>
           ))}

@@ -103,9 +103,13 @@ export function ProjectPage() {
         {project.title}
       </h1>
 
-      <div className="absolute left-[36px] top-[162px] flex gap-[10px]">
+      {/* Ряд чипов кончается до кнопок в правом верхнем углу: идентификатор сценария
+          приходит из файла и длины не имеет. */}
+      <div className="absolute left-[36px] top-[162px] flex max-w-[1240px] gap-[10px]">
         <Chip icon={<FileText aria-hidden="true" className="size-[14px]" />}>
-          сценарий {scenarioId ?? '—'}
+          <span className="max-w-[260px] truncate" title={scenarioId ?? undefined}>
+            сценарий {scenarioId ?? '—'}
+          </span>
         </Chip>
         <Chip icon={<Calendar aria-hidden="true" className="size-[14px]" />}>
           создан {formatDate(project.created_at)}
@@ -162,7 +166,8 @@ export function ProjectPage() {
       {actionError !== null && (
         <p
           role="alert"
-          className="absolute left-[1300px] top-[178px] w-[581px] text-right text-caption text-status-danger"
+          title={actionError}
+          className="absolute left-[1300px] top-[178px] line-clamp-2 w-[581px] text-right text-caption text-status-danger"
         >
           {actionError}
         </p>
@@ -292,8 +297,8 @@ function buildView(board: ProjectBoard): ProjectView {
 
 function Chip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <span className="flex h-[27px] items-center gap-[7px] rounded-[8px] border border-line bg-surface-sunken pl-[11px] pr-[13px] text-[12px] font-medium leading-[15px] text-ink-secondary">
-      <span className="text-ink-muted">{icon}</span>
+    <span className="flex h-[27px] min-w-0 shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[8px] border border-line bg-surface-sunken pl-[11px] pr-[13px] text-[12px] font-medium leading-[15px] text-ink-secondary">
+      <span className="shrink-0 text-ink-muted">{icon}</span>
       {children}
     </span>
   );

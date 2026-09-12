@@ -35,7 +35,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
 
   return (
     <div
-      className="card-glass absolute px-[20px] pb-[14px] pt-[11px]"
+      className="card-glass absolute flex flex-col px-[20px] pb-[14px] pt-[11px]"
       style={{
         left: props.x,
         top: props.y,
@@ -44,14 +44,18 @@ export function RecommendationCard(props: RecommendationCardProps) {
         backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
       }}
     >
-      <p className="flex items-center gap-[12px] text-title-m font-semibold text-ink-primary">
-        <Lightbulb aria-hidden="true" className="size-[26px] text-status-warning" />
+      <p className="flex shrink-0 items-center gap-[12px] text-title-m font-semibold text-ink-primary">
+        <Lightbulb aria-hidden="true" className="size-[26px] shrink-0 text-status-warning" />
         Что показало сравнение
       </p>
 
-      <p className="mt-[12px] text-small text-ink-secondary">{sentence(worst, entry)}</p>
+      {/* Вывод собирается из полей сравнения и длины не имеет: он прокручивается внутри
+          карточки, а не обрезается её краем. */}
+      <p className="scroll-area mt-[12px] min-h-0 flex-1 pr-[6px] text-small text-ink-secondary">
+        {sentence(worst, entry)}
+      </p>
 
-      <p className="mt-[10px] text-micro text-ink-muted">
+      <p className="mt-[10px] shrink-0 truncate text-micro text-ink-muted">
         основано на сравнении {entry.run_id.slice(0, 8)}
         {props.baseTitle !== null && ` с «${props.baseTitle}»`} · политика {entry.routing_policy}
       </p>

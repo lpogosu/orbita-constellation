@@ -79,7 +79,10 @@ export function VariantsCard({
         Варианты
       </h2>
       {rows.length > 0 && (
-        <p className="absolute left-[147px] top-[23px] text-caption text-ink-secondary">
+        <p
+          title={baseTitle}
+          className="absolute left-[147px] top-[23px] w-[420px] truncate text-caption text-ink-secondary"
+        >
           {rows.length} вариантов{baseTitle === undefined ? '' : ` · база — ${baseTitle}`}
         </p>
       )}

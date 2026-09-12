@@ -243,10 +243,11 @@ function AcceptedState({
       {createError !== null && (
         <p
           role="alert"
-          className="absolute left-[27px] top-[479px] flex w-[665px] items-start gap-2 text-small text-status-danger"
+          title={createError}
+          className="absolute left-[27px] top-[479px] flex h-[20px] w-[665px] items-center gap-2 text-small text-status-danger"
         >
-          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          {createError}
+          <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+          <span className="min-w-0 truncate">{createError}</span>
         </p>
       )}
 

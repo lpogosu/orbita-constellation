@@ -102,31 +102,37 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
         className="pointer-events-none absolute left-[485px] top-[87px] h-[120px] w-[180px] object-contain"
       />
 
-      <button
-        type="button"
-        onClick={() => { onApply(winnerIsBase ? base.variant_id : candidate.variant_id); }}
-        className={cx(
-          'absolute left-[27px] top-[223px] flex h-[50px] w-[300px] items-center justify-center gap-3',
-          'rounded-lg bg-accent-violet text-[22px] font-semibold text-ink-onAccent shadow-glow-violet',
-          'transition-[filter] duration-150 hover:brightness-110',
-        )}
-      >
-        Применить вариант
-        <ChevronRight aria-hidden="true" className="size-6" />
-      </button>
+      {/*
+        Обе кнопки одной высоты и одной ширины: «Поменять местами» в 220 пикселях
+        ломалось на две строки и выпадало из своих 50 по высоте.
+      */}
+      <div className="absolute inset-x-[27px] top-[223px] flex h-[50px] items-stretch gap-[11px]">
+        <button
+          type="button"
+          onClick={() => { onApply(winnerIsBase ? base.variant_id : candidate.variant_id); }}
+          className={cx(
+            'flex w-[300px] shrink-0 items-center justify-center gap-3 whitespace-nowrap',
+            'rounded-lg bg-accent-violet text-[22px] font-semibold text-ink-onAccent shadow-glow-violet',
+            'transition-[filter] duration-150 hover:brightness-110',
+          )}
+        >
+          Применить вариант
+          <ChevronRight aria-hidden="true" className="size-6 shrink-0" />
+        </button>
 
-      <button
-        type="button"
-        onClick={onSwap}
-        className={cx(
-          'absolute left-[343px] top-[223px] flex h-[50px] w-[220px] items-center justify-center gap-3',
-          'rounded-lg border border-line bg-surface-input text-[22px] font-semibold text-ink-primary',
-          'transition-colors duration-150 hover:border-line-strong',
-        )}
-      >
-        <ArrowLeftRight aria-hidden="true" className="size-6" />
-        Поменять местами
-      </button>
+        <button
+          type="button"
+          onClick={onSwap}
+          className={cx(
+            'flex w-[300px] shrink-0 items-center justify-center gap-3 whitespace-nowrap',
+            'rounded-lg border border-line bg-surface-input text-[22px] font-semibold text-ink-primary',
+            'transition-colors duration-150 hover:border-line-strong',
+          )}
+        >
+          <ArrowLeftRight aria-hidden="true" className="size-6 shrink-0" />
+          Поменять местами
+        </button>
+      </div>
     </Card>
   );
 }
@@ -145,14 +151,19 @@ function Verdict({
   const availabilityDelta = recommendation.deltas['min_client_availability'];
 
   return (
-    <>
-      <h2 className="absolute left-[27px] top-[31px] max-w-[440px] truncate text-title-l font-bold tracking-[-0.8px] text-accent-cyan">
+    /*
+      Колонка вместо четырёх абсолютных блоков: вывод и заголовок переменной длины больше
+      не наползают на список критериев, а он виден целиком — прокручивается только то,
+      что за ним, разбор по клиентам и ограничения.
+    */
+    <div className="absolute left-[27px] top-[31px] flex h-[184px] w-[446px] flex-col">
+      <h2 className="shrink-0 truncate text-title-l font-bold tracking-[-0.8px] text-accent-cyan">
         {winnerIsBase
           ? 'Изменение не улучшает худшего клиента'
           : `Вариант ${winnerLetter} — лучший`}
       </h2>
 
-      <p className="absolute left-[27px] top-[67px] w-[440px] text-[13px] leading-[1.35] text-ink-secondary">
+      <p className="mt-[3px] line-clamp-2 shrink-0 text-[13px] leading-[1.35] text-ink-secondary">
         {winnerIsBase ? 'Лучшим остаётся база' : winnerTitle}
         {availabilityDelta === undefined
           ? ''
@@ -163,31 +174,36 @@ function Verdict({
           : 'Цель не достигнута: хотя бы один клиент остаётся ниже целевой доступности.'}
       </p>
 
-      <div className="scroll-area absolute left-[27px] top-[111px] h-[100px] w-[446px] pr-[6px]">
-        <p className="text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
-          ПОРЯДОК КРИТЕРИЕВ
-        </p>
-        <ol className="mt-[6px] flex flex-wrap gap-[6px]">
-          {recommendation.ranking_order.map((criterion, index) => (
-            <li
-              key={criterion}
-              className="rounded-sm bg-surface-chip px-[8px] py-[3px] text-[11px] text-ink-secondary"
-            >
-              {index + 1}. {CRITERION_TITLES[criterion] ?? criterion}
-            </li>
-          ))}
-        </ol>
+      <p className="mt-[10px] shrink-0 text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
+        ПОРЯДОК КРИТЕРИЕВ
+      </p>
+      <ol className="mt-[5px] flex shrink-0 flex-wrap gap-[5px]">
+        {recommendation.ranking_order.map((criterion, index) => (
+          <li
+            key={criterion}
+            className="rounded-sm bg-surface-chip px-[7px] py-[2px] text-[10px] text-ink-secondary"
+          >
+            {index + 1}. {CRITERION_TITLES[criterion] ?? criterion}
+          </li>
+        ))}
+      </ol>
 
-        <p className="mt-[12px] text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
+      <div className="scroll-area mt-[10px] min-h-0 flex-1 pr-[6px]">
+        <p className="text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
           ПО КЛИЕНТАМ
         </p>
         <ul className="mt-[4px]">
           {recommendation.per_client.map((client) => (
             <li key={client.client_id} className="flex items-center gap-[12px] py-[2px] text-[12px]">
-              <span className="w-[52px] font-semibold text-ink-primary">{client.client_id}</span>
+              <span
+                className="w-[52px] shrink-0 truncate font-semibold text-ink-primary"
+                title={client.client_id}
+              >
+                {client.client_id}
+              </span>
               <span
                 className={cx(
-                  'w-[120px]',
+                  'w-[120px] shrink-0',
                   deltaTone(client.availability_delta, 'up') === 'good'
                     ? 'text-status-success'
                     : 'text-status-danger',
@@ -219,6 +235,6 @@ function Verdict({
           ))}
         </ul>
       </div>
-    </>
+    </div>
   );
 }

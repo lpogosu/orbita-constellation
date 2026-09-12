@@ -91,15 +91,17 @@ export function SaveExportCard({
         {variant?.title ?? '…'}
       </p>
 
-      <p className="absolute left-[25px] top-[239px] flex items-center gap-[10px] text-[15px] font-bold text-ink-primary">
+      <p className="absolute left-[25px] top-[239px] flex h-[22px] w-[460px] items-center gap-[10px] text-[15px] font-bold text-ink-primary">
         <span
           aria-hidden="true"
           className={cx(
-            'size-[12px] rounded-pill',
+            'size-[12px] shrink-0 rounded-pill',
             succeeded ? 'bg-status-success' : 'bg-status-neutral',
           )}
         />
-        {variant === null ? 'Загружаем вариант' : `Расчёт привязан к варианту «${variant.title}»`}
+        <span className="truncate" title={variant?.title}>
+          {variant === null ? 'Загружаем вариант' : `Расчёт привязан к варианту «${variant.title}»`}
+        </span>
       </p>
 
       <PrimaryAction
@@ -172,7 +174,13 @@ export function SaveExportCard({
       </div>
 
       {(downloadError ?? recompute.error) !== null && (
-        <p role="alert" className="absolute left-[23px] top-[437px] w-[462px] text-[12px] text-status-danger">
+        // Сообщение встаёт под строкой пересчёта (411 + 48), а не поверх неё; полный текст
+        // остаётся во всплывающей подсказке.
+        <p
+          role="alert"
+          title={downloadError ?? recompute.error ?? undefined}
+          className="absolute left-[23px] top-[463px] line-clamp-1 w-[462px] text-[12px] text-status-danger"
+        >
           {downloadError ?? recompute.error}
         </p>
       )}
@@ -181,7 +189,7 @@ export function SaveExportCard({
       {projectId !== null && (
         <Link
           to={`${sectionHref(COMPARISON_PATH, projectId)}&runs=${run.id}`}
-          className="absolute left-[23px] top-[467px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
+          className="absolute left-[23px] top-[481px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
         >
           Перейти к сравнению вариантов
           <ChevronRight aria-hidden="true" className="size-[14px]" />

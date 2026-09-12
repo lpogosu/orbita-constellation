@@ -26,7 +26,7 @@ export function RerouteCard(props: RerouteCardProps) {
 
   return (
     <div
-      className="card-glass absolute px-[20px] pb-[16px] pt-[12px]"
+      className="card-glass absolute flex flex-col px-[20px] pb-[16px] pt-[12px]"
       style={{
         left: props.x,
         top: props.y,
@@ -44,19 +44,22 @@ export function RerouteCard(props: RerouteCardProps) {
         <Skeleton className="h-full w-full" />
       ) : (
         <>
-          <p className="font-display text-[38px] font-bold leading-none tracking-[-0.5px] text-ink-primary">
+          <p
+            title={props.clientId}
+            className="truncate font-display text-[38px] font-bold leading-none tracking-[-0.5px] text-ink-primary"
+          >
             {props.clientId}
           </p>
-          <p className="mt-[8px] flex items-center gap-[10px] text-heading-m font-bold text-ink-primary">
+          <p className="mt-[8px] flex items-center gap-[10px] truncate text-heading-m font-bold text-ink-primary">
             <span
               aria-hidden="true"
-              className="size-[14px] rounded-pill"
+              className="size-[14px] shrink-0 rounded-pill"
               style={{ background: added === undefined ? 'var(--chart-ok)' : 'var(--chart-no-client)' }}
             />
-            {title}
+            <span className="truncate">{title}</span>
           </p>
 
-          <div className="mt-[14px] grid grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
+          <div className="mt-[14px] grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
             <RouteBox
               caption="До"
               route={props.beforeRoute}
@@ -72,12 +75,14 @@ export function RerouteCard(props: RerouteCardProps) {
             />
           </div>
 
-          <div aria-hidden="true" className="mt-[16px] h-px bg-line-divider" />
+          <div aria-hidden="true" className="mt-[16px] h-px shrink-0 bg-line-divider" />
 
-          <dl className="mt-[12px] space-y-[8px]">
+          {/* Причина и влияние прокручиваются внутри карточки: полное название причины и
+              список отказавших аппаратов длиннее, чем её 316 пикселей по макету. */}
+          <dl className="scroll-area mt-[12px] min-h-0 flex-1 space-y-[8px] pr-[6px]">
             <div className="flex items-baseline gap-[16px]">
-              <dt className="w-[150px] text-body text-ink-secondary">Причина</dt>
-              <dd className="text-title-m font-semibold text-ink-primary">
+              <dt className="w-[150px] shrink-0 text-body text-ink-secondary">Причина</dt>
+              <dd className="min-w-0 flex-1 text-title-m font-semibold text-ink-primary">
                 {added === undefined
                   ? 'Перерывов не добавилось'
                   : `${causeView(added.primary_cause).full}${
@@ -88,7 +93,7 @@ export function RerouteCard(props: RerouteCardProps) {
               </dd>
             </div>
             <div className="flex items-baseline gap-[16px]">
-              <dt className="w-[150px] text-body text-ink-secondary">Влияние</dt>
+              <dt className="w-[150px] shrink-0 text-body text-ink-secondary">Влияние</dt>
               <dd
                 className={
                   (props.comparison?.availability_delta ?? 0) < 0
@@ -102,7 +107,7 @@ export function RerouteCard(props: RerouteCardProps) {
             </div>
             {added !== undefined && (
               <div className="flex items-baseline gap-[16px]">
-                <dt className="w-[150px] text-body text-ink-secondary">Новый перерыв</dt>
+                <dt className="w-[150px] shrink-0 text-body text-ink-secondary">Новый перерыв</dt>
                 <dd className="text-title-m font-semibold text-ink-primary" data-numeric>
                   {formatTick(added.other_start_s ?? 0)} – {formatTick(added.other_end_s ?? 0)}
                 </dd>
@@ -129,7 +134,10 @@ function RouteBox({
   return (
     <div className="rounded-lg border border-line-subtle bg-surface-sunken px-[15px] py-[11px]">
       <p className={`text-base font-medium ${tone}`}>{caption}</p>
-      <p className="mt-[8px] break-words text-caption text-ink-primary">
+      <p
+        title={route === null ? undefined : route.path.join(' → ')}
+        className="mt-[8px] line-clamp-2 break-words text-caption text-ink-primary"
+      >
         {route === null ? '—' : route.path.length === 0 ? 'маршрута нет' : route.path.join(' → ')}
       </p>
       <p className="mt-[8px] text-micro text-ink-muted" data-numeric>

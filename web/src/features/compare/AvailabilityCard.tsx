@@ -103,19 +103,23 @@ export function AvailabilityCard({
         Доступность клиентов по сценариям
       </h2>
 
-      <div className="absolute right-[31px] top-[21px] flex items-center gap-[22px]">
+      {/* Легенда прижата к правому краю и ограничена по ширине: четыре названия вариантов
+          подряд доходили до заголовка карточки. */}
+      <div className="absolute right-[31px] top-[21px] flex max-w-[790px] flex-wrap items-center justify-end gap-x-[22px] gap-y-[4px]">
         {entries.map((entry, index) => (
           <span key={entry.run_id} className="flex items-center gap-[8px] text-small text-ink-secondary">
             <span
               aria-hidden="true"
-              className="size-[12px] rounded-full"
+              className="size-[12px] shrink-0 rounded-full"
               style={{ background: `var(${slotToken(index)})` }}
             />
-            <span className="max-w-[180px] truncate">{entry.variant_title}</span>
+            <span className="max-w-[120px] truncate" title={entry.variant_title}>
+              {entry.variant_title}
+            </span>
           </span>
         ))}
         {target !== null && (
-          <span className="flex items-center gap-[8px] text-small text-ink-secondary">
+          <span className="flex shrink-0 items-center gap-[8px] whitespace-nowrap text-small text-ink-secondary">
             <span
               aria-hidden="true"
               className="h-0 w-[26px] border-t-2 border-dashed"

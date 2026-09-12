@@ -253,17 +253,17 @@ export function FailuresCard(props: FailuresCardProps) {
                     !item.affected && 'opacity-60',
                   )}
                 >
-                  <span className="flex-1">
-                    <span className="block text-small font-semibold text-ink-primary">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-small font-semibold text-ink-primary">
                       {item.client_id}
                     </span>
-                    <span className="block text-caption text-ink-secondary">
+                    <span className="block truncate text-caption text-ink-secondary">
                       {item.affected
                         ? `${item.route_kept_ticks} отсчётов маршрут сохранился · ${item.route_rebuilt_ticks} перестроен`
                         : 'маршрут не изменился'}
                     </span>
                   </span>
-                  <span className="text-right">
+                  <span className="ml-[8px] shrink-0 text-right">
                     <span
                       className={cx(
                         'block text-caption font-semibold',

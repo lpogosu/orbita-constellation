@@ -92,8 +92,10 @@ export function useNetworkScene(projectId: string): SceneState {
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [resultsAttempt, setResultsAttempt] = useState(0);
 
+  // Идентификатор расчёта, на события которого экран уже подписан.
+  const attached = useRef<string | null>(null);
   const runControl = useRunControl();
-  const { attach } = runControl;
+  const { attach, reset: resetRun } = runControl;
   const run = runControl.run;
   const runReady = run !== null && run.status === 'succeeded';
 
@@ -126,6 +128,10 @@ export function useNetworkScene(projectId: string): SceneState {
   // нужен только тому варианту, которого в списке нет (например, только что созданному).
   const selectVariant = useCallback(
     (variantId: string) => {
+      // Расчёт принадлежит варианту: показывать его результаты рядом с другим вариантом
+      // нельзя, поэтому при смене варианта он сбрасывается вместе с черновиком.
+      resetRun();
+      attached.current = null;
       const known = project?.variants.find((item) => item.id === variantId);
       if (known !== undefined) {
         setVariant(known);
@@ -142,7 +148,7 @@ export function useNetworkScene(projectId: string): SceneState {
         },
       );
     },
-    [project],
+    [project, resetRun],
   );
 
   useEffect(() => {
@@ -158,9 +164,6 @@ export function useNetworkScene(projectId: string): SceneState {
     }
   }, [project, variant, selection.variantId]);
 
-  // Последний завершённый расчёт варианта подхватывается сам: иначе после перехода с
-  // «Проектов» экран остаётся пустым, хотя расчёт уже есть.
-  const attached = useRef<string | null>(null);
   useEffect(() => {
     if (project === null || variant === null) {
       return;
@@ -171,11 +174,13 @@ export function useNetworkScene(projectId: string): SceneState {
         (item) => item.variant_id === variant.id && item.status === 'succeeded',
       )?.id ??
       null;
-    if (wanted !== null && attached.current !== wanted) {
+    // Запуск, поставленный с этого же экрана, уже слушается: второй раз подписываться
+    // на его события незачем.
+    if (wanted !== null && attached.current !== wanted && run?.id !== wanted) {
       attached.current = wanted;
       attach(wanted);
     }
-  }, [project, variant, selection.runId, attach]);
+  }, [project, variant, selection.runId, attach, run]);
 
   const changes = useMemo(
     () => (variant === null || draft === null ? [] : draftChanges(variant.scenario, draft)),

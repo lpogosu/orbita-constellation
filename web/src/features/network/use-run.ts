@@ -36,6 +36,7 @@ export interface RunControl {
   readonly start: (variantId: string, policy: RoutingPolicy) => void;
   readonly attach: (runId: string) => void;
   readonly cancel: () => void;
+  readonly reset: () => void;
   readonly clearError: () => void;
 }
 
@@ -164,6 +165,12 @@ export function useRunControl(onFinished?: (run: Run) => void): RunControl {
     [],
   );
 
+  const reset = useCallback(() => {
+    subscription.current?.close();
+    setRun(null);
+    setError(null);
+  }, []);
+
   return {
     run,
     starting,
@@ -171,6 +178,7 @@ export function useRunControl(onFinished?: (run: Run) => void): RunControl {
     start,
     attach,
     cancel,
+    reset,
     clearError: useCallback(() => {
       setError(null);
     }, []),

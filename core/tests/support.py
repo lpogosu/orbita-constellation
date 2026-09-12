@@ -16,7 +16,7 @@ from orbita_core.contacts import ContactPlan, EdgeKind
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 SCENARIOS_DIR: Final[Path] = REPO_ROOT / "scenarios"
 FIXTURES_DIR: Final[Path] = Path(__file__).resolve().parent / "fixtures"
-REFERENCE_MODULE_PATH: Final[Path] = REPO_ROOT / "Расчетный модуль" / "geometry.py"
+REFERENCE_MODULE_PATH: Final[Path] = REPO_ROOT / "case" / "geometry" / "geometry.py"
 # Единственный источник golden-значений — документ, а не копия чисел в коде тестов.
 FIXTURES_DOC_PATH: Final[Path] = REPO_ROOT / "docs" / "10_FIXTURES.md"
 
@@ -28,7 +28,7 @@ CROSSCHECK_TIMES_S: Final[tuple[int, ...]] = (0, 120, 43200, 86280)
 
 
 def load_reference_geometry() -> ModuleType:
-    """Официальный `Расчетный модуль/geometry.py` как модуль.
+    """Официальный `case/geometry/geometry.py` как модуль.
 
     Он лежит вне пакета и вне `sys.path`, поэтому загружается по абсолютному пути.
     Ядро на него не ссылается: модуль нужен только как эталон формул в тестах.

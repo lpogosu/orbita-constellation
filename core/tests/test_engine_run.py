@@ -96,6 +96,6 @@ def test_cli_validate_separates_good_and_bad_scenarios() -> None:
 
 
 def test_cli_crosscheck_matches_the_official_module() -> None:
-    """Сверка с `Расчетный модуль/geometry.py` на контрольных отсчётах проходит."""
+    """Сверка с `case/geometry/geometry.py` на контрольных отсчётах проходит."""
     ticks = ",".join(str(t_s) for t_s in CROSSCHECK_TIMES_S)
     assert main(["crosscheck", str(SCENARIO_PATHS[0]), "--ticks", ticks]) == 0

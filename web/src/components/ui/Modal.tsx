@@ -18,6 +18,11 @@ interface ModalProps {
    */
   align?: 'center' | 'start';
   width?: number;
+  /**
+   * Тело окна прокручивается. Окну, внутри которого раскрывается выпадающий список,
+   * прокрутка не нужна: она обрезала бы панель списка по своему краю.
+   */
+  scrollBody?: boolean;
   onClose: () => void;
   footer: ReactNode;
   children: ReactNode;
@@ -34,6 +39,7 @@ export function Modal({
   hero,
   align = 'center',
   width = 880,
+  scrollBody = true,
   onClose,
   footer,
   children,
@@ -123,7 +129,7 @@ export function Modal({
           </p>
         )}
 
-        <div className="scroll-area mt-6 max-h-[420px] pr-2">{children}</div>
+        <div className={cx('mt-6', scrollBody && 'scroll-area max-h-[420px] pr-2')}>{children}</div>
 
         <div
           className={cx(

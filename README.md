@@ -14,16 +14,15 @@
 core/       пакет orbita_core: геометрия, граф, маршрутизация, метрики (чистый Python + NumPy)
 api/        FastAPI: валидация, проекты, запуски, экспорт, SSE
 worker/     arq-задачи: суточные расчёты, sweep, criticality, Evidence Pack
-web/        nginx: статика и reverse proxy на api; интерфейс подключается позже
+web/        интерфейс: Vite + React + TypeScript, собирается в статику за nginx
 deploy/     docker-compose, профиль degraded, nginx.conf, Makefile
 scenarios/  четыре сценария кейса и скрытый тестовый сценарий в формате cosmo-A-1.0
 docs/       документы продукта
 ```
 
 Расчётная логика живёт только в `core/`; `api/` и `worker/` вызывают её как библиотеку
-(ADR-001). Сервис `web` пока отдаёт одну статическую страницу со ссылками на служебные
-endpoint: интерфейс из `docs/07_UI.md` подключается отдельным срезом и будет ходить в то
-же API через тот же reverse proxy.
+(ADR-001). Фронтенд ничего не считает: состав группировки, метрики и ошибки он получает
+из API через тот же reverse proxy, на одном origin со страницей.
 
 ## Ядро из командной строки
 
@@ -57,7 +56,7 @@ make up
 
 | Адрес | Что это |
 |---|---|
-| http://localhost:3000 | статическая страница со ссылками на API |
+| http://localhost:3000 | интерфейс: экран «Проекты» |
 | http://localhost:8000/api/health | состояние сервисов и флаг `degraded_mode` |
 | http://localhost:8000/api/docs | OpenAPI |
 | http://localhost:9001 | консоль MinIO |
@@ -172,6 +171,54 @@ make down
 {"services":{"api":"up","postgres":"up","redis":"down","memgraph":"down","minio":"down","worker":"down"},
  "degraded_mode":true}
 ```
+
+## Фронтенд
+
+Интерфейс живёт в `web/`: Vite 6, React 18, TypeScript `strict`, Tailwind. В образе
+сборка превращается в статику, которую отдаёт тот же nginx, что проксирует `/api/`, —
+браузер видит страницу и API на одном origin, поэтому CORS не нужен, а адрес API не
+попадает в сборку.
+
+```bash
+cd web
+npm install
+npm run dev        # http://localhost:5173, /api проксируется на localhost:8000
+npm run lint       # eslint: typescript-eslint strictTypeChecked, any запрещён
+npm run typecheck  # tsc --noEmit для приложения и для конфигов сборки
+npm run build      # проверка типов + сборка в web/dist
+```
+
+`npm run dev` ждёт поднятый api. Если он опубликован на другом адресе, задайте
+`ORBITA_API_ORIGIN` перед запуском.
+
+### Токены
+
+Цвета, радиусы, тени, шрифты и шкала размеров вынесены в CSS-переменные
+[`web/src/styles/tokens.css`](web/src/styles/tokens.css) и подключены к теме Tailwind в
+[`web/tailwind.config.ts`](web/tailwind.config.ts). Компоненты пользуются именами ролей
+(`bg-surface-raised`, `text-ink-secondary`, `rounded-2xl`), а не значениями, поэтому
+светлая и тёмная темы отличаются только набором переменных на `<html data-theme>`.
+
+### Типы API
+
+Типы запросов и ответов не пишутся руками: они генерируются из OpenAPI и лежат в
+`web/src/api/schema.d.ts`. После изменения схем в `api/` поднимите api и обновите файл:
+
+```bash
+uvicorn orbita_api.main:app --port 8000   # в отдельном терминале
+cd web && npm run api:types
+```
+
+Сгенерированный файл коммитится: сборка фронтенда не должна требовать запущенного
+бэкенда.
+
+### Примеры сценариев
+
+Четыре примера на экране «Проекты» — это файлы `scenarios/` репозитория. Endpoint со
+списком примеров в API нет, поэтому каталог отдаёт nginx: `GET /scenarios/` возвращает
+список файлов (`autoindex_format json`), `GET /scenarios/<имя>` — сам файл. Названия
+карточек берутся из `meta.title` файлов. В `npm run dev` тот же каталог отдаёт плагин
+[`web/vite/scenarios-dir.ts`](web/vite/scenarios-dir.ts).
 
 ## Сервисы
 

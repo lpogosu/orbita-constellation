@@ -1,0 +1,504 @@
+{
+  "_meta": {
+    "document": "docs/13_ECONOMICS.md",
+    "updated": "2026-09-13",
+    "currency": "RUB",
+    "convention": "Поле source — проверяемый источник с URL и датой. Поле assumption — допущение с обоснованием; оно подлежит замене данными кейсодержателя. Все оклады gross (до НДФЛ), все цены инфраструктуры с НДС."
+  },
+
+  "payroll": {
+    "insurance_it_within_base": {
+      "value": 0.15,
+      "unit": "доля от оклада",
+      "source": "Страховые взносы аккредитованных ИТ-компаний в пределах предельной базы, 2026 год; ФЗ от 28.11.2025 № 425-ФЗ, п. 2.2-2 ст. 427 НК РФ. До 2026 года ставка была плоские 7,6 %",
+      "url": "https://ppt.ru/news/strah-vsnosy/s-2026-goda-menyayutsya-lgotnye-tarify-strakhovykh-vznosov-dlya-it-kompaniy",
+      "date": "2026-09-12"
+    },
+    "insurance_it_above_base": {
+      "value": 0.076,
+      "unit": "доля от оклада",
+      "source": "Ставка для аккредитованных ИТ-компаний сверх предельной базы, 2026 год; тот же ФЗ № 425-ФЗ",
+      "url": "https://www.kontur-extern.ru/info/83605-strahovye_vznosy_dlya_it_kompaniy",
+      "date": "2026-09-12"
+    },
+    "insurance_base_limit": {
+      "value": 2979000,
+      "unit": "₽ в год нарастающим итогом",
+      "source": "Предельная база для страховых взносов на 2026 год; Постановление Правительства РФ от 31.10.2025 № 1705",
+      "url": "https://kontur.ru/articles/4261",
+      "date": "2026-09-12"
+    },
+    "injury": {
+      "value": 0.002,
+      "unit": "доля от оклада",
+      "source": "Взносы на страхование от несчастных случаев, 1-й класс профриска (ОКВЭД 62.01/62.02); ФЗ от 22.12.2005 № 179-ФЗ",
+      "url": "https://www.consultant.ru/law/podborki/tarif_vznosov_na_travmatizm_po_kodu_okvjed/",
+      "date": "2026-09-12"
+    },
+    "overhead": {
+      "value": 0.5,
+      "unit": "доля от ФОТ со взносами",
+      "assumption": "Публичного отраслевого бенчмарка доли накладных к ФОТ в ИТ РФ нет. Взята середина диапазона 40–70 %: нижняя граница — только рабочее место (43 700 ₽/мес, РБК) к медиане 191 000 ₽ ≈ 23 %, верхняя — косвенные расходы 53 % из разбора себестоимости часа (CMS Magazine) плюс запас на рекрутинг и управление",
+      "url": "https://cmsmagazine.ru/journal/items-kak-schitaetsja-pochasovaja-stavka-razrabotchika/",
+      "date": "2024-12-10"
+    },
+    "work_hours_per_month": {
+      "value": 164,
+      "unit": "ч/мес",
+      "assumption": "40-часовая рабочая неделя по производственному календарю РФ даёт около 1 970 рабочих часов в год, то есть ≈164 ч в месяц",
+      "url": "",
+      "date": "2026-09-12"
+    }
+  },
+
+  "roles": {
+    "backend": {
+      "title": "Backend / scientific Python",
+      "salary": {
+        "value": 243000,
+        "unit": "₽/мес gross",
+        "source": "Медиана по стеку Python, Хабр Карьера, 1-е полугодие 2026, n=45 226",
+        "url": "https://habr.com/ru/specials/1060148/",
+        "date": "2026-07-21"
+      }
+    },
+    "frontend": {
+      "title": "Frontend (React, TypeScript)",
+      "salary": {
+        "value": 225000,
+        "unit": "₽/мес gross",
+        "source": "Медиана frontend-разработчика, Хабр Карьера, 1-е полугодие 2026",
+        "url": "https://habr.com/ru/companies/habr_career/articles/1075936/",
+        "date": "2026-08-28"
+      }
+    },
+    "devops": {
+      "title": "DevOps / инфраструктурный инженер",
+      "salary": {
+        "value": 237708,
+        "unit": "₽/мес gross",
+        "source": "Медиана DevOps, калькулятор Хабр Карьеры, 1-е полугодие 2026",
+        "url": "https://career.habr.com/salaries",
+        "date": "2026-09-12"
+      }
+    },
+    "qa": {
+      "title": "QA-инженер",
+      "salary": {
+        "value": 179800,
+        "unit": "₽/мес gross",
+        "source": "Медиана QA, калькулятор Хабр Карьеры, 1-е полугодие 2026",
+        "url": "https://career.habr.com/salaries",
+        "date": "2026-09-12"
+      }
+    },
+    "analyst": {
+      "title": "Системный / продуктовый аналитик",
+      "salary": {
+        "value": 221666,
+        "unit": "₽/мес gross",
+        "source": "Медиана системного аналитика, Хабр Карьера, 1-е полугодие 2026",
+        "url": "https://habr.com/ru/companies/habr_career/articles/1068850/",
+        "date": "2026-08-10"
+      }
+    },
+    "design": {
+      "title": "UX/UI-дизайнер (часть ставки)",
+      "salary": {
+        "value": 131000,
+        "unit": "₽/мес gross",
+        "source": "Медиана UX/UI-дизайнера, калькулятор Хабр Карьеры, 1-е полугодие 2026",
+        "url": "https://career.habr.com/salaries",
+        "date": "2026-09-12"
+      }
+    },
+    "domain": {
+      "title": "Инженер-баллистик (доменный эксперт)",
+      "salary": {
+        "value": 200000,
+        "unit": "₽/мес gross",
+        "source": "Верхняя граница вилки вакансии «Инженер-исследователь: динамика, баллистика, управление движением КА», СПУТНИКС, Москва, 150 000–200 000 ₽ до вычета. Зарплатных обзоров по этой роли не публикуется; вакансия архивная, для 2026 года оценка скорее занижена",
+        "url": "https://hh.ru/vacancy/78528430",
+        "date": "2023-04-23"
+      }
+    }
+  },
+
+  "phase_months": {
+    "pilot": {
+      "value": 4,
+      "unit": "мес",
+      "assumption": "Ядро, API, воркер и семь сервисов хранения уже собраны и покрыты тестами (reports/M0–M2), поэтому пилот — это доведение: интерфейс M3–M6, роли и audit log, деплой и приёмка, а не разработка с нуля",
+      "url": "",
+      "date": "2026-09-13"
+    },
+    "production": {
+      "value": 8,
+      "unit": "мес",
+      "assumption": "Этап 3 roadmap: несколько шлюзов, пропускная способность и задержки, spatial pruning и распределённый расчёт для N ≥ 500, интеграция со STK/GMAT, корпоративное развёртывание, SLA",
+      "url": "",
+      "date": "2026-09-13"
+    }
+  },
+
+  "team": {
+    "pilot": {
+      "backend": { "fte": 1.0, "months": 4 },
+      "frontend": { "fte": 1.0, "months": 4 },
+      "devops": { "fte": 0.5, "months": 4 },
+      "qa": { "fte": 0.5, "months": 3 },
+      "analyst": { "fte": 0.5, "months": 4 },
+      "design": { "fte": 0.3, "months": 2 },
+      "domain": { "fte": 0.2, "months": 4 }
+    },
+    "production": {
+      "backend": { "fte": 2.0, "months": 8 },
+      "frontend": { "fte": 1.0, "months": 8 },
+      "devops": { "fte": 1.0, "months": 8 },
+      "qa": { "fte": 1.0, "months": 8 },
+      "analyst": { "fte": 0.5, "months": 8 },
+      "design": { "fte": 0.2, "months": 4 },
+      "domain": { "fte": 0.3, "months": 8 }
+    }
+  },
+
+  "ops": {
+    "pilot": {
+      "devops": { "fte": 0.1 },
+      "backend": { "fte": 0.1 }
+    },
+    "production": {
+      "devops": { "fte": 0.5 },
+      "backend": { "fte": 0.5 },
+      "qa": { "fte": 0.2 },
+      "analyst": { "fte": 0.3 }
+    }
+  },
+
+  "infrastructure": [
+    {
+      "item": "ВМ приложения (api, worker, web)",
+      "config": "pilot: 1×8 vCPU / 32 ГБ, весь compose; production: 2×(4 vCPU / 8 ГБ) api + 3×(4 vCPU / 16 ГБ) worker",
+      "pilot": 13928,
+      "production": 31252,
+      "onprem": 0,
+      "note": "[И] VK Cloud: vCPU 849 ₽/мес, 1 ГБ RAM 223 ₽/мес, с НДС, cloud.vk.ru/pricelist/ (12.09.2026)"
+    },
+    {
+      "item": "ВМ Memgraph",
+      "config": "production: 8 vCPU / 32 ГБ; на пилоте контейнер внутри общего узла",
+      "pilot": 0,
+      "production": 13928,
+      "onprem": 0,
+      "note": "[И] те же удельные цены VK Cloud (12.09.2026)"
+    },
+    {
+      "item": "ВМ Redis",
+      "config": "production: 2 vCPU / 8 ГБ; на пилоте контейнер внутри общего узла",
+      "pilot": 0,
+      "production": 3482,
+      "onprem": 0,
+      "note": "[И] те же удельные цены VK Cloud (12.09.2026)"
+    },
+    {
+      "item": "PostgreSQL",
+      "config": "production: Managed PostgreSQL HA, 2 хоста по 4 vCPU / 16 ГБ + 100 ГБ SSD; на пилоте контейнер",
+      "pilot": 0,
+      "production": 19992,
+      "onprem": 0,
+      "note": "[И] VK Cloud: ядро 1 062 ₽/мес, 1 ГБ RAM 278 ₽/мес, SSD 13 ₽/ГБ·мес, с НДС (12.09.2026)"
+    },
+    {
+      "item": "Блочные диски SSD",
+      "config": "pilot: 200 ГБ; production: 650 ГБ суммарно по узлам",
+      "pilot": 2600,
+      "production": 8450,
+      "onprem": 0,
+      "note": "[И] VK Cloud, сетевой SSD 13 ₽/ГБ·мес с НДС (12.09.2026)"
+    },
+    {
+      "item": "Объектное хранилище трасс и Evidence Pack",
+      "config": "production: 500 ГБ, стандартный класс; на пилоте MinIO на диске узла",
+      "pilot": 0,
+      "production": 1140,
+      "onprem": 0,
+      "note": "[И] VK Cloud S3 Hotbox 2,28 ₽/ГБ·мес с НДС (12.09.2026). Замер: одна трасса — 5 КБ (reports/M2-C.md)"
+    },
+    {
+      "item": "Резервные копии, холодный класс",
+      "config": "pilot 200 ГБ; production и on-premise 1 000 ГБ",
+      "pilot": 218,
+      "production": 1090,
+      "onprem": 1090,
+      "note": "[И] VK Cloud S3 Icebox 1,09 ₽/ГБ·мес с НДС (12.09.2026)"
+    },
+    {
+      "item": "Балансировщик нагрузки",
+      "config": "production: перед репликами api",
+      "pilot": 0,
+      "production": 2086,
+      "onprem": 0,
+      "note": "[И] VK Cloud 0,05 ₽/мин = 2 086 ₽/мес с НДС (12.09.2026)"
+    },
+    {
+      "item": "Публичный IP",
+      "config": "1 адрес",
+      "pilot": 188,
+      "production": 188,
+      "onprem": 0,
+      "note": "[И] VK Cloud Floating IPv4 0,004 ₽/мин = 188 ₽/мес с НДС (12.09.2026)"
+    },
+    {
+      "item": "Исходящий трафик",
+      "config": "pilot 50 ГБ/мес, production 500 ГБ/мес",
+      "pilot": 66,
+      "production": 655,
+      "onprem": 0,
+      "note": "[И] VK Cloud 1,31 ₽/ГБ с НДС (12.09.2026). Объём — [Д] оценка по размеру выгрузки 323–558 КБ на Run (reports/M1-D.md)"
+    },
+    {
+      "item": "Сервер 2U, амортизация 36 мес",
+      "config": "2×Xeon Scalable, 256 ГБ DDR4, 2×3,84 ТБ NVMe; 975 000 ₽ единовременно",
+      "pilot": 0,
+      "production": 0,
+      "onprem": 27083,
+      "note": "[И] публичные розничные цены: платформа HPE DL380 Gen11 ≈305 000 ₽ (servermall.ru), 4×64 ГБ RDIMM ≈279 600 ₽ (serverflow.ru), 2×NVMe PM9A3 3,84 ТБ ≈391 000 ₽ (e2e4online.ru), 12.09.2026. Срок амортизации — [Д]"
+    },
+    {
+      "item": "Колокейшн 2U",
+      "config": "Москва, до 400 Вт, канал и 1 IPv4 в тарифе",
+      "pilot": 0,
+      "production": 0,
+      "onprem": 9000,
+      "note": "[И] публичные прайсы 1U: БЛИЗКО от 4 500 ₽, DataCheap 3 500 ₽, Филанко от 7 198 ₽ (12.09.2026). Взято 2U по средней цене"
+    }
+  ],
+
+  "licenses": [
+    {
+      "component": "PostgreSQL 18",
+      "license": "PostgreSQL License (BSD-подобная)",
+      "verdict": "да, без оговорок",
+      "note": "[И] postgresql.org/about/licence (12.09.2026)"
+    },
+    {
+      "component": "Redis 8",
+      "license": "на выбор RSALv2, SSPLv1 или AGPLv3",
+      "verdict": "да, по RSALv2",
+      "note": "[И] redis.io/legal/licenses. Redis 7.4 (03.2024) ушёл с BSD-3 на RSALv2/SSPLv1, Redis 8.0 (01.05.2025) вернул AGPLv3 третьей опцией. RSALv2 запрещает только продавать сам Redis и давать его как managed-сервис, копилефт на наш код не тянет. Полностью нейтральная замена — Valkey (BSD-3)"
+    },
+    {
+      "component": "Memgraph Community 3.12",
+      "license": "BSL 1.1, Change Date 2030-09-09 → Apache-2.0",
+      "verdict": "да для внутреннего использования; SaaS требует согласования",
+      "note": "[И] github.com/memgraph/memgraph/blob/master/licenses/BSL.txt. Ограничений по ядрам, узлам и объёму данных нет. Additional Use Grant запрещает database-as-a-service и раздачу третьим лицам. Enterprise нужен для RBAC, SSO, audit log и автоматического failover"
+    },
+    {
+      "component": "MinIO",
+      "license": "AGPLv3",
+      "verdict": "нет для нового production",
+      "note": "[И] github.com/minio/minio: релиз 24.05.2025 убрал админку из веб-консоли и вынес LDAP/OIDC в проприетарный AIStor; последний релиз 15.10.2025; репозиторий архивирован владельцем 25.04.2026 и помечен как более не сопровождаемый. Для production берём SeaweedFS (Apache-2.0) или Garage (AGPLv3); S3-адаптер это изолирует"
+    },
+    {
+      "component": "FastAPI, arq, React, nginx",
+      "license": "MIT, MIT, MIT, BSD-2-Clause",
+      "verdict": "да, без оговорок",
+      "note": "[И] репозитории проектов и nginx.org (12.09.2026)"
+    },
+    {
+      "component": "Итого лицензионных платежей",
+      "license": "—",
+      "verdict": "0 ₽",
+      "note": "[Д] при замене MinIO на SeaweedFS и внутреннем, не-SaaS использовании Memgraph Community"
+    }
+  ],
+
+  "process": [
+    {
+      "step": "Сборка сценария: геометрия, плоскости, RAAN и фазирование, наземные пункты",
+      "hours_before": 1.5,
+      "hours_after": 0.15,
+      "note": "[Д] ручная правка сценария в STK/MATLAB против формы и редактора плоскостей"
+    },
+    {
+      "step": "Расчёт орбит и доступов на сутки",
+      "hours_before": 1.0,
+      "hours_after": 0.01,
+      "note": "[И] замер ядра 0,22–0,26 с на сценарий (reports/M1-D.md); 0,01 ч — с учётом работы в интерфейсе"
+    },
+    {
+      "step": "Построение графа ISL и поиск маршрутов клиент → шлюз",
+      "hours_before": 2.5,
+      "hours_after": 0.0,
+      "note": "[Д] сегодня собственный скрипт поверх отчётов доступов; в ОРБИТЕ входит в тот же расчёт"
+    },
+    {
+      "step": "Свод метрик доступности и перерывов в таблицу",
+      "hours_before": 1.0,
+      "hours_after": 0.02,
+      "note": "[Д] ручная сборка сводной таблицы против готовых метрик Run"
+    },
+    {
+      "step": "Разбор причины конкретного разрыва",
+      "hours_before": 1.5,
+      "hours_after": 0.25,
+      "note": "[Д] ручной разбор геометрии отсчёта против панели причин с доказательствами"
+    },
+    {
+      "step": "Сравнение с базовым вариантом и оформление вывода",
+      "hours_before": 1.0,
+      "hours_after": 0.1,
+      "note": "[Д] сведение двух таблиц вручную против экрана сравнения с дельтами"
+    },
+    {
+      "step": "Фиксация параметров и версии ядра для воспроизводимости",
+      "hours_before": 0.5,
+      "hours_after": 0.0,
+      "note": "[И] config_hash и engine_version пишутся автоматически (docs/06_STORAGE.md §3)"
+    }
+  ],
+
+  "scenarios": {
+    "conservative": {
+      "infra_scale": "pilot",
+      "ops_team": "pilot",
+      "duration_factor": {
+        "value": 1.5,
+        "unit": "к плановому сроку",
+        "assumption": "Срок растягивается в полтора раза: приёмка на данных кейсодержателя и требования безопасности контура вскрываются по ходу",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "projects_per_year": {
+        "value": 2,
+        "unit": "исследований в год",
+        "assumption": "Инструментом пользуется одна группа, два исследования в год. Фактическое число проектов запрошено у кейсодержателя",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "variants_per_project": {
+        "value": 28,
+        "unit": "вариантов на исследование",
+        "source": "Нижняя граница из опубликованного разбора: 28 архитектур (20 Walker и 8 ad-hoc) в задаче Landsat, NASA GSFC, Nag, Hughes, Le Moigne, AIAA SciTech",
+        "url": "https://ntrs.nasa.gov/api/citations/20180006450/downloads/20180006450.pdf",
+        "date": "2026-09-12"
+      },
+      "savings_realization": {
+        "value": 0.4,
+        "unit": "доля",
+        "assumption": "Реализуется лишь 40 % расчётной экономии: часть инженеров продолжает дублировать расчёт в привычном инструменте, часть времени уходит на освоение",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "avoided_rework_per_year": {
+        "value": 0,
+        "unit": "₽/год",
+        "assumption": "Предотвращённая поздняя переработка не монетизируется: стоимость позднего изменения конфигурации у кейсодержателя не получена. Множитель 21–78× для ошибки, дожившей до этапа интеграции и испытаний (NASA JSC, модель малого спутника связи), задаёт направление, но не сумму",
+        "url": "https://ntrs.nasa.gov/api/citations/20100036670/downloads/20100036670.pdf",
+        "date": "2026-09-12"
+      }
+    },
+    "base": {
+      "infra_scale": "pilot",
+      "ops_team": "pilot",
+      "duration_factor": {
+        "value": 1.0,
+        "unit": "к плановому сроку",
+        "assumption": "Срок по плану: объём пилота ограничен доведением уже собранного ядра и платформы",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "projects_per_year": {
+        "value": 5,
+        "unit": "исследований в год",
+        "assumption": "Организация, проектирующая группировку, ведёт несколько параллельных исследований: этапы развёртывания, стресс-сценарии, варианты наземного сегмента. Фактическое число запрошено у кейсодержателя",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "variants_per_project": {
+        "value": 80,
+        "unit": "вариантов на исследование",
+        "assumption": "Середина опубликованного диапазона 28–233 архитектуры на исследование (NASA GSFC: 28 в задаче Landsat, 233 в задаче радиометра)",
+        "url": "https://ntrs.nasa.gov/api/citations/20180006450/downloads/20180006450.pdf",
+        "date": "2026-09-12"
+      },
+      "savings_realization": {
+        "value": 0.6,
+        "unit": "доля",
+        "assumption": "Реализуется 60 % расчётной экономии. Разница между расчётной и фактической экономией — главное, что подтверждается хронометражем у кейсодержателя",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "avoided_rework_per_year": {
+        "value": 0,
+        "unit": "₽/год",
+        "assumption": "Не монетизируется по той же причине, что и в conservative: стоимость поздней переработки конфигурации неизвестна",
+        "url": "https://ntrs.nasa.gov/api/citations/20100036670/downloads/20100036670.pdf",
+        "date": "2026-09-12"
+      }
+    },
+    "optimistic": {
+      "infra_scale": "pilot",
+      "ops_team": "pilot",
+      "duration_factor": {
+        "value": 0.75,
+        "unit": "к плановому сроку",
+        "assumption": "Срок сокращается на четверть: команда та же, что собрала ядро, требования к контуру известны заранее",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "projects_per_year": {
+        "value": 6,
+        "unit": "исследований в год",
+        "assumption": "Инструмент становится общим для нескольких групп программы",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "variants_per_project": {
+        "value": 100,
+        "unit": "вариантов на исследование",
+        "assumption": "Верхняя половина опубликованного диапазона 28–233: sweep по RAAN и фазированию делает перебор сотен точек штатным шагом",
+        "url": "https://ntrs.nasa.gov/api/citations/20180006450/downloads/20180006450.pdf",
+        "date": "2026-09-12"
+      },
+      "savings_realization": {
+        "value": 0.8,
+        "unit": "доля",
+        "assumption": "Реализуется 80 % расчётной экономии: инструмент принят как основной, дублирования расчёта нет",
+        "url": "",
+        "date": "2026-09-13"
+      },
+      "avoided_rework_per_year": {
+        "value": 0,
+        "unit": "₽/год",
+        "assumption": "Не монетизируется и в оптимистичном сценарии: обещать выгоду без данных кейсодержателя нельзя",
+        "url": "https://ntrs.nasa.gov/api/citations/20100036670/downloads/20100036670.pdf",
+        "date": "2026-09-12"
+      }
+    }
+  },
+
+  "sensitivity": [
+    {
+      "param": "variants_per_project",
+      "title": "Вариантов на исследование",
+      "low": 28,
+      "high": 233,
+      "note": "Границы опубликованного диапазона NASA GSFC: 28 архитектур в задаче Landsat, 233 в задаче радиометра"
+    },
+    {
+      "param": "projects_per_year",
+      "title": "Исследований в год",
+      "low": 2,
+      "high": 10,
+      "note": "Одна группа против программы из нескольких групп; точное число знает только кейсодержатель"
+    },
+    {
+      "param": "savings_realization",
+      "title": "Доля реализуемой экономии",
+      "low": 0.3,
+      "high": 0.9,
+      "note": "Подтверждается хронометражем: замерить, сколько часов уходит на вариант сегодня и на пилоте"
+    }
+  ]
+}

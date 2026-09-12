@@ -27,6 +27,8 @@ python -m orbita_core crosscheck scenarios/01_full_constellation.json --ticks 0,
 python -m orbita_core golden scenarios
 ```
 
+![Сверка ядра: golden-значения и сравнение с эталонным расчётным модулем](docs/assets/core-checks.gif)
+
 Первая сверяет наше ядро с официальным расчётным модулем организаторов
 (`case/geometry/geometry.py`): расхождение позиций — 9,1·10⁻¹³ км, расхождений в составе
 линий связи — ноль. Вторая сверяет 48 итоговых показателей по четырём сценариям кейса с

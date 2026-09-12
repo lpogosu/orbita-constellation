@@ -14,6 +14,8 @@ const DISPLAY = "Montserrat, 'Inter Variable', system-ui, sans-serif";
 
 /** Размер спрайта аппарата в пикселях полотна; подписи и маркеры отказа считаются от него. */
 const SATELLITE_WIDTH = 30;
+/** Поле у края холста: меньше него подпись подрезается собственным прямоугольником. */
+const LABEL_PADDING = 5;
 const SITE_RING = 8;
 const SITE_CORE = 4.6;
 
@@ -49,7 +51,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
     ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
   }
 
-  drawGraticule(ctx, view, palette);
+  drawGraticule(ctx, input, palette);
 
   const positions = new Map<string, Point>();
 
@@ -106,7 +108,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
 }
 
 /** Сетка кошироты: окружности через 30° и меридианы через 30° с подписью четырёх главных. */
-function drawGraticule(ctx: CanvasRenderingContext2D, view: MapView, palette: MapPalette): void {
+function drawGraticule(
+  ctx: CanvasRenderingContext2D,
+  input: DrawInput,
+  palette: MapPalette,
+): void {
+  const { view } = input;
   ctx.save();
   ctx.strokeStyle = palette.grid;
   ctx.lineWidth = 1;
@@ -144,7 +151,15 @@ function drawGraticule(ctx: CanvasRenderingContext2D, view: MapView, palette: Ma
     const dx = at.x - view.centerX;
     const dy = at.y - view.centerY;
     const length = Math.hypot(dx, dy) || 1;
-    ctx.fillText(label, view.centerX + (dx / length) * (outer + 12), view.centerY + (dy / length) * (outer + 12));
+    // Кольцо южного полюса упирается в край холста: подпись на нём вышла бы за границу и
+    // читалась бы половиной цифр, поэтому она заводится внутрь.
+    fillTextInside(
+      ctx,
+      label,
+      view.centerX + (dx / length) * (outer + 12),
+      view.centerY + (dy / length) * (outer + 12),
+      input,
+    );
   }
   ctx.restore();
 }
@@ -368,7 +383,7 @@ function drawSatellite(
     ctx.font = `600 11px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(satellite.id, point.x, point.y - SATELLITE_WIDTH * 0.55);
+    fillTextInside(ctx, satellite.id, point.x, point.y - SATELLITE_WIDTH * 0.55, input);
   }
 
   ctx.restore();
@@ -411,9 +426,44 @@ function drawSite(
   // Подпись уводится от центра карты, чтобы не легла на Землю поверх маршрута.
   const away = point.x >= view.centerX ? 1 : -1;
   ctx.textAlign = away > 0 ? 'left' : 'right';
-  ctx.fillText(site.id, point.x + away * (SITE_RING + 8), point.y - SITE_RING);
+  fillTextInside(ctx, site.id, point.x + away * (SITE_RING + 8), point.y - SITE_RING, input);
 
   ctx.restore();
+}
+
+/**
+ * Подпись, целиком попадающая в холст. Прямоугольник текста считается по текущим
+ * `textAlign` и `textBaseline`, поэтому точка привязки сдвигается ровно настолько,
+ * насколько подпись вылезла за край, и ни на пиксель больше.
+ */
+function fillTextInside(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  bounds: { readonly width: number; readonly height: number },
+): void {
+  const metrics = ctx.measureText(text);
+  const half = metrics.width / 2;
+  const extentLeft = finite(metrics.actualBoundingBoxLeft, half);
+  const extentRight = finite(metrics.actualBoundingBoxRight, half);
+  const extentUp = finite(metrics.actualBoundingBoxAscent, 8);
+  const extentDown = finite(metrics.actualBoundingBoxDescent, 3);
+
+  ctx.fillText(
+    text,
+    clamp(x, LABEL_PADDING + extentLeft, bounds.width - LABEL_PADDING - extentRight),
+    clamp(y, LABEL_PADDING + extentUp, bounds.height - LABEL_PADDING - extentDown),
+  );
+}
+
+/** Если поле уже шире холста, двигать некуда: подпись остаётся на своём месте. */
+function clamp(value: number, min: number, max: number): number {
+  return max < min ? value : Math.min(Math.max(value, min), max);
+}
+
+function finite(value: number | undefined, fallback: number): number {
+  return value !== undefined && Number.isFinite(value) ? value : fallback;
 }
 
 /** Ближайший узел к точке: аппараты имеют приоритет, у них меньше площадь. */

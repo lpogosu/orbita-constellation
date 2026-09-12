@@ -80,8 +80,19 @@
   "config": { "...ConfigMetrics..." }, "clients": [ { "...ClientMetrics..." } ],
   "changed_parameters": [ { "path": "design.planes[1].raan_deg", "from": 60, "to": 72 } ],
   "deltas": { "min_client_availability": 0.036, "worst_max_gap_s": -1440 },
-  "per_client": [ { "client_id": "C65", "availability_delta": 0.036, "max_gap_delta_s": -1440 } ] }
+  "affected_clients": ["C65"], "first_divergence_t_s": 21600,
+  "per_client": [ { "client_id": "C65", "availability_delta": 0.036, "max_gap_delta_s": -1440,
+                    "affected": true, "route_kept_ticks": 610, "route_rebuilt_ticks": 84,
+                    "first_divergence_t_s": 21600, "first_new_outage_t_s": 36000,
+                    "outage_diff": [ { "kind": "added", "base_start_s": null, "base_end_s": null,
+                                       "other_start_s": 36000, "other_end_s": 36960,
+                                       "primary_cause": "NETWORK_PARTITION", "causes": ["NETWORK_PARTITION"],
+                                       "failed_satellites": ["S14"] } ] } ] }
 ```
+`per_client[]` — `ClientComparison`: расширяет `ClientDelta` разбором перерывов
+(`outage_diff[]` с `kind` ∈ {`added`, `removed`, `changed`} и границами обеих сторон),
+признаком `affected`, числом отсчётов с сохранённым (`route_kept_ticks`) и перестроенным
+(`route_rebuilt_ticks`) маршрутом и первыми отсчётами расхождения и нового перерыва.
 Первый `run_id` в запросе — база; у неё `changed_parameters`, `deltas` и `per_client`
 пустые. Run на разных сетках не сравниваются: 400 `INVALID_SCENARIO_FIELD` с
 `path: "environment.step_s"`.

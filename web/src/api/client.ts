@@ -32,7 +32,7 @@ export class TransportError extends Error {
 
 const UNKNOWN_ERROR_MESSAGE = 'Сервис вернул ответ, который не удалось разобрать';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
@@ -71,6 +71,11 @@ function toErrorDetails(body: unknown): readonly ErrorDetail[] {
   return [];
 }
 
+/** POST с телом JSON: форма запроса одинакова у всех endpoint, кроме выгрузок. */
+export function apiPost<T>(path: string, payload: unknown): Promise<T> {
+  return apiRequest<T>(path, jsonBody(payload));
+}
+
 function jsonBody(payload: unknown): RequestInit {
   return {
     method: 'POST',
@@ -87,12 +92,12 @@ export const api = {
    * сервис, а не браузер, поэтому тип аргумента — `unknown`, а не `Scenario`.
    */
   validateScenario: (document: unknown): Promise<ScenarioValidationResult> =>
-    request<ScenarioValidationResult>('/api/scenarios/validate', jsonBody(document)),
+    apiRequest<ScenarioValidationResult>('/api/scenarios/validate', jsonBody(document)),
 
   /** `POST /api/projects` — проект создаётся сразу с первым вариантом. */
   createProject: (payload: ProjectCreateRequest): Promise<Project> =>
-    request<Project>('/api/projects', jsonBody(payload)),
+    apiRequest<Project>('/api/projects', jsonBody(payload)),
 
   /** `GET /api/projects` — проекты в порядке убывания даты создания. */
-  listProjects: (): Promise<Project[]> => request<Project[]>('/api/projects'),
+  listProjects: (): Promise<Project[]> => apiRequest<Project[]>('/api/projects'),
 };

@@ -16,6 +16,9 @@ import {
 type Area = Readonly<{ x: number; y: number; width: number; height: number }>;
 type Section = 'projects' | 'network' | 'outages' | 'comparison' | 'result';
 const COMPLETED_STORAGE_KEY = 'orbita.onboarding.completed.v1';
+// Router может перемонтировать layout при переходе между секциями. Автотур должен
+// запускаться лишь один раз на загрузку вкладки, пока ручной `?` остаётся повторяемым.
+let automaticStartUsed = false;
 
 interface TourStep {
   readonly title: string;
@@ -145,6 +148,9 @@ export function OnboardingTour() {
   }, [navigate]);
 
   useEffect(() => {
+    if (automaticStartUsed) {
+      return;
+    }
     try {
       if (localStorage.getItem(COMPLETED_STORAGE_KEY) === '1') {
         return;
@@ -152,6 +158,7 @@ export function OnboardingTour() {
     } catch {
       // При запрете localStorage тур всё равно запускается как для первого входа.
     }
+    automaticStartUsed = true;
     const frame = requestAnimationFrame(start);
     return () => {
       cancelAnimationFrame(frame);

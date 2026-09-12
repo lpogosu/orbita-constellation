@@ -27,7 +27,9 @@ from redis.asyncio import ConnectionPool
 from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from orbita_api.adapters.registry import StorageRegistry
 from orbita_api.schemas.runs import RunProgressEvent
+from orbita_api.services.artifacts import run_artifact_sink
 from orbita_api.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -56,9 +58,15 @@ class IdempotencyRecord:
 class RunRuntime:
     """Один на процесс api: клиент Redis, фабрика сессий и фоновые расчёты."""
 
-    def __init__(self, redis: ArqRedis, sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        redis: ArqRedis,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        storage: StorageRegistry,
+    ) -> None:
         self._redis = redis
         self._sessionmaker = sessionmaker
+        self._storage = storage
         # Отмена расчётов, запущенных прямо здесь: до них флаг в Redis не дойдёт, потому
         # что в degraded mode Redis и нет.
         self._local_events = LocalRunEvents()
@@ -149,7 +157,12 @@ class RunRuntime:
 
     def _start_in_process(self, run_id: UUID) -> None:
         task = asyncio.create_task(
-            execute_run(run_id, self._sessionmaker, self._local_events),
+            execute_run(
+                run_id,
+                self._sessionmaker,
+                self._local_events,
+                artifacts=run_artifact_sink(self._sessionmaker, self._storage),
+            ),
             name=f"run-{run_id}",
         )
         self._background.add(task)
@@ -164,7 +177,11 @@ class RunRuntime:
             logger.error("Расчёт в процессе api завершился ошибкой: %s", error)
 
 
-def build_runtime(settings: Settings, sessionmaker: async_sessionmaker[AsyncSession]) -> RunRuntime:
+def build_runtime(
+    settings: Settings,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    storage: StorageRegistry,
+) -> RunRuntime:
     """Клиент очереди без подключения к Redis.
 
     Пул создаётся отдельно от клиента: `ArqRedis.from_url` передал бы свои параметры
@@ -181,7 +198,7 @@ def build_runtime(settings: Settings, sessionmaker: async_sessionmaker[AsyncSess
         socket_timeout=settings.probe_timeout_s,
         retry_on_timeout=False,
     )
-    return RunRuntime(ArqRedis(pool, default_queue_name=QUEUE_NAME), sessionmaker)
+    return RunRuntime(ArqRedis(pool, default_queue_name=QUEUE_NAME), sessionmaker, storage)
 
 
 def get_runtime(request: Request) -> RunRuntime:

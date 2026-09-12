@@ -22,7 +22,7 @@ from orbita_core import ENGINE_VERSION, engine
 from orbita_core.engine import ProgressCallback, RunResult
 from orbita_core.engine import RunStage as CoreRunStage
 from orbita_core.routing import RoutingPolicy
-from orbita_worker.artifacts import ArtifactSink
+from orbita_worker.artifacts import ArtifactSink, StoredArtifacts
 from orbita_worker.events import RedisRunEvents
 from orbita_worker.keys import QUEUE_NAME
 from orbita_worker.runner import Calculation, execute_run
@@ -262,8 +262,10 @@ def test_run_passes_all_stages_and_stores_metrics(
     assert finished["finished_at"] is not None
     assert finished["duration_ms"] >= 0
     assert finished["error"] is None
-    # Трасса появится вместе с адаптером хранилища: метрики от неё не зависят (ADR-010).
-    assert finished["trace_uri"] is None
+    # MinIO в тестах не отвечает, поэтому трасса уходит в локальный каталог, а запуск
+    # помечается degraded: артефакт есть, но записан мимо внешнего хранилища.
+    assert finished["trace_uri"] is not None
+    assert finished["degraded_mode"] is True
 
     stored = {
         row["client_id"]: row
@@ -582,11 +584,11 @@ def test_trace_uri_comes_from_the_artifact_sink(
     migrated_database: str,
     queue: str,
 ) -> None:
-    """Точка подключения хранилища трасс: ключ, который она вернула, попадает в Run."""
+    """Точка подключения хранилища трасс: что она вернула, то и попадает в Run."""
     trace_uri = "runs/test/trace.bin"
 
-    async def sink(run_id: UUID, result: RunResult) -> str:
-        return trace_uri
+    async def sink(run_id: UUID, result: RunResult) -> StoredArtifacts:
+        return StoredArtifacts(trace_uri=trace_uri, degraded_mode=False)
 
     scenario = read_json(CASE_SCENARIO)
     variant_id = variant_id_of(client, scenario, "Артефакты")
@@ -597,3 +599,4 @@ def test_trace_uri_comes_from_the_artifact_sink(
     worker.join(timeout=STATUS_TIMEOUT_S)
 
     assert finished["trace_uri"] == trace_uri
+    assert finished["degraded_mode"] is False

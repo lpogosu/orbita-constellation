@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.probe_registry = registry
     app.state.storage_registry = storage
     app.state.sessionmaker = sessionmaker
-    app.state.run_runtime = build_runtime(settings, sessionmaker)
+    app.state.run_runtime = build_runtime(settings, sessionmaker, storage)
     try:
         yield
     finally:

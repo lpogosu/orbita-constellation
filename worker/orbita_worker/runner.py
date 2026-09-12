@@ -31,7 +31,7 @@ from orbita_core.routing import InternalInconsistencyError, RoutingPolicy
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from orbita_worker import persistence
-from orbita_worker.artifacts import ArtifactSink, metrics_only
+from orbita_worker.artifacts import ArtifactSink, StoredArtifacts, metrics_only
 from orbita_worker.events import RunEvents
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ async def execute_run(
         return
 
     await _store_result(run_id, sessionmaker, result)
-    trace_uri = await artifacts(run_id, result)
+    stored = await artifacts(run_id, result)
     await _finish(
         run_id,
         sessionmaker,
@@ -117,7 +117,7 @@ async def execute_run(
         RunStatus.SUCCEEDED,
         RunStage.COMPLETE,
         started,
-        trace_uri=trace_uri,
+        stored=stored,
         completed_ticks=prepared.total_ticks,
     )
 
@@ -260,7 +260,7 @@ async def _finish(
     started: float,
     *,
     error: dict[str, Any] | None = None,
-    trace_uri: str | None = None,
+    stored: StoredArtifacts | None = None,
     completed_ticks: int | None = None,
 ) -> None:
     """Закрывает запуск и его запись в журнале задач."""
@@ -280,8 +280,10 @@ async def _finish(
         run.error = error
         if completed_ticks is not None:
             run.completed_ticks = completed_ticks
-        if trace_uri is not None:
-            run.trace_uri = trace_uri
+        if stored is not None:
+            run.degraded_mode = stored.degraded_mode
+            if stored.trace_uri is not None:
+                run.trace_uri = stored.trace_uri
 
         job = await JobRepository(session).find_for_run(run_id)
         if job is not None:

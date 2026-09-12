@@ -64,6 +64,9 @@ class ConfigMetrics(BaseModel):
         default=None,
         description="Минимум по клиентам и отсчётам с маршрутом; null, если не считался",
     )
+    outage_count_by_cause: dict[OutageCause, int] = Field(
+        description="Число перерывов по каждой причине, суммарно по клиентам",
+    )
     target_met_clients: list[str]
 
 

@@ -14,10 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from orbita_api.schemas.errors import (
-    IDEMPOTENCY_CONFLICT_CODE,
-    NOT_FOUND_CODE,
     NOT_IMPLEMENTED_CODE,
-    RUN_NOT_CANCELLABLE_CODE,
     ErrorCode,
     ErrorDetail,
     ErrorResponse,
@@ -40,12 +37,30 @@ class EndpointNotImplementedError(Exception):
 
 
 class EntityNotFoundError(Exception):
-    """Сущность с таким идентификатором не найдена: ответ 404 (`05_API.md` §3)."""
+    """Сущность с таким идентификатором не найдена: ответ 404 (`05_API.md` §3).
 
-    def __init__(self, entity: str, entity_id: UUID) -> None:
+    `path` заполняется, когда идентификатор пришёл параметром запроса, а не сегментом
+    пути: клиент должен видеть, какое именно значение он назвал неверно.
+    """
+
+    def __init__(self, entity: str, entity_id: UUID | str, path: str | None = None) -> None:
         self.entity = entity
         self.entity_id = entity_id
+        self.path = path
         super().__init__(f"{entity} {entity_id} не найден")
+
+
+class InvalidRequestError(Exception):
+    """Запрос разобран, но выполнить его нельзя: ответ 400 (`05_API.md` §3).
+
+    Сюда попадают и значение параметра вне допустимого множества, и состояние ресурса,
+    при котором запрос бессмыслен — незавершённый или упавший расчёт. Форма ответа та же,
+    что у ошибок валидации: список ошибок, пусть даже из одного элемента.
+    """
+
+    def __init__(self, *errors: ErrorDetail) -> None:
+        self.errors = list(errors)
+        super().__init__("; ".join(error.message for error in self.errors))
 
 
 class IdempotencyConflictError(Exception):
@@ -146,8 +161,9 @@ async def handle_entity_not_found(request: Request, exc: Exception) -> JSONRespo
     not_found = cast(EntityNotFoundError, exc)
     body = ErrorResponse(
         error=ErrorDetail(
-            code=NOT_FOUND_CODE,
+            code=ErrorCode.NOT_FOUND,
             message=f"{not_found.entity} не найден",
+            path=not_found.path,
             details={"id": str(not_found.entity_id)},
         ),
     )
@@ -162,7 +178,7 @@ async def handle_idempotency_conflict(request: Request, exc: Exception) -> JSONR
     conflict = cast(IdempotencyConflictError, exc)
     body = ErrorResponse(
         error=ErrorDetail(
-            code=IDEMPOTENCY_CONFLICT_CODE,
+            code=ErrorCode.IDEMPOTENCY_KEY_CONFLICT,
             message="Ключ Idempotency-Key уже использован другим запросом",
             path="Idempotency-Key",
             details={"key": conflict.key},
@@ -179,7 +195,7 @@ async def handle_run_not_cancellable(request: Request, exc: Exception) -> JSONRe
     conflict = cast(RunNotCancellableError, exc)
     body = ErrorResponse(
         error=ErrorDetail(
-            code=RUN_NOT_CANCELLABLE_CODE,
+            code=ErrorCode.RUN_NOT_CANCELLABLE,
             message="Запуск уже завершён и не может быть отменён",
             details={"id": str(conflict.run_id), "status": conflict.status},
         ),
@@ -199,10 +215,20 @@ async def handle_scenario_rejected(request: Request, exc: Exception) -> JSONResp
     )
 
 
+async def handle_invalid_request(request: Request, exc: Exception) -> JSONResponse:
+    """Ответ 400 в том же конверте, что и ошибки валидации входа."""
+    body = ValidationErrorResponse(errors=cast(InvalidRequestError, exc).errors)
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=jsonable_encoder(body),
+    )
+
+
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, handle_request_validation_error)
     app.add_exception_handler(EndpointNotImplementedError, handle_not_implemented)
     app.add_exception_handler(EntityNotFoundError, handle_entity_not_found)
     app.add_exception_handler(ScenarioRejectedError, handle_scenario_rejected)
+    app.add_exception_handler(InvalidRequestError, handle_invalid_request)
     app.add_exception_handler(IdempotencyConflictError, handle_idempotency_conflict)
     app.add_exception_handler(RunNotCancellableError, handle_run_not_cancellable)

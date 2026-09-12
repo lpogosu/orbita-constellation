@@ -32,6 +32,13 @@ class Run(BaseModel):
         default=None,
         description="Ключ трассы в MinIO; null, пока трасса не сохранена или уже удалена",
     )
+    degraded_mode: bool = Field(
+        default=False,
+        description=(
+            "Артефакты запуска записаны мимо внешних хранилищ: трасса в локальном "
+            "каталоге, граф не сохранён (`06_STORAGE.md` §7)"
+        ),
+    )
     error: ErrorDetail | None = Field(
         default=None,
         description="Заполняется при `status: failed`",

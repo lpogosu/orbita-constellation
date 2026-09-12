@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar, Final
 
 from arq.connections import RedisSettings
+from orbita_api.adapters.registry import StorageRegistry, build_storage_registry
 from orbita_api.db.session import build_engine, build_sessionmaker
 from orbita_api.settings import get_settings
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -26,17 +27,23 @@ def redis_settings() -> RedisSettings:
 
 
 async def on_startup(ctx: WorkerContext) -> None:
-    """Пул соединений с Postgres на весь процесс воркера.
+    """Пул соединений с Postgres и клиенты хранилищ на весь процесс воркера.
 
     Движок создаётся один раз: задача расчёта открывает по сессии на каждый короткий шаг
-    (старт, прогресс, результат) и не держит соединение занятым во время расчёта.
+    (старт, прогресс, результат) и не держит соединение занятым во время расчёта. Клиенты
+    MinIO и Memgraph живут столько же: соединение на каждую задачу стоило бы рукопожатия
+    ради одной записи трассы.
     """
     engine = build_engine(get_settings().postgres_dsn)
     ctx["engine"] = engine
     ctx["sessionmaker"] = build_sessionmaker(engine)
+    ctx["storage"] = build_storage_registry(get_settings())
 
 
 async def on_shutdown(ctx: WorkerContext) -> None:
+    storage = ctx.get("storage")
+    if isinstance(storage, StorageRegistry):
+        await storage.aclose()
     engine = ctx.get("engine")
     if isinstance(engine, AsyncEngine):
         await engine.dispose()

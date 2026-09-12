@@ -21,6 +21,9 @@ class ErrorCode(StrEnum):
     EXPERIMENT_BUDGET_EXCEEDED = "EXPERIMENT_BUDGET_EXCEEDED"
     INTERNAL_INCONSISTENCY = "INTERNAL_INCONSISTENCY"
     STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE"
+    NOT_FOUND = "NOT_FOUND"
+    IDEMPOTENCY_KEY_CONFLICT = "IDEMPOTENCY_KEY_CONFLICT"
+    RUN_NOT_CANCELLABLE = "RUN_NOT_CANCELLABLE"
 
 
 # Код скелета: endpoint объявлен контрактом, но обработчик ещё не поставлен. В глоссарий
@@ -29,33 +32,11 @@ class ErrorCode(StrEnum):
 NotImplementedCode: TypeAlias = Literal["NOT_IMPLEMENTED"]
 NOT_IMPLEMENTED_CODE: Final[NotImplementedCode] = "NOT_IMPLEMENTED"
 
-# `05_API.md` §3 требует 404 для отсутствующей сущности, но кода для неё в
-# `03_GLOSSARY.md` §3.6 нет. Пока код не заведён в глоссарии, он живёт литералом рядом с
-# `NOT_IMPLEMENTED`: добавлять значение в enum глоссария самовольно нельзя.
-NotFoundCode: TypeAlias = Literal["NOT_FOUND"]
-NOT_FOUND_CODE: Final[NotFoundCode] = "NOT_FOUND"
-
-# `05_API.md` §3 требует 409 для конфликта `Idempotency-Key`, а `03_GLOSSARY.md` §3.6 кода
-# для него не даёт. Как и `NOT_FOUND`, он живёт литералом до появления в глоссарии.
-IdempotencyConflictCode: TypeAlias = Literal["IDEMPOTENCY_KEY_CONFLICT"]
-IDEMPOTENCY_CONFLICT_CODE: Final[IdempotencyConflictCode] = "IDEMPOTENCY_KEY_CONFLICT"
-
-# Отмена завершённого запуска — тот же класс конфликта: запрос корректен, но состояние
-# ресурса его не допускает.
-RunNotCancellableCode: TypeAlias = Literal["RUN_NOT_CANCELLABLE"]
-RUN_NOT_CANCELLABLE_CODE: Final[RunNotCancellableCode] = "RUN_NOT_CANCELLABLE"
-
 
 class ErrorDetail(BaseModel):
     """Одна ошибка: код, человекочитаемое сообщение, поле и доказательство."""
 
-    code: (
-        ErrorCode
-        | NotImplementedCode
-        | NotFoundCode
-        | IdempotencyConflictCode
-        | RunNotCancellableCode
-    ) = Field(description="Код ошибки")
+    code: ErrorCode | NotImplementedCode = Field(description="Код ошибки")
     message: str = Field(description="Сообщение для пользователя")
     path: str | None = Field(
         default=None,

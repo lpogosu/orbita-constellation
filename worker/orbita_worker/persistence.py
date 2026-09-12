@@ -55,6 +55,7 @@ def _config_row(run_id: UUID, config: CoreConfigMetrics) -> models.ConfigMetrics
         max_hops=config.max_hops,
         route_switches_total=config.route_switches_total,
         backup_path_count_min=config.backup_path_count_min,
+        outage_count_by_cause=_causes_count(config.outage_count_by_cause),
         target_met_clients=list(config.target_met_clients),
     )
 

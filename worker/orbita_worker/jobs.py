@@ -1,12 +1,16 @@
 """Фоновые задачи ОРБИТЫ.
 
-Воркер вызывает `orbita_core` как библиотеку и общается с api только через Redis:
-очередь arq, канал прогресса `run:{id}` и отметку живости (06_STORAGE.md §5).
+Воркер вызывает `orbita_core` как библиотеку и общается с api через Redis: очередь arq,
+канал прогресса `run:{id}` и отметку живости (`06_STORAGE.md` §5). Хранилищами артефактов
+владеет api, поэтому сохранение трассы и выгрузки подключается здесь готовой функцией
+`run_artifact_sink`: это сборка процесса воркера, а не зависимость самого расчёта.
 """
 import os
 from typing import Any
 from uuid import UUID
 
+from orbita_api.adapters.registry import StorageRegistry
+from orbita_api.services.artifacts import run_artifact_sink
 from orbita_core import ENGINE_VERSION
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -40,5 +44,13 @@ async def run_calculation(ctx: WorkerContext, run_id: str) -> None:
     sessionmaker = ctx["sessionmaker"]
     if not isinstance(sessionmaker, async_sessionmaker):
         raise RuntimeError("Фабрика сессий воркера не создана в on_startup")
+    storage = ctx["storage"]
+    if not isinstance(storage, StorageRegistry):
+        raise RuntimeError("Реестр хранилищ воркера не создан в on_startup")
     typed_sessionmaker: async_sessionmaker[AsyncSession] = sessionmaker
-    await execute_run(UUID(run_id), typed_sessionmaker, RedisRunEvents(ctx["redis"]))
+    await execute_run(
+        UUID(run_id),
+        typed_sessionmaker,
+        RedisRunEvents(ctx["redis"]),
+        artifacts=run_artifact_sink(typed_sessionmaker, storage),
+    )

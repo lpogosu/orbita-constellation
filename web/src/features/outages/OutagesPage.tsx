@@ -64,7 +64,7 @@ export function OutagesPage() {
   const [applyError, setApplyError] = useState<string | null>(null);
   const [components, setComponents] = useState<ComponentSplit | null>(null);
 
-  const { draft, variant, run, tS, seek, selectClient } = scene;
+  const { draft, variant, run, tS, seek, selectClient, selectVariant } = scene;
 
   // База сравнения — тот расчёт, который экран застал открытым. Дальше её выбирает
   // пользователь: после «Применить отказ» текущий расчёт станет стороной «после».
@@ -127,6 +127,15 @@ export function OutagesPage() {
   const beforeTimeline = useRunTimeline(baseRunId);
 
   const clients = useMemo(() => (draft === null ? [] : clientSites(draft)), [draft]);
+
+  // Вариант задаётся адресом так же, как на «Сети»: переключатель в шапке меняет запрос,
+  // и экран обязан на это отозваться, а не остаться на варианте, с которого открылся.
+  useEffect(() => {
+    const wanted = search.get('variant');
+    if (wanted !== null && wanted !== variant?.id) {
+      selectVariant(wanted);
+    }
+  }, [selectVariant, search, variant]);
 
   // Переход с «Сети» приносит аппарат в query: окно отказа открывается заполненным, но
   // только один раз — иначе закрытое окно возвращалось бы на каждую перерисовку.

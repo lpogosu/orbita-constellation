@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { variantExportPath } from '@/api/projects';
 import { runEvidencePackPath, runExportPath } from '@/api/runs';
 import type { Run, RoutingPolicy, Variant } from '@/api/types';
-import { COMPARISON_PATH } from '@/app/sections';
+import { COMPARISON_PATH, sectionHref } from '@/app/sections';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { downloadFile, exportFileName } from '@/lib/download';
@@ -19,6 +19,8 @@ const TOP = 112;
 interface SaveExportCardProps {
   run: Run;
   variant: Variant | null;
+  /** Проект известен через вариант запуска и приходит `null`, пока тот не загрузился. */
+  projectId: string | null;
   projectTitle: string | null;
   /** Пересчёт с другой политикой: карточка отдаёт выбор, ожиданием управляет экран. */
   recompute: {
@@ -35,7 +37,13 @@ interface SaveExportCardProps {
  * Card / Save & Export (51:688). Название варианта только для чтения: `PATCH` варианта в
  * `05_API.md` §2 нет, а поле с курсором, которое ничего не сохраняет, хуже подписи.
  */
-export function SaveExportCard({ run, variant, projectTitle, recompute }: SaveExportCardProps) {
+export function SaveExportCard({
+  run,
+  variant,
+  projectId,
+  projectTitle,
+  recompute,
+}: SaveExportCardProps) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const succeeded = run.status === 'succeeded';
 
@@ -169,13 +177,16 @@ export function SaveExportCard({ run, variant, projectTitle, recompute }: SaveEx
         </p>
       )}
 
-      <Link
-        to={`${COMPARISON_PATH}?runs=${run.id}`}
-        className="absolute left-[23px] top-[467px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
-      >
-        Перейти к сравнению вариантов
-        <ChevronRight aria-hidden="true" className="size-[14px]" />
-      </Link>
+      {/* Сравнению нужен проект: без него оно не знает, среди каких вариантов выбирать. */}
+      {projectId !== null && (
+        <Link
+          to={`${sectionHref(COMPARISON_PATH, projectId)}&runs=${run.id}`}
+          className="absolute left-[23px] top-[467px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
+        >
+          Перейти к сравнению вариантов
+          <ChevronRight aria-hidden="true" className="size-[14px]" />
+        </Link>
+      )}
     </Card>
   );
 }

@@ -1,5 +1,4 @@
-import type { ReactElement } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ComparePage } from '@/features/compare/ComparePage';
@@ -9,34 +8,45 @@ import { OutagesPage } from '@/features/outages/OutagesPage';
 import { ProjectPage } from '@/features/project/ProjectPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
 import { ResultPage } from '@/features/result/ResultPage';
-import { SectionUnderConstruction } from '@/pages/SectionUnderConstruction';
+import { SectionEntry } from './SectionEntry';
 import {
   COMPARISON_PATH,
   EXPERIMENTS_PATH,
-  NAV_SECTIONS,
   NETWORK_PATH,
   OUTAGES_PATH,
   PROJECTS_PATH,
+  sectionByPath,
 } from './sections';
 
+/**
+ * Каждый раздел — пара маршрутов: адрес с проектом показывает экран, адрес без проекта
+ * приводит к нему (`SectionEntry`). Страниц-заглушек в приложении нет.
+ */
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to={PROJECTS_PATH} replace />} />
-          {NAV_SECTIONS.map((section) => (
-            <Route
-              key={section.path}
-              path={section.path}
-              element={sectionPage(section.path) ?? <SectionUnderConstruction section={section} />}
-            />
-          ))}
-          <Route path={`${NETWORK_PATH}/:projectId`} element={<NetworkPage />} />
-          <Route path={`${OUTAGES_PATH}/:projectId`} element={<OutagesPage />} />
+
+          <Route path={PROJECTS_PATH} element={<ProjectsPage />} />
           <Route path={`${PROJECTS_PATH}/:projectId`} element={<ProjectPage />} />
-          <Route path="/result/:runId" element={<ResultPage />} />
+
+          <Route path={NETWORK_PATH} element={<SectionEntry section={sectionByPath(NETWORK_PATH)} />} />
+          <Route path={`${NETWORK_PATH}/:projectId`} element={<NetworkPage />} />
+
+          <Route path={OUTAGES_PATH} element={<SectionEntry section={sectionByPath(OUTAGES_PATH)} />} />
+          <Route path={`${OUTAGES_PATH}/:projectId`} element={<OutagesPage />} />
+
+          <Route
+            path={EXPERIMENTS_PATH}
+            element={<SectionEntry section={sectionByPath(EXPERIMENTS_PATH)} />}
+          />
           <Route path={`${EXPERIMENTS_PATH}/:projectId`} element={<ExperimentsPage />} />
+
+          <Route path={COMPARISON_PATH} element={<ComparisonRoute />} />
+
+          <Route path="/result/:runId" element={<ResultPage />} />
           <Route path="*" element={<Navigate to={PROJECTS_PATH} replace />} />
         </Route>
       </Routes>
@@ -45,18 +55,14 @@ export function App() {
 }
 
 /**
- * Разделы навигации, у которых уже есть экран. Соседние карточки дописывают сюда по строке,
- * а не переставляют маршруты: пункт меню и его страница объявлены в одном месте.
+ * Проект «Сравнения» живёт в запросе, а не в пути, поэтому выбирать между экраном и
+ * переходом к проекту приходится здесь: маршрут у обоих один и тот же.
  */
-function sectionPage(path: string): ReactElement | null {
-  if (path === PROJECTS_PATH) {
-    return <ProjectsPage />;
-  }
-  if (path === COMPARISON_PATH) {
-    return <ComparePage />;
-  }
-  if (path === EXPERIMENTS_PATH) {
-    return <ExperimentsPage />;
-  }
-  return null;
+function ComparisonRoute() {
+  const [params] = useSearchParams();
+  return params.get('project') === null ? (
+    <SectionEntry section={sectionByPath(COMPARISON_PATH)} />
+  ) : (
+    <ComparePage />
+  );
 }

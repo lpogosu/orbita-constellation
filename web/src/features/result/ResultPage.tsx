@@ -18,6 +18,7 @@ import type {
   Variant,
 } from '@/api/types';
 import { useProjectSelection } from '@/app/project-selection';
+import { RESULT_PATH } from '@/app/sections';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { describe, useResource } from '@/lib/use-resource';
@@ -95,7 +96,7 @@ export function ResultPage() {
 
   const openResult = useCallback(
     (newRunId: string) => {
-      navigate(`/result/${newRunId}`);
+      navigate(`${RESULT_PATH}/${newRunId}`);
     },
     [navigate],
   );
@@ -169,6 +170,7 @@ export function ResultPage() {
       <SaveExportCard
         run={run}
         variant={variant.data}
+        projectId={projectId}
         projectTitle={projectTitle.data}
         recompute={recompute}
       />

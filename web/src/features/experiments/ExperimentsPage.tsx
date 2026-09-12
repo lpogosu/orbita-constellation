@@ -10,7 +10,7 @@ import {
 import { getProject } from '@/api/projects';
 import type { ExperimentPoint, ProjectDetail, RoutingPolicy, Variant } from '@/api/types';
 import { useProjectSelection } from '@/app/project-selection';
-import { COMPARISON_PATH, NETWORK_PATH } from '@/app/sections';
+import { COMPARISON_PATH, NETWORK_PATH, sectionHref } from '@/app/sections';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { groupRuns, pickRun } from '@/features/compare/runs';
@@ -41,11 +41,9 @@ const DEFAULT_BUDGET: BudgetDraft = { maxPoints: '100', maxSeconds: '600' };
  */
 export function ExperimentsPage() {
   const navigate = useNavigate();
-  const params = useParams<{ projectId: string }>();
-  // Пункт меню ведёт на «/experiments» без проекта: тогда экран берёт текущий выбор,
-  // сделанный на «Проектах» или «Результате».
-  const { selection, select } = useProjectSelection();
-  const projectId = params.projectId ?? selection.projectId ?? '';
+  // Проект всегда в пути: «/experiments» без него маршрут не пропускает.
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { select } = useProjectSelection();
 
   const loadProject = useCallback(() => getProject(projectId), [projectId]);
   const project = useResource<ProjectDetail>(loadProject);
@@ -163,7 +161,7 @@ export function ExperimentsPage() {
         return;
       }
       const runs = baseRunId === null ? runId : `${baseRunId},${runId}`;
-      navigate(`${COMPARISON_PATH}?project=${projectId}&runs=${runs}`);
+      navigate(`${sectionHref(COMPARISON_PATH, projectId)}&runs=${runs}`);
     },
     [baseRunId, navigate, projectId],
   );

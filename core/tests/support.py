@@ -17,6 +17,8 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 SCENARIOS_DIR: Final[Path] = REPO_ROOT / "scenarios"
 FIXTURES_DIR: Final[Path] = Path(__file__).resolve().parent / "fixtures"
 REFERENCE_MODULE_PATH: Final[Path] = REPO_ROOT / "Расчетный модуль" / "geometry.py"
+# Единственный источник golden-значений — документ, а не копия чисел в коде тестов.
+FIXTURES_DOC_PATH: Final[Path] = REPO_ROOT / "docs" / "10_FIXTURES.md"
 
 SCENARIO_PATHS: Final[tuple[Path, ...]] = tuple(sorted(SCENARIOS_DIR.glob("*.json")))
 

@@ -9,6 +9,8 @@ export interface MapPalette {
   readonly route: string;
   readonly backup: string;
   readonly failed: string;
+  /** Аппарат, ради которого открыт экран: обводка того же цвета, что и ссылки. */
+  readonly highlight: string;
   readonly isl: string;
   readonly groundLink: string;
   readonly label: string;
@@ -33,6 +35,7 @@ export function readPalette(read: (name: string) => string): MapPalette {
     route: token('--map-route', '#ff3d9a'),
     backup: token('--map-backup', '#45e3c4'),
     failed: token('--map-failed', '#ff3b4e'),
+    highlight: token('--accent-blue', '#2e8bfb'),
     isl: token('--map-isl', 'rgba(69, 227, 196, 0.5)'),
     groundLink: token('--map-ground-link', 'rgba(145, 132, 255, 0.45)'),
     label: token('--text-primary', '#f2f5ff'),

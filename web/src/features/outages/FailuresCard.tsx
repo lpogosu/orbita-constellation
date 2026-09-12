@@ -2,8 +2,9 @@ import { AlertCircle, ChevronRight, Clock, Crosshair, FolderClosed, Rocket, Sate
 
 import type { ClientComparison, Run } from '@/api/types';
 import { Skeleton } from '@/components/state/States';
+import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
-import { formatGap, formatTick } from '@/lib/run-format';
+import { formatGap, formatTick, policyLabel } from '@/lib/run-format';
 import { formatPoints, rowKey } from './format';
 
 export interface FailureRowRef {
@@ -24,7 +25,10 @@ interface FailuresCardProps {
   readonly onToggle: (key: string) => void;
   readonly onRemove: (row: FailureRowRef) => void;
   readonly onAdd: () => void;
-  readonly onShowSplit: () => void;
+  /** Подсветка компонент связности на карте: одна кнопка включает её и выключает. */
+  readonly splitShown: boolean;
+  readonly splitAvailable: boolean;
+  readonly onToggleSplit: () => void;
   readonly pickingOnMap: boolean;
   readonly onPickOnMap: () => void;
 
@@ -65,30 +69,22 @@ export function FailuresCard(props: FailuresCardProps) {
       <p className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
         База сравнения
       </p>
-      <label className="mt-[8px] block">
-        <span className="sr-only">Расчёт, с которым сравнивать</span>
-        <span className="relative block">
-          <FolderClosed
-            aria-hidden="true"
-            className="pointer-events-none absolute left-[13px] top-[16px] size-[16px] text-ink-secondary"
-          />
-          <select
-            value={props.baseRunId ?? ''}
-            onChange={(event) => { props.onBaseRun(event.target.value); }}
-            className="h-[48px] w-full rounded-sm border border-line bg-surface-input pl-[37px] pr-[13px] text-small font-medium text-ink-primary"
-          >
-            {props.baseRuns.length === 0 && <option value="">Завершённых расчётов нет</option>}
-            {props.baseRuns.map((run) => (
-              <option key={run.id} value={run.id}>
-                {run.routing_policy} · {run.config_hash.slice(0, 8)} ·{' '}
-                {run.finished_at === null || run.finished_at === undefined
-                  ? 'без даты'
-                  : new Date(run.finished_at).toLocaleString('ru-RU')}
-              </option>
-            ))}
-          </select>
-        </span>
-      </label>
+      <Select
+        label="Расчёт, с которым сравнивать"
+        className="mt-[8px]"
+        value={props.baseRunId ?? ''}
+        onChange={props.onBaseRun}
+        placeholder="Завершённых расчётов нет"
+        icon={<FolderClosed aria-hidden="true" className="size-[16px] shrink-0 text-ink-secondary" />}
+        options={props.baseRuns.map((run) => ({
+          value: run.id,
+          title: `${policyLabel(run.routing_policy)} · ${run.config_hash.slice(0, 8)}`,
+          meta:
+            run.finished_at === null || run.finished_at === undefined
+              ? 'без даты'
+              : new Date(run.finished_at).toLocaleString('ru-RU'),
+        }))}
+      />
 
       <div className="mt-[16px] flex items-center">
         <h3 className="text-base font-semibold text-ink-primary">Отказы</h3>
@@ -182,11 +178,23 @@ export function FailuresCard(props: FailuresCardProps) {
         </button>
         <button
           type="button"
-          onClick={props.onShowSplit}
-          className="flex h-[40px] flex-1 items-center justify-center gap-[8px] rounded-[11px] border border-line bg-surface-raised text-caption font-semibold text-ink-primary"
+          onClick={props.onToggleSplit}
+          aria-pressed={props.splitShown}
+          disabled={!props.splitAvailable}
+          title={
+            props.splitAvailable
+              ? undefined
+              : 'У выбранного клиента нет видимых спутников на этом отсчёте'
+          }
+          className={cx(
+            'flex h-[40px] flex-1 items-center justify-center gap-[8px] rounded-[11px] border text-caption font-semibold transition-colors duration-150 disabled:opacity-45',
+            props.splitShown
+              ? 'border-accent-violet bg-surface-rowActive text-ink-primary'
+              : 'border-line bg-surface-raised text-ink-primary',
+          )}
         >
           <AlertCircle aria-hidden="true" className="size-[15px]" />
-          Показать разрыв
+          {props.splitShown ? 'Скрыть разрыв' : 'Показать разрыв'}
         </button>
       </div>
 

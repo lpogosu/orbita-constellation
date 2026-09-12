@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 
+import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 
 /** Поля формы постановки эксперимента: одна высота 42, один радиус 11, одна рамка. */
 const FIELD_CLASS = cx(
-  'h-[42px] rounded-[11px] border border-line bg-surface-input px-[13px]',
+  'h-[42px] w-full rounded-[11px] border border-line bg-surface-input px-[13px]',
   'text-[13px] font-medium text-ink-primary',
   'transition-colors duration-150 focus:border-line-strong',
   'disabled:cursor-not-allowed disabled:opacity-60',
@@ -49,20 +50,16 @@ export function SelectField({
   width: number;
 }) {
   return (
-    <select
-      aria-label={label}
+    <Select
+      label={label}
       value={value}
       disabled={disabled ?? false}
-      onChange={(event) => { onChange(event.target.value); }}
-      className={cx(FIELD_CLASS, 'absolute appearance-none')}
+      onChange={onChange}
+      options={options}
+      className="absolute"
       style={{ left, top, width }}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.title}
-        </option>
-      ))}
-    </select>
+      triggerClassName={FIELD_CLASS}
+    />
   );
 }
 

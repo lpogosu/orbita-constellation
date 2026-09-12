@@ -10,8 +10,9 @@ import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
+import { splitComponents } from '@/map/components';
 import { DEFAULT_LAYERS } from '@/map/model';
-import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
+import type { MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
@@ -47,7 +48,7 @@ export function NetworkPage() {
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
-  const [components, setComponents] = useState<ComponentSplit | null>(null);
+  const [componentsShown, setComponentsShown] = useState(false);
   const [failureModal, setFailureModal] = useState<{ satelliteId: string | null } | null>(null);
   const [saveModal, setSaveModal] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -93,6 +94,27 @@ export function NetworkPage() {
     [scene.snapshot, scene.selectedClientId],
   );
 
+  // Подсветка объясняет конкретный перерыв, и переключатель живёт в его карточке:
+  // на отсчёте, где связь есть, карточки нет — и подсветка снимается вместе с ней.
+  const outageNow = useMemo(
+    () =>
+      (scene.outages ?? []).some(
+        (outage) =>
+          outage.client_id === scene.selectedClientId && tS >= outage.start_s && tS < outage.end_s,
+      ),
+    [scene.outages, scene.selectedClientId, tS],
+  );
+
+  // Компоненты связности считаются на клиенте по рёбрам снимка: в ответе `snapshot`
+  // принадлежности аппарата к компоненте нет.
+  const componentSplit = useMemo(
+    () =>
+      draft === null || scene.snapshot === null || scene.selectedClientId === null
+        ? null
+        : splitComponents(scene.snapshot, draft.ground_sites, scene.selectedClientId),
+    [draft, scene.snapshot, scene.selectedClientId],
+  );
+
   const model = useMemo<MapModel>(() => {
     if (draft === null) {
       return {
@@ -106,6 +128,7 @@ export function NetworkPage() {
         backupRoute: [],
         components: null,
         selectedClientId: scene.selectedClientId,
+        highlightedSatelliteId: null,
         draftFailedSatellites: [],
         failureCandidates: [],
       };
@@ -121,14 +144,25 @@ export function NetworkPage() {
       planeIds: draft.design.planes.map((plane) => plane.id),
       selectedRoute,
       backupRoute: backup?.paths[1] ?? [],
-      components,
+      components: componentsShown && outageNow ? componentSplit : null,
       selectedClientId: scene.selectedClientId,
+      highlightedSatelliteId: null,
       draftFailedSatellites: draft.failures
         .filter((failure) => tS >= failure.start_s && tS < failure.end_s)
         .map((failure) => failure.satellite_id),
       failureCandidates: [],
     };
-  }, [draft, scene.snapshot, scene.selectedClientId, selectedRoute, backup, components, tS]);
+  }, [
+    draft,
+    scene.snapshot,
+    scene.selectedClientId,
+    selectedRoute,
+    backup,
+    componentSplit,
+    componentsShown,
+    outageNow,
+    tS,
+  ]);
 
   const readToken = useTokenColors();
   const palette = useMemo(() => readPalette(readToken), [readToken]);
@@ -230,11 +264,20 @@ export function NetworkPage() {
       {
         label: 'Показать критичность',
         onSelect: () => {
-          navigate(`${OUTAGES_PATH}/${projectId}?satellite=${encodeURIComponent(satelliteId)}`);
+          // Экран «Отказы» открывается на том же расчёте и отсчёте, раскрывает блок
+          // критичности и оставляет аппарат выделенным; окно отказа здесь не при чём.
+          const query = new URLSearchParams({ t: String(tS), criticality: satelliteId });
+          if (variant !== null) {
+            query.set('variant', variant.id);
+          }
+          if (run !== null) {
+            query.set('run', run.id);
+          }
+          navigate(`${OUTAGES_PATH}/${projectId}?${query.toString()}`);
         },
       },
     ],
-    [navigate, projectId],
+    [navigate, projectId, run, tS, variant],
   );
 
   if (scene.projectError !== null) {
@@ -346,7 +389,9 @@ export function NetworkPage() {
         selectedClientId={scene.selectedClientId}
         onSelectClient={selectClient}
         onSeek={seek}
-        onShowComponents={setComponents}
+        componentSplit={componentSplit}
+        componentsShown={componentsShown}
+        onToggleComponents={() => { setComponentsShown((value) => !value); }}
         backup={backup}
         backupError={backupError}
         onLoadBackup={loadBackup}

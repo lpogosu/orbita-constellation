@@ -19,10 +19,13 @@ export const DEFAULT_LAYERS: MapLayers = {
   backup: false,
 };
 
-/** Две изолированные группы аппаратов из доказательств перерыва (`OutageInterval`). */
+/** Две изолированные группы аппаратов на отсчёте (`map/components.ts`). */
 export interface ComponentSplit {
   readonly clientSide: readonly string[];
   readonly gatewaySide: readonly string[];
+  /** Клиент и шлюзы обводятся: без них разбиение читается как раскраска без причины. */
+  readonly clientSiteId: string;
+  readonly gatewaySiteIds: readonly string[];
 }
 
 /**
@@ -41,6 +44,8 @@ export interface MapModel {
   readonly backupRoute: readonly string[];
   readonly components: ComponentSplit | null;
   readonly selectedClientId: string | null;
+  /** Аппарат, ради которого открыт экран: остаётся выделенным, пока он в адресе. */
+  readonly highlightedSatelliteId: string | null;
   /** Аппараты, которым уже задан отказ в черновике: помечены и вне снимка. */
   readonly draftFailedSatellites: readonly string[];
   /** Аппараты текущего маршрута — кандидаты на отказ (`14_SCREENS.md` §3.1). */
@@ -58,6 +63,7 @@ export const EMPTY_MODEL: MapModel = {
   backupRoute: [],
   components: null,
   selectedClientId: null,
+  highlightedSatelliteId: null,
   draftFailedSatellites: [],
   failureCandidates: [],
 };

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 
 import type { RoutingPolicy, Run, Scenario, Variant } from '@/api/types';
+import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 import { formatTick } from '@/lib/run-format';
 import type { DraftChange } from './draft';
@@ -71,20 +72,14 @@ export function ConfigCard(props: ConfigCardProps) {
         backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
       }}
     >
-      <label className="block">
-        <span className="sr-only">Вариант</span>
-        <select
-          value={props.variantId ?? ''}
-          onChange={(event) => { props.onSelectVariant(event.target.value); }}
-          className="h-[52px] w-full rounded-lg border border-line bg-surface-input px-[22px] text-title-l font-semibold text-ink-primary"
-        >
-          {props.variants.map((variant) => (
-            <option key={variant.id} value={variant.id}>
-              {variant.title}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="Вариант"
+        value={props.variantId ?? ''}
+        options={props.variants.map((variant) => ({ value: variant.id, title: variant.title }))}
+        onChange={props.onSelectVariant}
+        placeholder="Вариант не выбран"
+        triggerClassName="h-[52px] w-full rounded-lg border border-line bg-surface-input pl-[22px] pr-[16px] text-title-l font-semibold text-ink-primary hover:border-line-strong"
+      />
 
       <p className="mt-[10px] text-base font-semibold text-ink-primary">Этап запуска</p>
       <div className="mt-[8px] flex h-[44px] items-center gap-[2px] rounded-[14px] border border-line-subtle bg-surface-input p-[3px]">

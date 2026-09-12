@@ -10,8 +10,9 @@ import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
+import { splitComponents } from '@/map/components';
 import { DEFAULT_LAYERS } from '@/map/model';
-import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
+import type { MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
@@ -64,7 +65,12 @@ export function OutagesPage() {
   const [afterRunId, setAfterRunId] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
-  const [components, setComponents] = useState<ComponentSplit | null>(null);
+  const [componentsShown, setComponentsShown] = useState(false);
+  // Аппарат приходит из адреса пунктом «Показать критичность» на «Сети» и остаётся
+  // выделенным, пока пользователь не выберет другой в списке критичности.
+  const [focusSatelliteId, setFocusSatelliteId] = useState<string | null>(
+    () => search.get('criticality'),
+  );
 
   const { draft, variant, run, tS, seek, selectClient, selectVariant } = scene;
 
@@ -139,16 +145,18 @@ export function OutagesPage() {
     }
   }, [selectVariant, search, variant]);
 
-  // Переход с «Сети» приносит аппарат в query: окно отказа открывается заполненным, но
-  // только один раз — иначе закрытое окно возвращалось бы на каждую перерисовку.
-  const presetApplied = useRef(false);
+  // Переход с «Сети» просит посчитать критичность сразу: запрос уходит один раз на
+  // прогон, иначе 501 возвращал бы экран в загрузку на каждую перерисовку.
+  const criticalityAsked = useRef<string | null>(null);
+  const requestCriticality = criticality.request;
   useEffect(() => {
-    const wanted = search.get('satellite');
-    if (wanted !== null && !presetApplied.current && draft !== null) {
-      presetApplied.current = true;
-      setFailureModal({ satelliteId: wanted });
+    const runId = afterRunId ?? baseRunId;
+    if (focusSatelliteId === null || runId === null || criticalityAsked.current === runId) {
+      return;
     }
-  }, [draft, search]);
+    criticalityAsked.current = runId;
+    requestCriticality();
+  }, [afterRunId, baseRunId, focusSatelliteId, requestCriticality]);
 
   useEffect(() => {
     if (scene.selectedClientId === null && clients.length > 0) {
@@ -167,6 +175,14 @@ export function OutagesPage() {
   const readToken = useTokenColors();
   const palette = useMemo(() => readPalette(readToken), [readToken]);
 
+  const componentSplit = useMemo(
+    () =>
+      draft === null || scene.snapshot === null || scene.selectedClientId === null
+        ? null
+        : splitComponents(scene.snapshot, draft.ground_sites, scene.selectedClientId),
+    [draft, scene.snapshot, scene.selectedClientId],
+  );
+
   const buildModel = useCallback(
     (side: 'before' | 'after'): MapModel => {
       const snapshot = side === 'before' ? before.snapshot : scene.snapshot;
@@ -183,6 +199,7 @@ export function OutagesPage() {
           backupRoute: [],
           components: null,
           selectedClientId: scene.selectedClientId,
+          highlightedSatelliteId: focusSatelliteId,
           draftFailedSatellites: [],
           failureCandidates: [],
         };
@@ -198,8 +215,9 @@ export function OutagesPage() {
         planeIds: draft.design.planes.map((plane) => plane.id),
         selectedRoute: route?.path ?? [],
         backupRoute: [],
-        components: side === 'after' ? components : null,
+        components: side === 'after' && componentsShown ? componentSplit : null,
         selectedClientId: scene.selectedClientId,
+        highlightedSatelliteId: focusSatelliteId,
         draftFailedSatellites:
           side === 'after'
             ? draft.failures
@@ -220,7 +238,9 @@ export function OutagesPage() {
       tS,
       synced,
       frozenTS,
-      components,
+      componentSplit,
+      componentsShown,
+      focusSatelliteId,
       picking,
     ],
   );
@@ -282,21 +302,6 @@ export function OutagesPage() {
         setApplyError(describe(cause));
       });
   }, [draft, variant, rows, scene, effectiveScenario]);
-
-  const showSplit = useCallback(() => {
-    const outage = (scene.outages ?? []).find(
-      (item) =>
-        item.client_id === scene.selectedClientId && tS >= item.start_s && tS < item.end_s,
-    );
-    setComponents(
-      outage === undefined
-        ? null
-        : {
-            clientSide: outage.client_visible_satellites,
-            gatewaySide: outage.gateway_visible_satellites,
-          },
-    );
-  }, [scene.outages, scene.selectedClientId, tS]);
 
   const addFailure = useCallback(
     (failure: FailureDraft, keepOpen: boolean) => {
@@ -371,7 +376,9 @@ export function OutagesPage() {
           );
         }}
         onAdd={() => { setFailureModal({ satelliteId: null }); }}
-        onShowSplit={showSplit}
+        splitShown={componentsShown}
+        splitAvailable={componentSplit !== null}
+        onToggleSplit={() => { setComponentsShown((value) => !value); }}
         pickingOnMap={picking}
         onPickOnMap={() => { setPicking((value) => !value); }}
         baseRuns={succeededRuns}
@@ -383,7 +390,7 @@ export function OutagesPage() {
         onReset={() => {
           scene.resetDraft();
           setDisabled(new Set<string>());
-          setComponents(null);
+          setComponentsShown(false);
         }}
         perClient={comparison.entry?.per_client ?? null}
         comparisonError={comparison.error}
@@ -526,7 +533,8 @@ export function OutagesPage() {
             {...LAYOUT.criticality}
             state={criticality}
             runId={afterRunId ?? baseRunId}
-            onCheckFailure={(satelliteId) => { setFailureModal({ satelliteId }); }}
+            focusSatelliteId={focusSatelliteId}
+            onFocusSatellite={setFocusSatelliteId}
           />
           <RecommendationCard
             {...LAYOUT.recommendation}

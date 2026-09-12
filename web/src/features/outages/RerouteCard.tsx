@@ -2,8 +2,7 @@ import { ArrowRight } from 'lucide-react';
 
 import type { ClientComparison, ClientMetrics, ClientRoute } from '@/api/types';
 import { EmptyState, Skeleton } from '@/components/state/States';
-import { CAUSE_LABEL } from '@/map/palette';
-import { formatClock } from '@/timeline/segments';
+import { causeView, formatTick } from '@/lib/run-format';
 import { formatPoints } from './format';
 
 interface RerouteCardProps {
@@ -81,7 +80,7 @@ export function RerouteCard(props: RerouteCardProps) {
               <dd className="text-title-m font-semibold text-ink-primary">
                 {added === undefined
                   ? 'Перерывов не добавилось'
-                  : `${CAUSE_LABEL[added.primary_cause]}${
+                  : `${causeView(added.primary_cause).full}${
                       added.failed_satellites.length > 0
                         ? ` · ${added.failed_satellites.join(', ')}`
                         : ''
@@ -105,7 +104,7 @@ export function RerouteCard(props: RerouteCardProps) {
               <div className="flex items-baseline gap-[16px]">
                 <dt className="w-[150px] text-body text-ink-secondary">Новый перерыв</dt>
                 <dd className="text-title-m font-semibold text-ink-primary" data-numeric>
-                  {formatClock(added.other_start_s ?? 0)} – {formatClock(added.other_end_s ?? 0)}
+                  {formatTick(added.other_start_s ?? 0)} – {formatTick(added.other_end_s ?? 0)}
                 </dd>
               </div>
             )}

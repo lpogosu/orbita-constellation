@@ -32,34 +32,35 @@ export class TransportError extends Error {
 
 const UNKNOWN_ERROR_MESSAGE = 'Сервис вернул ответ, который не удалось разобрать';
 
-/**
- * Единственная точка, через которую идут все запросы. Экспортируется, чтобы модули
- * отдельных экранов (`network.ts`, `outages.ts`) не заводили свой разбор ошибок: конверт
- * `05_API.md` §3 разбирается здесь и только здесь.
- */
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
-  let response: Response;
-  try {
-    response = await fetch(path, { ...init, headers });
-  } catch (cause) {
-    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
-  }
-
+  const response = await send(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const details = toErrorDetails(body);
-    throw new ApiError(
-      response.status,
-      details,
-      details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${response.status})`,
-    );
+    throw failure(response.status, body);
   }
 
   return body as T;
+}
+
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch (cause) {
+    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
+  }
+}
+
+function failure(status: number, body: unknown): ApiError {
+  const details = toErrorDetails(body);
+  return new ApiError(
+    status,
+    details,
+    details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${status})`,
+  );
 }
 
 function toErrorDetails(body: unknown): readonly ErrorDetail[] {
@@ -76,6 +77,15 @@ function toErrorDetails(body: unknown): readonly ErrorDetail[] {
   return [];
 }
 
+/** POST с телом JSON: форма запроса одинакова у всех endpoint, кроме выгрузок. */
+export function apiPost<T>(path: string, payload: unknown): Promise<T> {
+  return apiRequest<T>(path, jsonBody(payload));
+}
+
+/**
+ * Заголовки нужны единственному запросу — постановке расчёта с `Idempotency-Key`
+ * (`05_API.md` §4), поэтому здесь они необязательны, а `apiPost` о них не знает.
+ */
 export function jsonBody(payload: unknown, headers: Record<string, string> = {}): RequestInit {
   return {
     method: 'POST',
@@ -92,12 +102,12 @@ export const api = {
    * сервис, а не браузер, поэтому тип аргумента — `unknown`, а не `Scenario`.
    */
   validateScenario: (document: unknown): Promise<ScenarioValidationResult> =>
-    request<ScenarioValidationResult>('/api/scenarios/validate', jsonBody(document)),
+    apiRequest<ScenarioValidationResult>('/api/scenarios/validate', jsonBody(document)),
 
   /** `POST /api/projects` — проект создаётся сразу с первым вариантом. */
   createProject: (payload: ProjectCreateRequest): Promise<Project> =>
-    request<Project>('/api/projects', jsonBody(payload)),
+    apiRequest<Project>('/api/projects', jsonBody(payload)),
 
   /** `GET /api/projects` — проекты в порядке убывания даты создания. */
-  listProjects: (): Promise<Project[]> => request<Project[]>('/api/projects'),
+  listProjects: (): Promise<Project[]> => apiRequest<Project[]>('/api/projects'),
 };

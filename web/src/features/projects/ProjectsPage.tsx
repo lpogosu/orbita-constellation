@@ -5,7 +5,7 @@ import { api } from '@/api/client';
 import { loadScenarioExamples } from '@/api/scenario-files';
 import type { ScenarioExample } from '@/api/scenario-files';
 import type { Project, Scenario } from '@/api/types';
-import { NETWORK_PATH } from '@/app/sections';
+import { NETWORK_PATH, PROJECTS_PATH } from '@/app/sections';
 import { describe, useResource } from '@/lib/use-resource';
 import { DropzoneCard } from './DropzoneCard';
 import { ProjectTitleField } from './ProjectTitleField';
@@ -149,7 +149,9 @@ export function ProjectsPage() {
         error={projects.error}
         onRetry={projects.reload}
         onOpen={(project) => {
-          navigate(`${NETWORK_PATH}/${project.id}`);
+          // Строка списка ведёт на экран проекта: там варианты, прогоны и происхождение.
+          // На «Сеть» ведёт кнопка «Открыть проект» — она открывает только что созданный.
+          navigate(`${PROJECTS_PATH}/${project.id}`);
         }}
       />
 

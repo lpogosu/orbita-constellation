@@ -5,7 +5,7 @@ import type { GatewayOutage, SatelliteFailure, Scenario } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/lib/cx';
-import { formatClock } from '@/timeline/segments';
+import { formatTick } from '@/lib/run-format';
 import { gatewaySites } from './draft';
 
 export type FailureDraft =
@@ -52,7 +52,7 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
       found.push('Конец должен быть больше начала');
     }
     if (startS < 0 || endS > horizonS) {
-      found.push(`Интервал должен укладываться в горизонт ${formatClock(horizonS)}`);
+      found.push(`Интервал должен укладываться в горизонт ${formatTick(horizonS)}`);
     }
     if (startS % stepS !== 0 || durationS % stepS !== 0) {
       found.push(`Начало и длительность кратны шагу сетки ${stepS} с`);
@@ -167,7 +167,7 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
         </Field>
         <Field label="Окончание">
           <p className="flex h-[48px] items-center rounded-sm border border-line bg-surface-sunken px-[15px] text-base text-ink-secondary" data-numeric>
-            {formatClock(endS)} <span className="ml-[8px] text-caption text-ink-muted">исключая</span>
+            {formatTick(endS)} <span className="ml-[8px] text-caption text-ink-muted">исключая</span>
           </p>
         </Field>
       </div>
@@ -220,7 +220,7 @@ function TimeInput({
       <input
         type="text"
         inputMode="numeric"
-        value={formatClock(valueS)}
+        value={formatTick(valueS)}
         onChange={(event) => {
           const parsed = parseClock(event.target.value);
           if (parsed !== null) {

@@ -12,10 +12,12 @@ import { MapLayersBar } from '@/map/MapLayersBar';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
+import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
 import { Timeline } from '@/timeline/Timeline';
 import type { TimelineTrack } from '@/timeline/Timeline';
-import { formatClock, toSegments } from '@/timeline/segments';
+import { formatTick } from '@/lib/run-format';
+import { segmentsOf } from '@/features/result/timeline';
 import { FailureModal } from '@/features/network/FailureModal';
 import type { FailureDraft } from '@/features/network/FailureModal';
 import { clientSites, withFailures, withGatewayOutages } from '@/features/network/draft';
@@ -151,7 +153,8 @@ export function OutagesPage() {
   const afterRoute =
     scene.snapshot?.clients.find((route) => route.client_id === scene.selectedClientId) ?? null;
 
-  const palette = useMemo(() => readPalette(), []);
+  const readToken = useTokenColors();
+  const palette = useMemo(() => readPalette(readToken), [readToken]);
 
   const buildModel = useCallback(
     (side: 'before' | 'after'): MapModel => {
@@ -224,10 +227,10 @@ export function OutagesPage() {
       const baseline =
         source === beforeTimeline.timeline || baselineClient === undefined
           ? undefined
-          : toSegments(baselineClient, beforeTimeline.timeline?.total_ticks ?? 0);
+          : segmentsOf(baselineClient, beforeTimeline.timeline?.total_ticks ?? 0);
       return {
         clientId: client.client_id,
-        segments: toSegments(client, source.total_ticks),
+        segments: segmentsOf(client, source.total_ticks),
         ...(baseline === undefined ? {} : { baseline }),
       };
     });
@@ -386,7 +389,7 @@ export function OutagesPage() {
       >
         <Clock aria-hidden="true" className="size-[24px] text-ink-secondary" />
         <span className="text-title-l font-semibold text-ink-primary" data-numeric>
-          {formatClock(tS)}
+          {formatTick(tS)}
         </span>
       </div>
 
@@ -441,7 +444,7 @@ export function OutagesPage() {
             y={LAYOUT.mapPair.y}
             width={LAYOUT.mapPair.width}
             height={LAYOUT.mapPair.height}
-            caption={`До · ${formatClock(synced ? tS : frozenTS)}`}
+            caption={`До · ${formatTick(synced ? tS : frozenTS)}`}
             model={buildModel('before')}
             layers={layers}
             hemisphere={hemisphere}
@@ -454,7 +457,7 @@ export function OutagesPage() {
             y={LAYOUT.mapPair.y}
             width={LAYOUT.mapPair.width}
             height={LAYOUT.mapPair.height}
-            caption={`После · ${formatClock(tS)}`}
+            caption={`После · ${formatTick(tS)}`}
             model={buildModel('after')}
             layers={layers}
             hemisphere={hemisphere}
@@ -471,8 +474,8 @@ export function OutagesPage() {
           height={LAYOUT.map.height}
           caption={
             view === 'before'
-              ? `До · ${formatClock(synced ? tS : frozenTS)}`
-              : `После · ${formatClock(tS)}`
+              ? `До · ${formatTick(synced ? tS : frozenTS)}`
+              : `После · ${formatTick(tS)}`
           }
           model={buildModel(view)}
           layers={layers}

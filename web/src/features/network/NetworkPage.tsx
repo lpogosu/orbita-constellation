@@ -11,10 +11,12 @@ import { MapLayersBar } from '@/map/MapLayersBar';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
+import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
 import { Timeline } from '@/timeline/Timeline';
 import type { TimelineTrack } from '@/timeline/Timeline';
-import { formatClock, toSegments } from '@/timeline/segments';
+import { formatTick } from '@/lib/run-format';
+import { segmentsOf } from '@/features/result/timeline';
 import { ConfigCard } from './ConfigCard';
 import { FailureModal } from './FailureModal';
 import type { FailureDraft } from './FailureModal';
@@ -123,7 +125,8 @@ export function NetworkPage() {
     };
   }, [draft, scene.snapshot, scene.selectedClientId, selectedRoute, backup, components, tS]);
 
-  const palette = useMemo(() => readPalette(), []);
+  const readToken = useTokenColors();
+  const palette = useMemo(() => readPalette(readToken), [readToken]);
 
   const timelineTracks = useMemo<TimelineTrack[]>(() => {
     if (scene.timeline === null) {
@@ -131,7 +134,7 @@ export function NetworkPage() {
     }
     return scene.timeline.clients.map((client) => ({
       clientId: client.client_id,
-      segments: toSegments(client, scene.timeline?.total_ticks ?? 0),
+      segments: segmentsOf(client, scene.timeline?.total_ticks ?? 0),
     }));
   }, [scene.timeline]);
 
@@ -290,7 +293,7 @@ export function NetworkPage() {
           className="pointer-events-none absolute left-[14px] top-[10px] rounded-pill border border-line bg-surface-raised px-[14px] py-[6px] text-caption font-semibold text-ink-primary"
           data-numeric
         >
-          {formatClock(tS)} · отсчёт {scene.stepS > 0 ? Math.round(tS / scene.stepS) : 0} из {totalTicks}
+          {formatTick(tS)} · отсчёт {scene.stepS > 0 ? Math.round(tS / scene.stepS) : 0} из {totalTicks}
           {scene.snapshotSource === 'preview' && ' · предпросмотр черновика'}
         </p>
 
@@ -470,7 +473,7 @@ function MapTooltip({
       </p>
       <p className="mt-[4px] text-caption text-ink-secondary">{site.name}</p>
       <p className="mt-[4px] text-caption text-ink-muted" data-numeric>
-        {site.lat_deg.toFixed(2)}°, {site.lon_deg.toFixed(2)}° · {formatClock(tS)}
+        {site.lat_deg.toFixed(2)}°, {site.lon_deg.toFixed(2)}° · {formatTick(tS)}
       </p>
     </>
   );

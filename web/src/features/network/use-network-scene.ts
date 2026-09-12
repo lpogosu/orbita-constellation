@@ -13,7 +13,7 @@ import type {
   Snapshot,
   Variant,
 } from '@/api/types';
-import { useProjectContext } from '@/app/project-context';
+import { useProjectSelection } from '@/app/project-selection';
 import { describe } from '@/lib/use-resource';
 import { draftChanges } from './draft';
 import type { DraftChange } from './draft';
@@ -70,7 +70,7 @@ export interface SceneState {
  * на текущем отсчёте: снимок расчёта или предпросмотр черновика (`14_SCREENS.md` §0.3).
  */
 export function useNetworkScene(projectId: string): SceneState {
-  const context = useProjectContext();
+  const { selection, select } = useProjectSelection();
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
@@ -98,8 +98,8 @@ export function useNetworkScene(projectId: string): SceneState {
   const runReady = run !== null && run.status === 'succeeded';
 
   useEffect(() => {
-    context.select({ projectId });
-  }, [context, projectId]);
+    select({ projectId, variantId: variant?.id ?? null, runId: run?.id ?? null });
+  }, [select, projectId, variant, run]);
 
   useEffect(() => {
     let active = true;
@@ -126,7 +126,6 @@ export function useNetworkScene(projectId: string): SceneState {
   // нужен только тому варианту, которого в списке нет (например, только что созданному).
   const selectVariant = useCallback(
     (variantId: string) => {
-      context.select({ variantId, runId: null });
       const known = project?.variants.find((item) => item.id === variantId);
       if (known !== undefined) {
         setVariant(known);
@@ -143,22 +142,21 @@ export function useNetworkScene(projectId: string): SceneState {
         },
       );
     },
-    [context, project],
+    [project],
   );
 
   useEffect(() => {
     if (project === null || variant !== null) {
       return;
     }
-    const wanted = context.variantId ?? project.project.active_variant_id;
+    const wanted = selection.variantId ?? project.project.active_variant_id;
     const chosen =
       project.variants.find((item) => item.id === wanted) ?? project.variants[0] ?? null;
     if (chosen !== null) {
       setVariant(chosen);
       setDraftState(chosen.scenario);
-      context.select({ variantId: chosen.id });
     }
-  }, [project, variant, context]);
+  }, [project, variant, selection.variantId]);
 
   // Последний завершённый расчёт варианта подхватывается сам: иначе после перехода с
   // «Проектов» экран остаётся пустым, хотя расчёт уже есть.
@@ -168,7 +166,7 @@ export function useNetworkScene(projectId: string): SceneState {
       return;
     }
     const wanted =
-      context.runId ??
+      selection.runId ??
       project.recent_runs.find(
         (item) => item.variant_id === variant.id && item.status === 'succeeded',
       )?.id ??
@@ -177,7 +175,7 @@ export function useNetworkScene(projectId: string): SceneState {
       attached.current = wanted;
       attach(wanted);
     }
-  }, [project, variant, context.runId, attach]);
+  }, [project, variant, selection.runId, attach]);
 
   const changes = useMemo(
     () => (variant === null || draft === null ? [] : draftChanges(variant.scenario, draft)),
@@ -307,11 +305,10 @@ export function useNetworkScene(projectId: string): SceneState {
       });
       setVariant(created);
       setDraftState(created.scenario);
-      context.select({ variantId: created.id, runId: null });
       setProjectAttempt((value) => value + 1);
       return created;
     },
-    [draft, projectId, variant, context],
+    [draft, projectId, variant],
   );
 
   return {

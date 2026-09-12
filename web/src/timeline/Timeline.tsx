@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { OutageCause } from '@/api/types';
-import { CAUSE_LABEL, CAUSE_ORDER, CAUSE_VARIABLE } from '@/map/palette';
+import { causeView } from '@/lib/run-format';
 import { cx } from '@/lib/cx';
-import { formatClock, formatSpan } from './segments';
-import type { TimelineSegment } from './segments';
+import { formatGap, formatTick } from '@/lib/run-format';
+import type { TimelineSegment } from '@/features/result/timeline';
 
 export interface TimelineTrack {
   readonly clientId: string;
@@ -226,13 +226,13 @@ export function Timeline({
         style={{ left: 443 }}
         data-numeric
       >
-        {formatClock(tS)}
+        {formatTick(tS)}
       </output>
 
       <ul className="absolute right-[24px] top-[21px] flex items-center gap-[14px]">
         <CauseLegendItem color="var(--chart-ok)" label="связь есть" />
-        {CAUSE_ORDER.map((cause) => (
-          <CauseLegendItem key={cause} color={`var(${CAUSE_VARIABLE[cause]})`} label={CAUSE_LABEL[cause]} />
+        {CAUSES.map((cause) => (
+          <CauseLegendItem key={cause} color={causeView(cause).color} label={causeView(cause).short} />
         ))}
       </ul>
 
@@ -248,7 +248,7 @@ export function Timeline({
               {markers.map((marker) => (
                 <span
                   key={marker.id}
-                  title={`${marker.label} · ${formatClock(marker.startS)}–${formatClock(marker.endS)}`}
+                  title={`${marker.label} · ${formatTick(marker.startS)}–${formatTick(marker.endS)}`}
                   className="absolute top-0 h-[6px] rounded-pill bg-status-danger"
                   style={{
                     left: `${(marker.startS / horizonS) * 100}%`,
@@ -322,7 +322,7 @@ export function Timeline({
             data-numeric
           >
             {hourTicks(horizonS).map((seconds) => (
-              <span key={seconds}>{formatClock(seconds)}</span>
+              <span key={seconds}>{formatTick(seconds)}</span>
             ))}
           </div>
 
@@ -350,14 +350,14 @@ export function Timeline({
               className="size-[10px] rounded-[3px]"
               style={{ background: segmentColor(hover.segment.cause) }}
             />
-            {hover.clientId} · {formatClock(hover.segment.startTick * stepS)}–
-            {formatClock(hover.segment.endTick * stepS)}
+            {hover.clientId} · {formatTick(hover.segment.from * stepS)}–
+            {formatTick(hover.segment.to * stepS)}
             {hover.baseline && ' · до'}
           </p>
           <p className="mt-[4px] text-micro text-ink-secondary">
-            {hover.segment.cause === null ? 'Связь есть' : CAUSE_LABEL[hover.segment.cause]} ·{' '}
-            {formatSpan((hover.segment.endTick - hover.segment.startTick) * stepS)}
-            {(hover.segment.startTick === 0 || hover.segment.endTick === totalTicks) &&
+            {hover.segment.cause === null ? 'Связь есть' : causeView(hover.segment.cause).full} ·{' '}
+            {formatGap((hover.segment.to - hover.segment.from) * stepS)}
+            {(hover.segment.from === 0 || hover.segment.to === totalTicks) &&
               hover.segment.cause !== null &&
               ' · обрезан границей расчёта'}
           </p>
@@ -423,7 +423,7 @@ function TrackStrip({
         <div className="absolute inset-x-0 top-0 h-[6px]">
           {(track.baseline ?? []).map((segment) => (
             <Segment
-              key={`base-${segment.startTick}`}
+              key={`base-${segment.from}`}
               segment={segment}
               totalTicks={totalTicks}
               clientId={track.clientId}
@@ -438,7 +438,7 @@ function TrackStrip({
       <div className="absolute inset-x-0" style={{ top: hasBaseline ? 10 : 2, height: mainHeight }}>
         {track.segments.map((segment) => (
           <Segment
-            key={segment.startTick}
+            key={segment.from}
             segment={segment}
             totalTicks={totalTicks}
             clientId={track.clientId}
@@ -448,7 +448,7 @@ function TrackStrip({
             onSelect={
               segment.cause === null
                 ? undefined
-                : () => onSelectOutage?.(track.clientId, segment.startTick * stepS)
+                : () => onSelectOutage?.(track.clientId, segment.from * stepS)
             }
           />
         ))}
@@ -479,8 +479,8 @@ function Segment({
   ) => void;
   onSelect?: (() => void) | undefined;
 }) {
-  const left = (segment.startTick / totalTicks) * 100;
-  const width = ((segment.endTick - segment.startTick) / totalTicks) * 100;
+  const left = (segment.from / totalTicks) * 100;
+  const width = ((segment.to - segment.from) / totalTicks) * 100;
 
   return (
     <span
@@ -489,7 +489,7 @@ function Segment({
       aria-label={
         onSelect === undefined
           ? undefined
-          : `${clientId}: перерыв с ${formatClock(segment.startTick * stepS)}`
+          : `${clientId}: перерыв с ${formatTick(segment.from * stepS)}`
       }
       className="absolute inset-y-0 rounded-[2px]"
       style={{ left: `${left}%`, width: `${width}%`, background: segmentColor(segment.cause) }}
@@ -528,7 +528,7 @@ function EdgeMark({
   const touching =
     segment !== undefined &&
     segment.cause !== null &&
-    (side === 'left' ? segment.startTick === 0 : segment.endTick === totalTicks);
+    (side === 'left' ? segment.from === 0 : segment.to === totalTicks);
   if (!touching) {
     return null;
   }
@@ -576,8 +576,17 @@ function CauseLegendItem({ color, label }: { color: string; label: string }) {
 }
 
 function segmentColor(cause: OutageCause | null): string {
-  return cause === null ? 'var(--chart-ok)' : `var(${CAUSE_VARIABLE[cause]})`;
+  return cause === null ? 'var(--chart-ok)' : causeView(cause).color;
 }
+
+/** Порядок причин в легенде — порядок таблицы `03_GLOSSARY.md` §3.1. */
+const CAUSES: readonly OutageCause[] = [
+  'NO_CLIENT_COVERAGE',
+  'GATEWAY_OUTAGE',
+  'NO_GATEWAY_COVERAGE',
+  'NETWORK_PARTITION',
+  'INTERNAL_INCONSISTENCY',
+];
 
 /** Подписи шкалы: каждые три часа, если горизонт сутки; иначе восемь равных долей. */
 function hourTicks(horizonS: number): number[] {

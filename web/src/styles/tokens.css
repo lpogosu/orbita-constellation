@@ -18,11 +18,14 @@
   --surface-glass: rgba(19, 33, 77, 0.9);
   --surface-chip: rgba(242, 245, 255, 0.1);
   --surface-row-active: rgba(108, 92, 231, 0.18);
+  --surface-row-stripe: rgba(242, 245, 255, 0.04);
+  --surface-accent-soft: rgba(108, 92, 231, 0.24);
   --surface-track: #16234f;
 
   --border-default: rgba(102, 142, 255, 0.38);
   --border-strong: rgba(102, 142, 255, 0.62);
   --border-divider: rgba(92, 122, 224, 0.22);
+  --border-accent: rgba(145, 132, 255, 0.6);
   --border-subtle: rgba(102, 142, 255, 0.18);
 
   --text-primary: #f2f5ff;
@@ -39,17 +42,24 @@
   --status-danger: #ff5c7c;
   --status-success-soft: rgba(63, 233, 176, 0.16);
   --status-danger-soft: rgba(255, 92, 124, 0.16);
+  --status-neutral: #8e9bc9;
 
-  /* Карта и таймлайн: цвета из узлов «Card / Timeline 24h» и «Map / Слои и легенда».
-     Причин в enum пять, а в легенде макета четыре полосы — пятая (ошибка расчёта)
-     добавлена приглушённой, иначе редкий случай остался бы без собственного цвета. */
+  /* Шкала суток и таблица перерывов. Пять причин против трёх цветов макета: отказ шлюза
+     и отсутствие покрытия шлюза — разные причины (`03_GLOSSARY.md` §3.1), и они разведены
+     оттенками одного оранжевого, как требует `14_SCREENS.md` §2.4. */
   --chart-ok: #3fe9b0;
-  --chart-no-client: #ff5c6e;
+  --chart-empty: #1e2b57;
+  --chart-no-sat: #ff5c6e;
+  --chart-gateway-outage: #ff7a2f;
   --chart-no-gateway: #ffa05c;
-  --chart-gateway-outage: #a23ff2;
-  --chart-partition: #8e9bc9;
-  --chart-internal: #7b88bc;
+  --chart-isl-break: #8e9bc9;
+  --chart-internal: #c06bff;
 
+  --accent-cyan: #45e3c4;
+  --shadow-glow-cyan: 0 0 24px rgba(69, 227, 196, 0.45);
+
+  /* Карта: узлы «Node Markers» и легенда макета. Цвета причин карта не заводит — они
+     общие со шкалой и живут в `--chart-*`. */
   --map-client: #3fe9b0;
   --map-client-selected: #ff3d9a;
   --map-gateway: #8a3cd2;
@@ -87,11 +97,14 @@
   --surface-glass: rgba(252, 253, 255, 0.94);
   --surface-chip: rgba(20, 32, 80, 0.08);
   --surface-row-active: rgba(106, 79, 238, 0.12);
+  --surface-row-stripe: rgba(20, 32, 80, 0.04);
+  --surface-accent-soft: rgba(106, 79, 238, 0.12);
   --surface-track: #e2e8fb;
 
   --border-default: rgba(52, 84, 170, 0.28);
   --border-strong: rgba(52, 84, 170, 0.5);
   --border-divider: rgba(52, 84, 170, 0.16);
+  --border-accent: rgba(106, 79, 238, 0.55);
   --border-subtle: rgba(52, 84, 170, 0.14);
 
   --text-primary: #0f1a3d;
@@ -108,23 +121,26 @@
   --status-danger: #c22645;
   --status-success-soft: rgba(11, 122, 88, 0.12);
   --status-danger-soft: rgba(194, 38, 69, 0.12);
+  --status-neutral: #5a6693;
 
-  /* На светлой подложке те же оттенки не проходят по контрасту: взяты затемнённые
-     варианты тех же тонов, порядок и смысл цветов не меняются. */
   --chart-ok: #0b7a58;
-  --chart-no-client: #c22645;
+  --chart-empty: rgba(20, 32, 80, 0.14);
+  --chart-no-sat: #c22645;
+  --chart-gateway-outage: #b34a07;
   --chart-no-gateway: #9a4f0c;
-  --chart-gateway-outage: #7b1fae;
-  --chart-partition: #4c5a86;
-  --chart-internal: #5a6693;
+  --chart-isl-break: #4b5a8f;
+  --chart-internal: #7a34c4;
+
+  --accent-cyan: #0a6f62;
+  --shadow-glow-cyan: none;
 
   --map-client: #0b7a58;
   --map-client-selected: #c2186e;
   --map-gateway: #6b2aa8;
   --map-route: #c2186e;
-  --map-backup: #0b7a58;
+  --map-backup: #0a6f62;
   --map-failed: #c22645;
-  --map-isl: rgba(11, 122, 88, 0.45);
+  --map-isl: rgba(10, 111, 98, 0.45);
   --map-ground-link: rgba(91, 63, 221, 0.4);
 
   --shadow-card: 0 12px 30px rgba(23, 40, 96, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -151,4 +167,48 @@
   --font-display: 'Montserrat', 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-script: 'Caveat', 'Inter Variable', cursive;
+}
+
+/**
+ * Оси, сетка и шкала тепловой карты экранов «05 · Сравнение вариантов» и «07 · Исследования».
+ * Причины перерыва и цвет «связь есть» объявлены выше вместе со шкалой суток: у графиков и
+ * у таймлайна это одни и те же роли, и разъехаться они не должны.
+ */
+:root,
+:root[data-theme='dark'] {
+  --chart-grid: rgba(102, 142, 255, 0.18);
+  --chart-axis: #7b88bc;
+  --chart-target: rgba(242, 245, 255, 0.8);
+
+  /* Подпись внутри ячейки тепловой карты. Ячейка — насыщенная заливка в любой теме,
+     поэтому текст на ней тёмный всегда, а не следует за темой интерфейса. */
+  --chart-cell-ink: #0b1330;
+
+  /* Предупреждение блоком, а не строкой: заливка и рамка одного цвета с текстом. */
+  --status-warning-soft: rgba(255, 160, 92, 0.14);
+  --status-warning-border: rgba(255, 160, 92, 0.4);
+
+  /* Шкала «хуже — лучше» тепловой карты: пять опор от красного к зелёному. */
+  --heat-1: #ff5c6e;
+  --heat-2: #f08a52;
+  --heat-3: #d8b45c;
+  --heat-4: #a6c76a;
+  --heat-5: #3fe9b0;
+}
+
+:root[data-theme='light'] {
+  --chart-grid: rgba(52, 84, 170, 0.18);
+  --chart-axis: #5a6693;
+  --chart-target: rgba(15, 26, 61, 0.7);
+  --chart-cell-ink: #0b1330;
+
+  --status-warning-soft: rgba(154, 79, 12, 0.1);
+  --status-warning-border: rgba(154, 79, 12, 0.35);
+
+  /* Светлые заливки той же шкалы: тёмная подпись внутри ячейки обязана читаться. */
+  --heat-1: #f0a3ae;
+  --heat-2: #f0bf9a;
+  --heat-3: #e4d79b;
+  --heat-4: #c2daa0;
+  --heat-5: #96e2c6;
 }

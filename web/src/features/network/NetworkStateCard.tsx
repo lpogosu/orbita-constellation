@@ -11,9 +11,8 @@ import type {
 } from '@/api/types';
 import { EmptyState, ErrorBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
 import { cx } from '@/lib/cx';
-import { CAUSE_LABEL } from '@/map/palette';
 import type { ComponentSplit } from '@/map/model';
-import { formatClock, formatSpan } from '@/timeline/segments';
+import { causeView, formatGap, formatTick } from '@/lib/run-format';
 
 interface NetworkStateCardProps {
   readonly x: number;
@@ -72,7 +71,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
     >
       <div className="flex items-center gap-[12px]">
         <h2 className="text-title-m font-semibold text-ink-primary" data-numeric>
-          Момент {formatClock(props.tS)}
+          Момент {formatTick(props.tS)}
         </h2>
         {props.stale && (
           <span className="flex items-center gap-[6px] rounded-pill border border-[rgba(255,160,92,0.45)] bg-[rgba(255,160,92,0.16)] px-[12px] py-[5px] text-caption font-semibold text-status-warning">
@@ -160,7 +159,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                         ? '—'
                         : route.reachable
                           ? 'связь есть'
-                          : CAUSE_LABEL[route.primary_cause ?? 'INTERNAL_INCONSISTENCY']}
+                          : causeView(route.primary_cause ?? 'INTERNAL_INCONSISTENCY').full}
                     </span>
                     <span className="text-caption text-ink-muted" data-numeric>
                       {route?.hops ?? '—'} пер.
@@ -176,7 +175,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
         {selected !== null && selectedRoute !== undefined && (
           <>
             <p className="mt-[18px] text-micro font-semibold uppercase tracking-[0.88px] text-ink-muted">
-              Маршрут {selected} · {formatClock(props.tS)}
+              Маршрут {selected} · {formatTick(props.tS)}
             </p>
 
             <div className="mt-[10px] grid grid-cols-3 gap-[7px]">
@@ -247,7 +246,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                 onClick={() => { props.onSeek(clientOutages[0]?.start_s ?? 0); }}
                 className="mt-[12px] text-caption font-semibold text-accent-blue"
               >
-                Перейти к первому перерыву · {formatClock(clientOutages[0]?.start_s ?? 0)} ›
+                Перейти к первому перерыву · {formatTick(clientOutages[0]?.start_s ?? 0)} ›
               </button>
             )}
 
@@ -283,7 +282,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
               term="Худшая доступность"
               value={`${(props.metrics.config.min_client_availability * 100).toFixed(2)} %`}
             />
-            <Summary term="Худший перерыв" value={formatSpan(props.metrics.config.worst_max_gap_s)} />
+            <Summary term="Худший перерыв" value={formatGap(props.metrics.config.worst_max_gap_s)} />
             <Summary
               term="Перестроений маршрутов"
               value={String(props.metrics.config.route_switches_total)}
@@ -317,10 +316,10 @@ function CauseBlock({
     <div className="mt-[14px] rounded-[14px] border border-[rgba(255,92,110,0.38)] bg-[rgba(255,92,110,0.12)] px-[13px] py-[11px]">
       <p className="flex items-center gap-[9px] text-small font-semibold text-status-danger" data-numeric>
         <AlertCircle aria-hidden="true" className="size-[16px]" />
-        {outage.client_id} · нет пути {formatClock(outage.start_s)} – {formatClock(outage.end_s)}
+        {outage.client_id} · нет пути {formatTick(outage.start_s)} – {formatTick(outage.end_s)}
       </p>
       <p className="mt-[8px] text-caption font-medium text-ink-secondary">
-        Причина: {CAUSE_LABEL[outage.primary_cause]}
+        Причина: {causeView(outage.primary_cause).full}
         {outage.truncated_by_horizon && ' · перерыв обрезан границей расчёта'}
       </p>
       <ul className="mt-[8px] space-y-[5px] text-caption text-ink-muted">

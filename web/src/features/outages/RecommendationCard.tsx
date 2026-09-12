@@ -1,8 +1,7 @@
 import { Lightbulb } from 'lucide-react';
 
 import type { ClientComparison, ComparisonEntry } from '@/api/types';
-import { CAUSE_LABEL } from '@/map/palette';
-import { formatClock } from '@/timeline/segments';
+import { causeView, formatTick } from '@/lib/run-format';
 import { formatPoints } from './format';
 
 interface RecommendationCardProps {
@@ -69,7 +68,7 @@ function sentence(worst: ClientComparison, entry: ComparisonEntry): string {
   const added = worst.outage_diff.find((change) => change.kind === 'added');
   if (added !== undefined) {
     parts.push(
-      `появляется перерыв ${formatClock(added.other_start_s ?? 0)}–${formatClock(added.other_end_s ?? 0)} (${CAUSE_LABEL[added.primary_cause]}${
+      `появляется перерыв ${formatTick(added.other_start_s ?? 0)}–${formatTick(added.other_end_s ?? 0)} (${causeView(added.primary_cause).full}${
         added.failed_satellites.length > 0 ? `, аппараты ${added.failed_satellites.join(', ')}` : ''
       })`,
     );

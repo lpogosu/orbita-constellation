@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 
+import { ProjectSelectionProvider } from '@/app/ProjectSelectionProvider';
 import { useCanvasScale } from '@/app/use-canvas-scale';
 import { TopBar } from './TopBar';
 
@@ -12,15 +13,17 @@ export function AppLayout() {
   useCanvasScale();
 
   return (
-    <div className="app-frame">
-      <div className="app-canvas">
-        <TopBar />
-        {/* Страница занимает всё полотно: блоки расставлены по макетным координатам, а
-            шапка лежит выше по слою и забирает нажатия в своей полосе. */}
-        <main className="absolute inset-0">
-          <Outlet />
-        </main>
+    <ProjectSelectionProvider>
+      <div className="app-frame">
+        <div className="app-canvas">
+          <TopBar />
+          {/* Страница занимает всё полотно: блоки расставлены по макетным координатам, а
+              шапка лежит выше по слою и забирает нажатия в своей полосе. */}
+          <main className="absolute inset-0">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </ProjectSelectionProvider>
   );
 }

@@ -3,7 +3,7 @@ import { AlertCircle, ChevronRight, Clock, Crosshair, FolderClosed, Rocket, Sate
 import type { ClientComparison, Run } from '@/api/types';
 import { Skeleton } from '@/components/state/States';
 import { cx } from '@/lib/cx';
-import { formatClock, formatSpan } from '@/timeline/segments';
+import { formatGap, formatTick } from '@/lib/run-format';
 import { formatPoints, rowKey } from './format';
 
 export interface FailureRowRef {
@@ -146,10 +146,10 @@ export function FailuresCard(props: FailuresCardProps) {
                   {row.id}
                 </span>
                 <span className="w-[64px] text-caption text-ink-secondary" data-numeric>
-                  {formatClock(row.startS)}
+                  {formatTick(row.startS)}
                 </span>
                 <span className="w-[64px] text-caption text-ink-secondary" data-numeric>
-                  {formatSpan(row.endS - row.startS)}
+                  {formatGap(row.endS - row.startS)}
                 </span>
                 <button
                   type="button"
@@ -292,7 +292,7 @@ export function FailuresCard(props: FailuresCardProps) {
           className="mt-[10px] flex h-[42px] items-center gap-[10px] rounded-[11px] border border-[rgba(46,139,251,0.45)] bg-[rgba(46,139,251,0.16)] px-[13px] text-caption font-semibold text-accent-blue"
         >
           <Clock aria-hidden="true" className="size-[15px]" />
-          Открыть первый затронутый момент · {formatClock(props.firstDivergenceTS)}
+          Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
         </button>
       )}
     </div>

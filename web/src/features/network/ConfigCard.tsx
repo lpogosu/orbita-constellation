@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import type { RoutingPolicy, Run, Scenario, Variant } from '@/api/types';
 import { cx } from '@/lib/cx';
-import { formatClock } from '@/timeline/segments';
+import { formatTick } from '@/lib/run-format';
 import type { DraftChange } from './draft';
 import { withEnvironment, withFailures, withGatewayOutages, withLaunchStage, withPlane } from './draft';
 import { STAGE_LABEL, stageStep } from './use-run';
@@ -155,7 +155,7 @@ export function ConfigCard(props: ConfigCardProps) {
           )}
           <span className="ml-[8px] text-small font-semibold text-ink-primary">Условия расчёта</span>
           <span className="ml-auto text-micro font-medium text-ink-muted" data-numeric>
-            {formatClock(draft.environment.horizon_s)} · {draft.environment.step_s} с · ISL{' '}
+            {formatTick(draft.environment.horizon_s)} · {draft.environment.step_s} с · ISL{' '}
             {draft.environment.isl_range_km} км
           </span>
         </button>
@@ -405,7 +405,7 @@ function FailureRow({
       {icon}
       <span className="ml-[8px] w-[86px] truncate text-caption font-semibold text-ink-primary">{id}</span>
       <span className="text-caption text-ink-secondary" data-numeric>
-        {formatClock(startS)} – {formatClock(endS)}
+        {formatTick(startS)} – {formatTick(endS)}
       </span>
       <button
         type="button"

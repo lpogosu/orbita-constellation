@@ -1,39 +1,62 @@
+import type { ReactElement } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '@/components/layout/AppLayout';
+import { ComparePage } from '@/features/compare/ComparePage';
+import { ExperimentsPage } from '@/features/experiments/ExperimentsPage';
 import { NetworkPage } from '@/features/network/NetworkPage';
 import { OutagesPage } from '@/features/outages/OutagesPage';
+import { ProjectPage } from '@/features/project/ProjectPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
+import { ResultPage } from '@/features/result/ResultPage';
 import { SectionUnderConstruction } from '@/pages/SectionUnderConstruction';
-import { ProjectContextProvider } from './ProjectContextProvider';
-import { NAV_SECTIONS, OUTAGES_PATH, NETWORK_PATH, PROJECTS_PATH } from './sections';
+import {
+  COMPARISON_PATH,
+  EXPERIMENTS_PATH,
+  NAV_SECTIONS,
+  NETWORK_PATH,
+  OUTAGES_PATH,
+  PROJECTS_PATH,
+} from './sections';
 
 export function App() {
   return (
     <BrowserRouter>
-      <ProjectContextProvider>
-        <Routes>
+      <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to={PROJECTS_PATH} replace />} />
           {NAV_SECTIONS.map((section) => (
             <Route
               key={section.path}
               path={section.path}
-              element={
-                section.path === PROJECTS_PATH ? (
-                  <ProjectsPage />
-                ) : (
-                  <SectionUnderConstruction section={section} />
-                )
-              }
+              element={sectionPage(section.path) ?? <SectionUnderConstruction section={section} />}
             />
           ))}
           <Route path={`${NETWORK_PATH}/:projectId`} element={<NetworkPage />} />
           <Route path={`${OUTAGES_PATH}/:projectId`} element={<OutagesPage />} />
+          <Route path={`${PROJECTS_PATH}/:projectId`} element={<ProjectPage />} />
+          <Route path="/result/:runId" element={<ResultPage />} />
+          <Route path={`${EXPERIMENTS_PATH}/:projectId`} element={<ExperimentsPage />} />
           <Route path="*" element={<Navigate to={PROJECTS_PATH} replace />} />
         </Route>
-        </Routes>
-      </ProjectContextProvider>
+      </Routes>
     </BrowserRouter>
   );
+}
+
+/**
+ * Разделы навигации, у которых уже есть экран. Соседние карточки дописывают сюда по строке,
+ * а не переставляют маршруты: пункт меню и его страница объявлены в одном месте.
+ */
+function sectionPage(path: string): ReactElement | null {
+  if (path === PROJECTS_PATH) {
+    return <ProjectsPage />;
+  }
+  if (path === COMPARISON_PATH) {
+    return <ComparePage />;
+  }
+  if (path === EXPERIMENTS_PATH) {
+    return <ExperimentsPage />;
+  }
+  return null;
 }

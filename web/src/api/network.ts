@@ -1,4 +1,4 @@
-import { jsonBody, request } from './client';
+import { apiRequest, jsonBody } from './client';
 import type {
   BackupPaths,
   ProjectDetail,
@@ -17,19 +17,19 @@ import type {
 export const networkApi = {
   /** `GET /api/projects/{id}` — проект, его варианты и последние запуски. */
   getProject: (projectId: string): Promise<ProjectDetail> =>
-    request<ProjectDetail>(`/api/projects/${encodeURIComponent(projectId)}`),
+    apiRequest<ProjectDetail>(`/api/projects/${encodeURIComponent(projectId)}`),
 
   /** `GET /api/variants/{id}` — вариант со сценарием и diff от родителя. */
   getVariant: (variantId: string): Promise<Variant> =>
-    request<Variant>(`/api/variants/${encodeURIComponent(variantId)}`),
+    apiRequest<Variant>(`/api/variants/${encodeURIComponent(variantId)}`),
 
   /** `POST /api/projects/{id}/variants` — черновик становится сохранённым вариантом. */
   createVariant: (projectId: string, payload: VariantCreateRequest): Promise<Variant> =>
-    request<Variant>(`/api/projects/${encodeURIComponent(projectId)}/variants`, jsonBody(payload)),
+    apiRequest<Variant>(`/api/projects/${encodeURIComponent(projectId)}/variants`, jsonBody(payload)),
 
   /** `POST /api/preview` — один отсчёт черновика без варианта и без запуска. */
   preview: (scenario: Scenario, tS: number, routingPolicy: RoutingPolicy): Promise<Snapshot> =>
-    request<Snapshot>(
+    apiRequest<Snapshot>(
       '/api/preview',
       jsonBody({ scenario, t_s: tS, routing_policy: routingPolicy }),
     ),
@@ -44,7 +44,7 @@ export const networkApi = {
     routingPolicy: RoutingPolicy,
     idempotencyKey: string,
   ): Promise<Run> =>
-    request<Run>(
+    apiRequest<Run>(
       '/api/runs',
       jsonBody(
         { variant_id: variantId, routing_policy: routingPolicy },
@@ -54,27 +54,27 @@ export const networkApi = {
 
   /** `GET /api/runs/{id}` — запасной путь к прогрессу, когда поток событий оборвался. */
   getRun: (runId: string): Promise<Run> =>
-    request<Run>(`/api/runs/${encodeURIComponent(runId)}`),
+    apiRequest<Run>(`/api/runs/${encodeURIComponent(runId)}`),
 
   /** `POST /api/runs/{id}/cancel` — завершённый запуск отменить нельзя, это 409. */
   cancelRun: (runId: string): Promise<Run> =>
-    request<Run>(`/api/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
+    apiRequest<Run>(`/api/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
 
   /** `GET /api/runs/{id}/snapshot?t_s=` — состояние сети на отсчёте. */
   getSnapshot: (runId: string, tS: number): Promise<Snapshot> =>
-    request<Snapshot>(`/api/runs/${encodeURIComponent(runId)}/snapshot?t_s=${tS}`),
+    apiRequest<Snapshot>(`/api/runs/${encodeURIComponent(runId)}/snapshot?t_s=${tS}`),
 
   /** `GET /api/runs/{id}/timeline` — bitset доступности и причины по отсчётам. */
   getTimeline: (runId: string): Promise<RunTimeline> =>
-    request<RunTimeline>(`/api/runs/${encodeURIComponent(runId)}/timeline`),
+    apiRequest<RunTimeline>(`/api/runs/${encodeURIComponent(runId)}/timeline`),
 
   /** `GET /api/runs/{id}/metrics` — ClientMetrics[] и ConfigMetrics. */
   getMetrics: (runId: string): Promise<RunMetrics> =>
-    request<RunMetrics>(`/api/runs/${encodeURIComponent(runId)}/metrics`),
+    apiRequest<RunMetrics>(`/api/runs/${encodeURIComponent(runId)}/metrics`),
 
   /** `GET /api/runs/{id}/backup-paths?t_s=&client_id=` — непересекающиеся пути и разрез. */
   getBackupPaths: (runId: string, tS: number, clientId: string): Promise<BackupPaths> =>
-    request<BackupPaths>(
+    apiRequest<BackupPaths>(
       `/api/runs/${encodeURIComponent(runId)}/backup-paths?t_s=${tS}&client_id=${encodeURIComponent(clientId)}`,
     ),
 };

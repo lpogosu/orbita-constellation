@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { CriticalityState } from './use-comparison';
 import { Skeleton, UnavailableBlock } from '@/components/state/States';
 import { formatPoints } from './format';
-import { formatSpan } from '@/timeline/segments';
+import { formatGap } from '@/lib/run-format';
 
 interface CriticalityCardProps {
   readonly x: number;
@@ -94,7 +94,7 @@ export function CriticalityCard(props: CriticalityCardProps) {
                 </span>
                 <span className="text-base text-ink-secondary" data-numeric>
                   {formatPoints(item.delta_min_client_availability)} ·{' '}
-                  {formatSpan(item.delta_worst_max_gap_s)} · клиентов{' '}
+                  {formatGap(item.delta_worst_max_gap_s)} · клиентов{' '}
                   {item.affected_clients.length}
                 </span>
                 <ChevronRight aria-hidden="true" className="size-[20px] text-ink-muted" />

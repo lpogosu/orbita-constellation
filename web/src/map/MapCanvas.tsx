@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { drawScene, hitTest } from './draw';
 import type { DrawResult } from './draw';
@@ -7,6 +7,7 @@ import { loadMapSprites } from './earth-layer';
 import type { MapSprites } from './earth-layer';
 import type { MapHit, MapLayers, MapModel } from './model';
 import { readPalette } from './palette';
+import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere, MapView } from './projection';
 
 export interface SatelliteAction {
@@ -46,6 +47,9 @@ export function MapCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const resultRef = useRef<DrawResult | null>(null);
   const frameRef = useRef(0);
+
+  const readToken = useTokenColors();
+  const palette = useMemo(() => readPalette(readToken), [readToken]);
 
   const [sprites, setSprites] = useState<MapSprites | null>(null);
   const [hover, setHover] = useState<MapHit | null>(null);
@@ -106,7 +110,7 @@ export function MapCanvas({
         model,
         view,
         layers,
-        palette: readPalette(),
+        palette,
         sprites,
         hoveredId: hover?.id ?? null,
         width,
@@ -120,7 +124,7 @@ export function MapCanvas({
     return () => {
       cancelAnimationFrame(frameRef.current);
     };
-  }, [model, layers, hemisphere, width, height, sprites, hover]);
+  }, [model, layers, hemisphere, width, height, sprites, hover, palette]);
 
   const locate = useCallback((event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

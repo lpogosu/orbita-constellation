@@ -9,18 +9,20 @@ interface DropzoneCardProps {
   onFile: (file: File) => void;
   /** Открыть системный диалог выбора файла; сам `input` живёт на странице. */
   onBrowse: () => void;
-  /** Прокрутка к примерам: вторая кнопка макета ведёт к тем же четырём карточкам. */
+  /** Перевести внимание на четыре карточки примеров — они видны без прокрутки. */
   onShowExamples: () => void;
 }
 
-/** Card / Dropzone: маскот, заголовок, кнопка выбора файла и переход к примерам. */
+/** Card / Dropzone: 1115×498 на (26, 245), координаты частей — из узла макета. */
 export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardProps) {
   const [dragging, setDragging] = useState(false);
 
   return (
     <Card
+      sceneX={26}
+      sceneY={245}
       className={cx(
-        'min-h-[498px] transition-colors duration-150',
+        'absolute left-[26px] top-[245px] h-[498px] w-[1115px] transition-colors duration-150',
         dragging && 'border-line-strong shadow-glow-blue',
       )}
       onDragOver={(event) => {
@@ -47,55 +49,64 @@ export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardP
         )}
       />
 
-      <div className="relative flex min-h-[498px] items-center gap-6 px-[39px] py-10 2xl:gap-10">
-        <figure className="relative w-[260px] shrink-0 2xl:w-[396px]">
-          <img
-            src="/assets/mascot-json.png"
-            alt="Спутник-маскот ОРБИТЫ держит файл сценария"
-            className="w-full"
-          />
-          <figcaption className="mt-2 -rotate-[4deg] pl-3 font-script text-[24px] leading-[1.12] tracking-[0.4px] text-ink-secondary 2xl:pl-6 2xl:text-[30px]">
-            Те же возможности.
-            <br />
-            Больше открытий!
-          </figcaption>
-        </figure>
+      <figure className="absolute left-[39px] top-[60px] m-0">
+        <img
+          src="/assets/mascot-json.png"
+          alt="Спутник-маскот ОРБИТЫ держит файл сценария"
+          className="h-[264px] w-[396px] object-cover"
+        />
+        <figcaption className="absolute left-[26px] top-[284px] w-[211px] -rotate-[4deg] font-script text-[30px] font-bold leading-[1.12] tracking-[0.4px] text-ink-secondary">
+          Те же
+          <br />
+          возможности.
+          <br />
+          Больше открытий!
+        </figcaption>
+      </figure>
 
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[26px] font-bold leading-[1.2] tracking-[-0.4px] text-ink-primary 2xl:text-heading-m">
-            Загрузите сценарий JSON
-          </h2>
-          <p className="mt-3 max-w-[36ch] text-body text-ink-secondary 2xl:text-title-l">
-            {dragging ? 'Отпустите файл — начнётся проверка.' : 'Перетащите файл сюда или выберите его на компьютере.'}
-          </p>
+      <span
+        aria-hidden="true"
+        className="absolute left-[235px] top-[430px] text-[22px] leading-none text-ink-muted"
+      >
+        ♥
+      </span>
 
-          <Button
-            variant="magenta"
-            size="l"
-            className="mt-8 w-[483px] max-w-full"
-            icon={<FolderOpen aria-hidden="true" className="size-6" />}
-            onClick={onBrowse}
-          >
-            Выбрать JSON
-          </Button>
+      <h2 className="absolute left-[493px] top-[78px] text-heading-m font-bold text-ink-primary">
+        Загрузите сценарий JSON
+      </h2>
+      <p className="absolute left-[493px] top-[128px] w-[500px] text-title-l leading-[34px] text-ink-secondary">
+        {dragging
+          ? 'Отпустите файл — начнётся проверка.'
+          : 'Перетащите файл сюда или выберите его на компьютере.'}
+      </p>
 
-          <div className="mt-7 flex w-[485px] max-w-full items-center gap-4 text-body text-ink-muted">
-            <span className="h-px flex-1 bg-line-divider" />
-            или
-            <span className="h-px flex-1 bg-line-divider" />
-          </div>
+      <Button
+        variant="magenta"
+        size="l"
+        className="absolute left-[493px] top-[222px] w-[483px]"
+        icon={<FolderOpen aria-hidden="true" className="size-[24px]" />}
+        onClick={onBrowse}
+      >
+        Выбрать JSON
+      </Button>
 
-          <Button
-            variant="secondary"
-            size="l"
-            className="mt-6 h-[66px] w-[339px] max-w-full"
-            icon={<FileText aria-hidden="true" className="size-6" />}
-            onClick={onShowExamples}
-          >
-            Примеры сценариев
-          </Button>
-        </div>
+      <div aria-hidden="true" className="absolute left-[492px] top-[324px] h-[24px] w-[485px]">
+        <span className="absolute left-0 top-[11px] h-px w-[202px] bg-line-divider" />
+        <span className="absolute left-[222px] top-0 text-body leading-[1.45] text-ink-muted">
+          или
+        </span>
+        <span className="absolute left-[284px] top-[11px] h-px w-[201px] bg-line-divider" />
       </div>
+
+      <Button
+        variant="secondary"
+        size="l"
+        className="absolute left-[565px] top-[368px] h-[66px] w-[339px]"
+        icon={<FileText aria-hidden="true" className="size-[24px]" />}
+        onClick={onShowExamples}
+      >
+        Примеры сценариев
+      </Button>
     </Card>
   );
 }

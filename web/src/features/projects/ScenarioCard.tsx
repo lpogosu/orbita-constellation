@@ -11,7 +11,7 @@ import {
   Link2,
   Radio,
   Rocket,
-  Timer,
+  Settings,
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -26,6 +26,11 @@ import { formatCount, formatDuration, shortHash } from '@/lib/format';
 import { sourceName, sourceOrigin } from './scenario-source';
 import type { ScenarioReview } from './use-scenario-review';
 
+/** Высота прокручиваемой середины карточки: от «Параметров сценария» до нижнего разделителя. */
+const BODY_HEIGHT = 348;
+/** Строка с ошибкой создания проекта забирает высоту у середины, а не у ряда кнопок. */
+const BODY_HEIGHT_WITH_ERROR = 316;
+
 interface ScenarioCardProps {
   review: ScenarioReview;
   creating: boolean;
@@ -35,7 +40,7 @@ interface ScenarioCardProps {
   onShowProblems: () => void;
 }
 
-/** Card / Сценарий: обзор загруженного файла и переход в проект. */
+/** Card / Сценарий: 721×600 на (1170, 452), обзор загруженного файла и вход в проект. */
 export function ScenarioCard({
   review,
   creating,
@@ -45,48 +50,50 @@ export function ScenarioCard({
   onShowProblems,
 }: ScenarioCardProps) {
   return (
-    <Card className="flex min-h-[320px] flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col p-[19px]">
-        {review.kind === 'idle' && (
-          <EmptyState
-            icon={<FileText aria-hidden="true" className="size-6" />}
-            title="Сценарий не выбран"
-            hint="Перетащите файл или выберите пример — здесь появится обзор сценария: состав группировки, сетка времени и отпечаток конфигурации."
-          />
-        )}
+    <Card
+      sceneX={1170}
+      sceneY={452}
+      className="absolute left-[1170px] top-[452px] h-[600px] w-[721px]"
+    >
+      {review.kind === 'idle' && (
+        <EmptyState
+          icon={<FileText aria-hidden="true" className="size-6" />}
+          title="Сценарий не выбран"
+          hint="Перетащите файл или выберите пример — здесь появится обзор сценария: состав группировки, сетка времени и отпечаток конфигурации."
+        />
+      )}
 
-        {review.kind === 'checking' && <CheckingState name={sourceName(review.source)} />}
+      {review.kind === 'checking' && <CheckingState name={sourceName(review.source)} />}
 
-        {review.kind === 'unavailable' && (
-          <ErrorBlock
-            title="Проверка не выполнена"
-            message={review.message}
-            onRetry={onRecheck}
-            retryLabel="Повторить проверку"
-          />
-        )}
+      {review.kind === 'unavailable' && (
+        <ErrorBlock
+          title="Проверка не выполнена"
+          message={review.message}
+          onRetry={onRecheck}
+          retryLabel="Повторить проверку"
+        />
+      )}
 
-        {review.kind === 'rejected' && (
-          <RejectedState
-            name={sourceName(review.source)}
-            origin={sourceOrigin(review.source)}
-            count={review.problems.length}
-            onShowProblems={onShowProblems}
-          />
-        )}
+      {review.kind === 'rejected' && (
+        <RejectedState
+          name={sourceName(review.source)}
+          origin={sourceOrigin(review.source)}
+          count={review.problems.length}
+          onShowProblems={onShowProblems}
+        />
+      )}
 
-        {review.kind === 'accepted' && (
-          <AcceptedState
-            name={sourceName(review.source)}
-            origin={sourceOrigin(review.source)}
-            summary={review.summary}
-            scenario={review.parsed.document as Scenario}
-            creating={creating}
-            createError={createError}
-            onOpenProject={onOpenProject}
-          />
-        )}
-      </div>
+      {review.kind === 'accepted' && (
+        <AcceptedState
+          name={sourceName(review.source)}
+          origin={sourceOrigin(review.source)}
+          summary={review.summary}
+          scenario={review.parsed.document as Scenario}
+          creating={creating}
+          createError={createError}
+          onOpenProject={onOpenProject}
+        />
+      )}
     </Card>
   );
 }
@@ -94,16 +101,15 @@ export function ScenarioCard({
 function CheckingState({ name }: { name: string }) {
   return (
     <LoadingBlock label={`Проверяем сценарий ${name}`}>
-      <div className="space-y-4">
-        <Skeleton className="h-[96px] w-full rounded-xl" />
-        <p className="text-base text-ink-secondary">Проверяем сценарий…</p>
-        <div className="grid grid-cols-4 gap-4">
-          {Array.from({ length: 8 }, (_, index) => (
-            <Skeleton key={index} className="h-[26px]" />
-          ))}
-        </div>
-        <Skeleton className="h-[118px] w-full" />
+      <Skeleton className="absolute left-[19px] top-[19px] h-[96px] w-[681px] rounded-[20px]" />
+      <div className="absolute left-[27px] top-[151px] grid w-[665px] grid-cols-4 gap-x-[8px] gap-y-[18px]">
+        {Array.from({ length: 8 }, (_, index) => (
+          <Skeleton key={index} className="h-[26px] w-[160px]" />
+        ))}
       </div>
+      <p className="absolute left-[27px] top-[297px] text-base text-ink-secondary">
+        Проверяем сценарий…
+      </p>
     </LoadingBlock>
   );
 }
@@ -120,24 +126,25 @@ function RejectedState({
   onShowProblems: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <>
       <FileHeader
         name={name}
         origin={origin}
         badge={
-          <Badge tone="danger" icon={<AlertTriangle aria-hidden="true" className="size-3.5" />}>
+          <Badge tone="danger" icon={<AlertTriangle aria-hidden="true" className="size-[14px]" />}>
             Файл отклонён
           </Badge>
         }
       />
-      <p className="text-base text-ink-secondary">
+      <Divider top={135} />
+      <p className="absolute left-[27px] top-[151px] w-[665px] text-base text-ink-secondary">
         {formatCount(count, 'ошибка', 'ошибки', 'ошибок')} во входных данных. Сервис перечисляет
         все сразу, чтобы файл правился за один проход.
       </p>
-      <Button variant="secondary" className="self-start" onClick={onShowProblems}>
+      <Button variant="secondary" className="absolute left-[27px] top-[523px]" onClick={onShowProblems}>
         Показать ошибки
       </Button>
-    </div>
+    </>
   );
 }
 
@@ -161,25 +168,29 @@ function AcceptedState({
   const { environment, design, ground_sites: groundSites } = scenario;
 
   return (
-    // Шапка файла и кнопки закреплены, а прокручивается только середина карточки:
-    // «Открыть проект» обязан быть виден без прокрутки страницы.
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <>
       <FileHeader
         name={name}
         origin={origin}
         badge={
-          <Badge tone="success" icon={<Check aria-hidden="true" className="size-3.5" />}>
+          <Badge tone="success" icon={<Check aria-hidden="true" className="size-[14px]" />}>
             Файл корректен
           </Badge>
         }
       />
+      <Divider top={135} />
 
-      <Divider />
+      {/* Шапка файла и ряд кнопок закреплены: «Открыть проект» не уезжает, когда
+          раскрывают таблицы. Прокручивается только середина. */}
+      <div
+        className="scroll-area absolute left-[27px] top-[151px] w-[671px] pr-[6px]"
+        style={{ height: createError === null ? BODY_HEIGHT : BODY_HEIGHT_WITH_ERROR }}
+      >
+        <h3 className="h-[22px] text-[18px] font-semibold leading-[22px] text-ink-primary">
+          Параметры сценария
+        </h3>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <section className="px-2">
-        <h3 className="text-[18px] font-semibold text-ink-primary">Параметры сценария</h3>
-        <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-[18px] 2xl:grid-cols-4">
+        <dl className="mt-[16px] grid grid-cols-4 gap-x-[8px] gap-y-[18px]">
           <Param icon={<Rocket aria-hidden="true" className="size-[22px]" />} term="Аппараты">
             {formatCount(summary.satellite_count, 'спутник', 'спутника', 'спутников')}
           </Param>
@@ -195,7 +206,7 @@ function AcceptedState({
           <Param icon={<Clock aria-hidden="true" className="size-[22px]" />} term="Горизонт">
             {formatDuration(environment.horizon_s)}
           </Param>
-          <Param icon={<Timer aria-hidden="true" className="size-[22px]" />} term="Шаг сетки">
+          <Param icon={<Settings aria-hidden="true" className="size-[22px]" />} term="Шаг сетки">
             шаг {environment.step_s} с
           </Param>
           <Param icon={<Link2 aria-hidden="true" className="size-[22px]" />} term="Дальность ISL">
@@ -206,118 +217,76 @@ function AcceptedState({
           </Param>
         </dl>
 
-        <p className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-ink-muted">
+        <hr className="mt-[22px] border-0 border-t border-line-divider" />
+
+        {/* Обе секции свёрнуты: кнопка «Открыть проект» должна быть видна сразу. */}
+        <Collapsible className="mt-[15px]" title="Плоскости" count={design.planes.length}>
+          <PlanesTable planes={design.planes} />
+        </Collapsible>
+
+        <Collapsible className="mt-[18px]" title="Наземные станции" count={groundSites.length}>
+          <GroundSitesTable sites={groundSites} />
+        </Collapsible>
+
+        <p className="mt-[18px] flex items-center gap-x-[20px] text-caption text-ink-muted">
           <span data-numeric>
             Активных аппаратов: {summary.active_satellite_count} из {summary.satellite_count} ·
             очередей запущено {design.launch_stage}
           </span>
-          <span className="inline-flex items-center gap-1.5" title={summary.config_hash}>
-            <Hash aria-hidden="true" className="size-3.5" />
+          <span className="inline-flex items-center gap-[6px]" title={summary.config_hash}>
+            <Hash aria-hidden="true" className="size-[14px]" />
             <span className="font-mono">{shortHash(summary.config_hash)}</span>
           </span>
         </p>
-      </section>
-
-      <GroundSiteChips sites={groundSites} />
-
-      <Divider />
-
-      {/* Обе секции свёрнуты: кнопка «Открыть проект» должна быть видна сразу. */}
-      <Collapsible title="Плоскости" count={design.planes.length}>
-        <PlanesTable planes={design.planes} />
-      </Collapsible>
-
-      <Collapsible title="Наземные станции" count={groundSites.length}>
-        <GroundSitesTable sites={groundSites} />
-      </Collapsible>
       </div>
 
-      <div className="shrink-0 pt-2">
-        {createError !== null && (
-          <p role="alert" className="mb-3 flex items-start gap-2 text-small text-status-danger">
-            <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            {createError}
-          </p>
-        )}
-        <Divider />
-        <div className="mt-4 flex flex-wrap gap-3 2xl:gap-5">
-          <Button
-            className="min-w-[196px] flex-1 2xl:max-w-[385px]"
-            disabled={creating}
-            onClick={onOpenProject}
-            iconAfter={<ChevronRight aria-hidden="true" className="size-[22px]" />}
-          >
-            {creating ? 'Создаём проект…' : 'Открыть проект'}
-          </Button>
-          <Button
-            variant="secondary"
-            className="min-w-[196px] flex-1 2xl:max-w-[260px]"
-            disabled
-            title="Доступно, когда открыт проект: файл станет его новым вариантом"
-          >
-            Добавить как вариант
-          </Button>
-        </div>
-      </div>
-    </div>
+      {createError !== null && (
+        <p
+          role="alert"
+          className="absolute left-[27px] top-[479px] flex w-[665px] items-start gap-2 text-small text-status-danger"
+        >
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          {createError}
+        </p>
+      )}
+
+      <Divider top={507} />
+
+      <Button
+        className="absolute left-[27px] top-[523px] w-[385px]"
+        disabled={creating}
+        onClick={onOpenProject}
+        iconAfter={<ChevronRight aria-hidden="true" className="size-[22px]" />}
+      >
+        {creating ? 'Создаём проект…' : 'Открыть проект'}
+      </Button>
+      <Button
+        variant="secondary"
+        className="absolute left-[432px] top-[523px] w-[260px]"
+        disabled
+        title="Доступно, когда открыт проект: файл станет его новым вариантом"
+      >
+        Добавить как вариант
+      </Button>
+    </>
   );
 }
 
-/**
- * Наземные объекты сценария: идентификатор и роль каждого пункта. Роль показана и
- * цветом, и иконкой, и словом в подсказке — цвета одного мало.
- */
-function GroundSiteChips({ sites }: { sites: readonly GroundSite[] }) {
+/** Header Block макета: 681×96 на (19, 19) внутри карточки. */
+function FileHeader({ name, origin, badge }: { name: string; origin: string; badge: ReactNode }) {
   return (
-    <section className="px-2">
-      <h3 className="text-[16px] font-semibold text-ink-primary">Наземные объекты</h3>
-      <ul className="mt-3 flex flex-wrap gap-2">
-        {sites.map((site) => {
-          const gateway = site.role === 'gateway';
-          return (
-            <li key={site.id}>
-              <span
-                title={`${site.name} · ${gateway ? 'шлюз' : 'клиент'}`}
-                className={cx(
-                  'inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-small font-semibold',
-                  gateway
-                    ? 'border-status-success bg-[var(--status-success-soft)] text-status-success'
-                    : 'border-accent-violet-light bg-[rgba(108,92,231,0.18)] text-accent-violet-light',
-                )}
-              >
-                {gateway ? (
-                  <Radio aria-hidden="true" className="size-3.5" />
-                ) : (
-                  <Users aria-hidden="true" className="size-3.5" />
-                )}
-                {site.id}
-                <span className="sr-only">{gateway ? 'шлюз' : 'клиент'}</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function FileHeader({
-  name,
-  origin,
-  badge,
-}: {
-  name: string;
-  origin: string;
-  badge: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-6 rounded-xl bg-surface-raised px-6 py-[22px]">
-      <FileText aria-hidden="true" className="size-[34px] shrink-0 text-accent-blue" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-semibold text-ink-primary">{name}</p>
-        <p className="truncate text-caption text-ink-muted">{origin}</p>
-      </div>
-      {badge}
+    <div className="absolute left-[19px] top-[19px] h-[96px] w-[681px] rounded-xl bg-surface-raised">
+      <FileText
+        aria-hidden="true"
+        className="absolute left-[24px] top-[31px] size-[34px] text-accent-blue"
+      />
+      <p className="absolute left-[72px] top-[26px] w-[424px] truncate text-base font-semibold leading-[21px] text-ink-primary">
+        {name}
+      </p>
+      <p className="absolute left-[72px] top-[54px] w-[424px] truncate text-caption leading-[16px] text-ink-muted">
+        {origin}
+      </p>
+      <div className="absolute right-[28px] top-[33px]">{badge}</div>
     </div>
   );
 }
@@ -334,7 +303,7 @@ function Badge({
   return (
     <span
       className={cx(
-        'inline-flex shrink-0 items-center gap-[7px] rounded-pill border py-[7px] pl-3 pr-3.5 text-[13px] font-semibold',
+        'inline-flex shrink-0 items-center gap-[7px] rounded-pill border py-[7px] pl-[12px] pr-[14px] text-[13px] font-semibold',
         tone === 'success'
           ? 'border-status-success bg-[var(--status-success-soft)] text-status-success'
           : 'border-status-danger bg-[var(--status-danger-soft)] text-status-danger',
@@ -346,35 +315,35 @@ function Badge({
   );
 }
 
-function Param({
-  icon,
-  term,
-  children,
-}: {
-  icon: ReactNode;
-  term: string;
-  children: ReactNode;
-}) {
+/** Param макета: иконка 22 и подпись 14 в ячейке 160×26. */
+function Param({ icon, term, children }: { icon: ReactNode; term: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-accent-blue">{icon}</span>
+    <div className="flex h-[26px] w-[160px] items-center gap-[8px]">
+      <span className="shrink-0 text-accent-blue">{icon}</span>
       <dt className="sr-only">{term}</dt>
-      <dd className="truncate text-small font-medium text-ink-secondary" data-numeric>
+      <dd className="truncate text-small font-medium leading-[26px] text-ink-secondary" data-numeric>
         {children}
       </dd>
     </div>
   );
 }
 
-function Divider() {
-  return <hr className="border-0 border-t border-line-divider" />;
+function Divider({ top }: { top: number }) {
+  return (
+    <hr
+      className="absolute left-[27px] w-[665px] border-0 border-t border-line-divider"
+      style={{ top }}
+    />
+  );
 }
 
 function Collapsible({
+  className,
   title,
   count,
   children,
 }: {
+  className: string;
   title: string;
   count: number;
   children: ReactNode;
@@ -383,7 +352,7 @@ function Collapsible({
   const bodyId = useId();
 
   return (
-    <section className="px-2">
+    <section className={className}>
       <button
         type="button"
         aria-expanded={open}
@@ -391,7 +360,7 @@ function Collapsible({
         onClick={() => {
           setOpen((current) => !current);
         }}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex h-[30px] w-full items-center gap-[8px] text-left"
       >
         {open ? (
           <ChevronDown aria-hidden="true" className="size-[18px] text-ink-secondary" />
@@ -406,75 +375,109 @@ function Collapsible({
           {open ? 'Свернуть' : 'Развернуть'}
         </span>
       </button>
-      <div id={bodyId} hidden={!open} className="mt-3">
+      <div id={bodyId} hidden={!open} className="mt-[6px]">
         {children}
       </div>
     </section>
   );
 }
 
+/**
+ * Цвет точки — опознавательный знак плоскости, тот же, которым она будет нарисована на
+ * карте. Состояние им не кодируется: колонки «статус» здесь нет, потому что источника
+ * для неё в API нет. Колонки «спутников» нет по той же причине: `validate` не возвращает
+ * состав по плоскостям, а считать его в браузере нельзя.
+ */
+const PLANE_COLORS = ['bg-status-success', 'bg-accent-violet-light', 'bg-accent-blue'];
+
 function PlanesTable({ planes }: { planes: readonly Plane[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-small">
-        <thead>
-          <tr className="border-b border-line-divider text-micro uppercase text-ink-muted">
-            <Th>Плоскость</Th>
-            <Th>RAAN</Th>
-            <Th>Фаза</Th>
+    <table className="w-full table-fixed text-small [&_tr:first-child_td]:pt-[12px]">
+      <colgroup>
+        <col className="w-[172px]" />
+        <col className="w-[130px]" />
+        <col />
+      </colgroup>
+      <thead>
+        <tr className="border-b border-line-divider">
+          <Th>Плоскость</Th>
+          <Th>RAAN</Th>
+          <Th>Фаза</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {planes.map((plane, index) => (
+          <tr key={plane.id}>
+            <Td className="font-semibold text-ink-primary">
+              <span className="flex items-center gap-[7px]">
+                <span
+                  aria-hidden="true"
+                  className={cx(
+                    'size-[9px] shrink-0 rounded-full',
+                    PLANE_COLORS[index % PLANE_COLORS.length],
+                  )}
+                />
+                {plane.id}
+              </span>
+            </Td>
+            <Td>{plane.raan_deg}°</Td>
+            <Td>{plane.phase_deg}°</Td>
           </tr>
-        </thead>
-        <tbody>
-          {planes.map((plane) => (
-            <tr key={plane.id}>
-              <Td className="font-semibold text-ink-primary">{plane.id}</Td>
-              <Td>{plane.raan_deg}°</Td>
-              <Td>{plane.phase_deg}°</Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 function GroundSitesTable({ sites }: { sites: readonly GroundSite[] }) {
   return (
-    <div className="max-h-[220px] overflow-auto">
-      <table className="w-full text-small">
-        <thead>
-          <tr className="border-b border-line-divider text-micro uppercase text-ink-muted">
-            <Th>Пункт</Th>
-            <Th>Название</Th>
-            <Th>Роль</Th>
-            <Th>Широта</Th>
-            <Th>Долгота</Th>
+    <table className="w-full table-fixed text-small [&_tr:first-child_td]:pt-[12px]">
+      <colgroup>
+        <col className="w-[110px]" />
+        <col />
+        <col className="w-[100px]" />
+        <col className="w-[100px]" />
+        <col className="w-[100px]" />
+      </colgroup>
+      <thead>
+        <tr className="border-b border-line-divider">
+          <Th>Пункт</Th>
+          <Th>Название</Th>
+          <Th>Роль</Th>
+          <Th>Широта</Th>
+          <Th>Долгота</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {sites.map((site) => (
+          <tr key={site.id}>
+            <Td className="font-semibold text-ink-primary">{site.id}</Td>
+            <Td>{site.name}</Td>
+            <Td>{site.role === 'gateway' ? 'шлюз' : 'клиент'}</Td>
+            <Td>{site.lat_deg}°</Td>
+            <Td>{site.lon_deg}°</Td>
           </tr>
-        </thead>
-        <tbody>
-          {sites.map((site) => (
-            <tr key={site.id}>
-              <Td className="font-semibold text-ink-primary">{site.id}</Td>
-              <Td>{site.name}</Td>
-              <Td>{site.role === 'gateway' ? 'шлюз' : 'клиент'}</Td>
-              <Td>{site.lat_deg}°</Td>
-              <Td>{site.lon_deg}°</Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 function Th({ children }: { children: ReactNode }) {
   return (
-    <th scope="col" className="py-2 pr-4 text-left font-semibold tracking-[0.66px]">
+    <th
+      scope="col"
+      className="h-[22px] pr-[12px] text-left align-top text-micro font-semibold uppercase text-ink-muted"
+    >
       {children}
     </th>
   );
 }
 
 function Td({ children, className }: { children: ReactNode; className?: string }) {
-  return <td className={cx('py-2 pr-4 text-ink-secondary', className)}>{children}</td>;
+  return (
+    <td className={cx('h-[28px] pr-[12px] align-middle text-ink-secondary', className)}>
+      {children}
+    </td>
+  );
 }

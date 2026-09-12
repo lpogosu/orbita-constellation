@@ -17,7 +17,12 @@ import { sourceName } from './scenario-source';
 import type { ScenarioSource } from './scenario-source';
 import { useScenarioReview } from './use-scenario-review';
 
-/** Экран «01 · Проекты — Новый расчёт»: загрузка сценария, обзор и вход в проект. */
+/**
+ * Экран «01 · Проекты — Новый расчёт». Блоки расставлены по координатам макета внутри
+ * полотна 1920×1080: шапка 1920×92, заголовок и поле названия на y = 124, дропзона
+ * 1115×498 на (26, 245), четыре примера 262×227 на y = 800 с шагом 281, «Недавние
+ * проекты» 721×290 на (1170, 142) и карточка «Сценарий» 721×600 на (1170, 452).
+ */
 export function ProjectsPage() {
   const navigate = useNavigate();
   const { review, check, reset } = useScenarioReview();
@@ -81,7 +86,7 @@ export function ProjectsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1920px] px-[26px] pb-14 pt-8">
+    <div className="absolute inset-0">
       <input
         ref={fileInput}
         type="file"
@@ -96,84 +101,72 @@ export function ProjectsPage() {
           event.target.value = '';
         }}
       />
-      <div className="grid gap-[29px] xl:grid-cols-[1115fr_721fr]">
-        <div className="min-w-0">
-          <div className="px-[18px]">
-            {/* Заголовок и поле названия стоят одной строкой, подзаголовок — под ними:
-                так же, как в макете. */}
-            <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-6">
-              <h1 className="text-heading-xl font-bold text-ink-primary">Новый расчёт</h1>
-              <ProjectTitleField
-                value={title}
-                disabled={review.kind !== 'accepted'}
-                placeholder={
-                  review.kind === 'accepted'
-                    ? 'Название из meta.title файла'
-                    : 'Сначала выберите сценарий'
-                }
-                onChange={(value) => {
-                  setTitleEdited(true);
-                  setTitle(value);
-                }}
-              />
-            </div>
-            <p className="mt-4 text-title-l text-ink-secondary">
-              Загрузите сценарий JSON или выберите один из примеров, чтобы начать работу.
-            </p>
-          </div>
 
-          <div className="mt-6">
-            <DropzoneCard
-              onFile={(file) => {
-                startCheck({ kind: 'file', file });
-              }}
-              onBrowse={browse}
-              onShowExamples={() => {
-                examplesSection.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }}
-            />
-          </div>
+      <h1 className="absolute left-[44px] top-[124px] text-heading-xl font-bold text-ink-primary">
+        Новый расчёт
+      </h1>
+      <p className="absolute left-[44px] top-[203px] w-[968px] text-title-l leading-[34px] text-ink-secondary">
+        Загрузите сценарий JSON или выберите один из примеров, чтобы начать работу.
+      </p>
 
-          <ScenarioExampleCards
-            ref={examplesSection}
-            examples={examples.data}
-            error={examples.error}
-            onRetry={examples.reload}
-            selectedName={review.kind === 'idle' ? null : sourceName(review.source)}
-            onPick={(example) => {
-              startCheck({ kind: 'example', example });
-            }}
-          />
-        </div>
+      <ProjectTitleField
+        value={title}
+        disabled={review.kind !== 'accepted'}
+        placeholder={
+          review.kind === 'accepted' ? 'Название из meta.title файла' : 'Сначала выберите сценарий'
+        }
+        onChange={(value) => {
+          setTitleEdited(true);
+          setTitle(value);
+        }}
+      />
 
-        {/* Правая колонка не уезжает вместе с примерами: она ограничена высотой окна,
-            липнет к верху и прокручивается внутри себя, поэтому «Открыть проект» виден
-            без прокрутки страницы. */}
-        <div className="flex min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-124px)] xl:self-start">
-          <RecentProjectsCard
-            projects={projects.data}
-            error={projects.error}
-            onRetry={projects.reload}
-            onOpen={(project) => {
-              navigate(`${NETWORK_PATH}/${project.id}`);
-            }}
-          />
-          <ScenarioCard
-            review={review}
-            creating={creating}
-            createError={createError}
-            onOpenProject={openProject}
-            onRecheck={() => {
-              if (review.kind !== 'idle') {
-                startCheck(review.source);
-              }
-            }}
-            onShowProblems={() => {
-              setProblemsHidden(false);
-            }}
-          />
-        </div>
-      </div>
+      <DropzoneCard
+        onFile={(file) => {
+          startCheck({ kind: 'file', file });
+        }}
+        onBrowse={browse}
+        onShowExamples={() => {
+          // Примеры видны на том же экране, прокручивать нечего: кнопка переводит
+          // на них фокус, чтобы выбор шёл и с клавиатуры.
+          examplesSection.current?.querySelector('button')?.focus();
+        }}
+      />
+
+      <ScenarioExampleCards
+        ref={examplesSection}
+        examples={examples.data}
+        error={examples.error}
+        onRetry={examples.reload}
+        selectedName={review.kind === 'idle' ? null : sourceName(review.source)}
+        onPick={(example) => {
+          startCheck({ kind: 'example', example });
+        }}
+      />
+
+      <RecentProjectsCard
+        projects={projects.data}
+        error={projects.error}
+        onRetry={projects.reload}
+        onOpen={(project) => {
+          navigate(`${NETWORK_PATH}/${project.id}`);
+        }}
+      />
+
+      <ScenarioCard
+        review={review}
+        creating={creating}
+        createError={createError}
+        onOpenProject={openProject}
+        onRecheck={() => {
+          if (review.kind !== 'idle') {
+            startCheck(review.source);
+          }
+        }}
+        onShowProblems={() => {
+          setProblemsHidden(false);
+        }}
+      />
 
       {review.kind === 'rejected' && !problemsHidden && (
         <ValidationErrorsModal

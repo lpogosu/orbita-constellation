@@ -5,56 +5,60 @@ import { cx } from '@/lib/cx';
 import { NAV_SECTIONS } from '@/app/sections';
 import { useTheme } from '@/theme/use-theme';
 
-/** Шапка макета (Top Bar): бренд, навигация пяти разделов, контекст проекта и тема. */
+/**
+ * Top Bar макета: 1920×92, координаты частей — из узла шапки. Ужимать её больше не
+ * нужно: полотно целиком масштабируется под окно.
+ */
 export function TopBar() {
   const { theme, toggle } = useTheme();
 
   return (
-    <header className="relative h-[92px] shrink-0 border-b border-line-strong bg-[var(--topbar-bg)]">
+    <header className="absolute inset-x-0 top-0 z-10 h-[92px] bg-[var(--topbar-bg)]">
       <Panorama />
 
-      {/* Ниже 1536 px шапка ужимается: макет нарисован для 1920, но обязан работать с
-          1366 без горизонтальной прокрутки. */}
-      <div className="relative flex h-full items-center gap-4 px-5 2xl:gap-6 2xl:px-10">
-        <div className="flex shrink-0 items-center gap-2.5 2xl:gap-3.5">
-          <img
-            src="/assets/logo-mark.png"
-            alt=""
-            className="h-11 w-14 object-contain 2xl:h-[60px] 2xl:w-[78px]"
-          />
-          <span className="font-display text-[26px] font-bold leading-none tracking-[2px] text-ink-primary 2xl:text-[40px] 2xl:tracking-[3.2px]">
-            ОРБИТА
-          </span>
-        </div>
+      <div aria-hidden="true" className="absolute left-0 top-[91px] h-px w-full bg-line-strong" />
 
-        <nav aria-label="Разделы" className="flex items-center gap-1 2xl:gap-5">
-          {NAV_SECTIONS.map((section) => (
-            <NavItem key={section.path} to={section.path} label={section.title} />
-          ))}
-        </nav>
-
-        <div className="ml-auto flex shrink-0 items-center gap-4 2xl:gap-6">
-          <ProjectContext />
-          <p className="hidden text-micro font-medium tracking-[0.66px] text-ink-primary 2xl:block">
-            СВЯЗЬ ДАЛЬШЕ ГРАНИЦ
-          </p>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-pressed={theme === 'light'}
-            className="flex size-12 items-center justify-center rounded-[24px] border border-line bg-surface-raised text-ink-primary transition-colors duration-150 hover:border-line-strong"
-          >
-            {theme === 'dark' ? (
-              <Moon aria-hidden="true" className="size-[26px]" />
-            ) : (
-              <Sun aria-hidden="true" className="size-[26px]" />
-            )}
-            <span className="sr-only">
-              {theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
-            </span>
-          </button>
-        </div>
+      <div className="absolute left-[40px] top-[16px] flex items-center gap-[14px]">
+        <img
+          src="/assets/logo-mark.png"
+          alt=""
+          className="h-[60px] w-[78px] object-contain"
+        />
+        <span className="font-display text-[40px] font-bold leading-none tracking-[3.2px] text-ink-primary">
+          ОРБИТА
+        </span>
       </div>
+
+      <nav
+        aria-label="Разделы"
+        className="absolute left-[352px] top-[19px] flex items-center gap-[20px]"
+      >
+        {NAV_SECTIONS.map((section) => (
+          <NavItem key={section.path} to={section.path} label={section.title} />
+        ))}
+      </nav>
+
+      <ProjectContext />
+
+      <p className="absolute left-[1555px] top-[36px] h-[20px] w-[220px] text-right text-micro font-medium leading-[22px] text-ink-primary">
+        СВЯЗЬ ДАЛЬШЕ ГРАНИЦ
+      </p>
+
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={theme === 'light'}
+        className="absolute left-[1787px] top-[22px] flex size-[48px] items-center justify-center rounded-[24px] border border-line bg-surface-raised text-ink-primary transition-colors duration-150 hover:border-line-strong"
+      >
+        {theme === 'dark' ? (
+          <Moon aria-hidden="true" className="size-[26px]" />
+        ) : (
+          <Sun aria-hidden="true" className="size-[26px]" />
+        )}
+        <span className="sr-only">
+          {theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+        </span>
+      </button>
     </header>
   );
 }
@@ -65,10 +69,10 @@ function NavItem({ to, label }: { to: string; label: string }) {
       to={to}
       className={({ isActive }) =>
         cx(
-          'flex flex-col items-center justify-center gap-1 whitespace-nowrap rounded-pill pb-[9px] pt-[11px] text-[17px] font-medium transition-colors duration-150 2xl:text-[22px]',
+          'flex flex-col items-center justify-center gap-[4px] whitespace-nowrap rounded-pill pb-[9px] pt-[11px] text-[22px] font-medium leading-[29px] transition-colors duration-150',
           isActive
-            ? 'border border-line bg-surface-raised px-4 text-ink-primary 2xl:px-[38px]'
-            : 'px-3 text-ink-secondary hover:text-ink-primary 2xl:px-[28px]',
+            ? 'border border-line bg-surface-raised px-[38px] text-ink-primary'
+            : 'px-[28px] text-ink-secondary hover:text-ink-primary',
         )
       }
     >
@@ -93,28 +97,33 @@ function NavItem({ to, label }: { to: string; label: string }) {
 function ProjectContext() {
   return (
     <div
-      className="hidden h-11 w-[272px] items-center gap-2 rounded-sm border border-line bg-surface-input px-3.5 opacity-70 2xl:flex"
+      className="absolute left-[1268px] top-[24px] flex h-[44px] w-[272px] items-center gap-[8px] rounded-sm border border-line bg-surface-input pl-[14px] pr-[12px] opacity-70"
       title="Откройте проект, чтобы переключать его варианты"
     >
-      <FolderClosed aria-hidden="true" className="size-4 text-ink-muted" />
-      <span className="text-caption font-medium text-ink-secondary">Проект не выбран</span>
+      <FolderClosed aria-hidden="true" className="size-[16px] text-ink-muted" />
+      <span className="text-[13px] font-medium text-ink-secondary">Проект не выбран</span>
     </div>
   );
 }
 
-/** Полярная панорама макета, растянутая по правой половине шапки. */
+/** Полярная панорама макета: 1150×92 в правой части шапки, под растворяющей заливкой. */
 function Panorama() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
-        className="absolute inset-y-0 right-0 w-[60%] bg-cover bg-center"
-        style={{ backgroundImage: 'var(--scenery-panorama)' }}
+        className="absolute left-[770px] top-0 h-[92px] w-[1150px]"
+        style={{
+          backgroundImage: 'var(--scenery-panorama)',
+          backgroundSize: '1150px 489px',
+          backgroundPosition: '0 -329px',
+        }}
       />
+      <div className="absolute left-[770px] top-0 h-[92px] w-[1150px] bg-[var(--scrim-panorama)]" />
       <div
         className="absolute inset-0"
         style={{
           backgroundImage:
-            'linear-gradient(90deg, var(--topbar-bg) 0%, var(--topbar-bg) 42%, transparent 78%)',
+            'linear-gradient(90deg, var(--topbar-bg) 0%, var(--topbar-bg) 42%, color-mix(in srgb, var(--topbar-bg) 70%, transparent) 58%, color-mix(in srgb, var(--topbar-bg) 26%, transparent) 68%, color-mix(in srgb, var(--topbar-bg) 4%, transparent) 78%, transparent 100%)',
         }}
       />
     </div>

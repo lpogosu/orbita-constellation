@@ -32,11 +32,16 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
       map: textures.day,
       roughnessMap: textures.rough,
       roughness: 1,
-      metalness: 0.08,
+      metalness: 0.02,
       emissiveMap: textures.night,
-      color: new THREE.Color(0x9bb6df),
-      emissive: textures.night === null ? new THREE.Color(0x000000) : new THREE.Color(0x355b9a),
-      emissiveIntensity: 0.28,
+      // Не берём белый множитель: с ярким светом и ACES он выбеливает лёд и облака.
+      // Низкохроматичный холодный серый только приглушает albedo, не меняя собственные
+      // синие, зелёные и тёмные тона дневной текстуры.
+      color: new THREE.Color(0xd4dce4),
+      // Ночная карта уже содержит оттенок городских огней. Ей нужен лишь умеренный
+      // холодный подъём, иначе освещение съедает контраст ночного рельефа.
+      emissive: textures.night === null ? new THREE.Color(0x000000) : new THREE.Color(0xd9e6f2),
+      emissiveIntensity: 0.14,
     });
     if (textures.night !== null) {
       // Ночные огни видны только на тёмной стороне: без этой вставки эмиссивная карта
@@ -66,7 +71,8 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
     return new THREE.MeshStandardMaterial({
       map: textures.clouds,
       transparent: true,
-      opacity: 0.22,
+      // Белые облака не должны превращать полярные льды в сплошную светлую массу.
+      opacity: 0.19,
       depthWrite: false,
       roughness: 0.95,
       metalness: 0,
@@ -92,7 +98,7 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
             i = clamp(i, 0.0, 2.0);
             vec3 c = mix(glowA, glowB, clamp(i * 0.5, 0.0, 1.0));
             // Keep the rim present without turning the globe into a neon bubble.
-            gl_FragColor = vec4(c, 1.0) * i * 0.62;
+            gl_FragColor = vec4(c, 1.0) * i * 0.48;
             #include <colorspace_fragment>
           }`,
         side: THREE.BackSide,
@@ -121,7 +127,7 @@ export function Earth({ textures, atmosphereColorA, atmosphereColorB, fallbackCo
         </mesh>
       )}
       <mesh material={atmosphereMaterial}>
-        <sphereGeometry args={[1.075, 96, 64]} />
+        <sphereGeometry args={[1.06, 96, 64]} />
       </mesh>
     </group>
   );

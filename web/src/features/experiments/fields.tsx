@@ -15,15 +15,23 @@ export function FieldLabel({
   children,
   left,
   top,
+  className,
 }: {
   children: ReactNode;
-  left: number;
-  top: number;
+  left?: number;
+  top?: number;
+  className?: string;
 }) {
+  const positioned = left !== undefined || top !== undefined;
+
   return (
     <span
-      className="absolute text-[10px] font-semibold tracking-[0.8px] text-ink-muted"
-      style={{ left, top }}
+      className={cx(
+        positioned && 'absolute',
+        'text-[10px] font-semibold tracking-[0.8px] text-ink-muted',
+        className,
+      )}
+      style={positioned ? { left, top } : undefined}
     >
       {children}
     </span>
@@ -39,16 +47,26 @@ export function SelectField({
   left,
   top,
   width,
+  className,
 }: {
   label: string;
   value: string;
   options: readonly { readonly value: string; readonly title: string }[];
   disabled?: boolean;
   onChange: (value: string) => void;
-  left: number;
-  top: number;
-  width: number;
+  left?: number;
+  top?: number;
+  width?: number;
+  className?: string;
 }) {
+  const positioned = left !== undefined || top !== undefined;
+  const style = {
+    ...(left === undefined ? {} : { left }),
+    ...(top === undefined ? {} : { top }),
+    ...(width === undefined ? {} : { width }),
+  };
+  const hasStyle = positioned || width !== undefined;
+
   return (
     <Select
       label={label}
@@ -56,8 +74,8 @@ export function SelectField({
       disabled={disabled ?? false}
       onChange={onChange}
       options={options}
-      className="absolute"
-      style={{ left, top, width }}
+      className={cx(positioned && 'absolute', className)}
+      {...(hasStyle ? { style } : {})}
       triggerClassName={FIELD_CLASS}
     />
   );
@@ -72,16 +90,20 @@ export function NumberField({
   left,
   top,
   width,
+  className,
 }: {
   label: string;
   value: string;
   invalid?: boolean;
   disabled?: boolean;
   onChange: (value: string) => void;
-  left: number;
-  top: number;
-  width: number;
+  left?: number;
+  top?: number;
+  width?: number;
+  className?: string;
 }) {
+  const positioned = left !== undefined || top !== undefined;
+
   return (
     <input
       type="text"
@@ -91,8 +113,13 @@ export function NumberField({
       value={value}
       disabled={disabled ?? false}
       onChange={(event) => { onChange(event.target.value); }}
-      className={cx(FIELD_CLASS, 'absolute', invalid === true && 'border-status-danger')}
-      style={{ left, top, width }}
+      className={cx(
+        FIELD_CLASS,
+        positioned && 'absolute',
+        invalid === true && 'border-status-danger',
+        className,
+      )}
+      style={positioned ? { left, top, width } : width === undefined ? undefined : { width }}
       data-numeric
     />
   );
@@ -105,18 +132,27 @@ export function StaticField({
   left,
   top,
   width,
+  className,
 }: {
   label: string;
   value: string;
-  left: number;
-  top: number;
-  width: number;
+  left?: number;
+  top?: number;
+  width?: number;
+  className?: string;
 }) {
+  const positioned = left !== undefined || top !== undefined;
+
   return (
     <p
       aria-label={label}
-      className={cx(FIELD_CLASS, 'absolute flex items-center text-ink-secondary')}
-      style={{ left, top, width }}
+      className={cx(
+        FIELD_CLASS,
+        positioned && 'absolute',
+        'flex items-center text-ink-secondary',
+        className,
+      )}
+      style={positioned ? { left, top, width } : width === undefined ? undefined : { width }}
     >
       {value}
     </p>

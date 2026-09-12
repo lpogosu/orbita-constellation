@@ -1,4 +1,4 @@
-import { AlertTriangle, Inbox, Lock, RotateCw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Inbox, Lock, RotateCw } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import { Button } from '@/components/ui/Button';
@@ -67,6 +67,7 @@ export function ErrorBlock({
   onRetry,
   retryLabel = 'Повторить',
   compact = false,
+  appearance = 'default',
 }: {
   title: string;
   message: string;
@@ -74,6 +75,8 @@ export function ErrorBlock({
   retryLabel?: string;
   /** Блок в одну строку: кнопка повтора обязана остаться видимой и в низкой полосе. */
   compact?: boolean;
+  /** Компактный overlay над данными по компоненту Figma `State/Block → Error`. */
+  appearance?: 'default' | 'figma';
 }) {
   if (compact) {
     return (
@@ -91,6 +94,23 @@ export function ErrorBlock({
           <RotateCw aria-hidden="true" className="size-[14px]" />
           {retryLabel}
         </button>
+      </div>
+    );
+  }
+  if (appearance === 'figma') {
+    return (
+      <div
+        role="alert"
+        className="mx-auto flex h-[230px] w-full max-w-[496px] flex-col items-center justify-center gap-2 px-6 text-center"
+      >
+        <AlertCircle aria-hidden="true" className="size-[30px] text-status-danger" />
+        <p className="text-small font-semibold text-ink-primary">{title}</p>
+        <p className="max-w-full truncate text-caption text-status-danger" title={message}>
+          {message}
+        </p>
+        <Button variant="secondary" onClick={onRetry} className="mt-1 w-[240px] rounded-[15px]">
+          {retryLabel}
+        </Button>
       </div>
     );
   }

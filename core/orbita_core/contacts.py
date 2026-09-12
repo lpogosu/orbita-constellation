@@ -144,19 +144,40 @@ def build(scenario: Scenario) -> ContactPlan:
     active = _active_satellites(scenario)
     gateway_available = _gateway_available(scenario)
 
-    isl_first, isl_second = geometry.isl_pair_indices(satellite_count)
-    isl_visible, isl_distance = geometry.isl_visible_all(positions, environment.isl_range_km)
+    isl_pair_indices = geometry.isl_pair_indices(
+        satellite_count,
+        positions=positions,
+        isl_range_km=environment.isl_range_km,
+    )
+    isl_first, isl_second = isl_pair_indices
+    isl_visible, isl_distance = geometry.isl_visible_all(
+        positions,
+        environment.isl_range_km,
+        pair_indices=isl_pair_indices,
+    )
     isl_bits = isl_visible & active[:, isl_first] & active[:, isl_second]
     isl_edges = np.stack((isl_first, isl_second), axis=1)
 
     elevation_deg = geometry.elevation_all(positions, site_positions)
     ground_distance = geometry.slant_range_all(positions, site_positions)
+    # A site may override the global threshold.  Keep the fallback here,
+    # next to the visibility predicate, so all callers (including runs and
+    # experiments) get identical semantics without changing old scenarios.
+    site_min_elevation = np.array(
+        [
+            site.min_elevation_deg
+            if site.min_elevation_deg is not None
+            else environment.min_elevation_deg
+            for site in scenario.ground_sites
+        ],
+        dtype=np.float64,
+    )
     # Возвышение сравнивается через `>=`: контакт доступен при угле «не меньше»
     # минимального (`01_SPEC.md` §2.4), в отличие от строгого `<` для дальности ISL.
     site_available = np.ones((scenario.ticks, site_count), dtype=np.bool_)
     site_available[:, list(scenario.gateway_indices)] = gateway_available
     ground_visible = (
-        (elevation_deg >= environment.min_elevation_deg)
+        (elevation_deg >= site_min_elevation[None, :, None])
         & active[:, None, :]
         & site_available[:, :, None]
     )

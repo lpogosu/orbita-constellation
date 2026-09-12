@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 
 import { ProjectSelectionProvider } from '@/app/ProjectSelectionProvider';
 import { useCanvasScale } from '@/app/use-canvas-scale';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { TopBar } from './TopBar';
 
 /**
@@ -22,6 +23,7 @@ export function AppLayout() {
           <main className="absolute inset-0">
             <Outlet />
           </main>
+          <OnboardingTour />
         </div>
       </div>
     </ProjectSelectionProvider>

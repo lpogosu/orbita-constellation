@@ -27,6 +27,7 @@ export type ScenarioReview =
       readonly kind: 'rejected';
       readonly source: ScenarioSource;
       readonly problems: readonly ScenarioProblem[];
+      readonly sourceText: string | null;
     }
   | {
       readonly kind: 'unavailable';
@@ -52,8 +53,10 @@ export function useScenarioReview(): ScenarioReviewControls {
     setReview({ kind: 'checking', source });
 
     void (async () => {
+      let sourceText: string | null = null;
       try {
         const parsed = await readSource(source);
+        sourceText = parsed.text;
         const summary = await api.validateScenario(parsed.document);
         if (attempt.current === current) {
           setReview({ kind: 'accepted', source, parsed, summary });
@@ -62,7 +65,7 @@ export function useScenarioReview(): ScenarioReviewControls {
         if (attempt.current !== current) {
           return;
         }
-        setReview(toFailure(source, error));
+        setReview(toFailure(source, error, sourceText));
       }
     })();
   }, []);
@@ -75,17 +78,18 @@ export function useScenarioReview(): ScenarioReviewControls {
   return { review, check, reset };
 }
 
-function toFailure(source: ScenarioSource, error: unknown): ScenarioReview {
+function toFailure(source: ScenarioSource, error: unknown, sourceText: string | null): ScenarioReview {
   if (error instanceof ScenarioParseError) {
     return {
       kind: 'rejected',
       source,
       problems: [{ code: null, path: null, message: error.message, value: undefined }],
+      sourceText: error.sourceText ?? sourceText,
     };
   }
   // 400 — это разбор файла: все ошибки списком. Остальные коды говорят о сервисе.
   if (error instanceof ApiError && error.status === 400 && error.details.length > 0) {
-    return { kind: 'rejected', source, problems: error.details.map(toProblem) };
+    return { kind: 'rejected', source, problems: error.details.map(toProblem), sourceText };
   }
   return {
     kind: 'unavailable',

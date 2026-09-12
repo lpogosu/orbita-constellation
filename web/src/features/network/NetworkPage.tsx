@@ -401,11 +401,12 @@ export function NetworkPage() {
           </div>
         )}
         {scene.snapshotError !== null && (
-          <div className="absolute inset-x-[80px] top-[240px]">
+          <div className="absolute inset-0 flex items-center justify-center">
             <ErrorBlock
               title="Снимок не получен"
               message={scene.snapshotError}
-              onRetry={() => { seek(tS); }}
+              onRetry={scene.reloadSnapshot}
+              appearance="figma"
             />
           </div>
         )}
@@ -428,6 +429,7 @@ export function NetworkPage() {
         clients={clients}
         snapshot={scene.snapshot}
         snapshotError={scene.snapshotError}
+        onReloadSnapshot={scene.reloadSnapshot}
         metrics={scene.metrics}
         outages={scene.outages}
         resultsError={scene.resultsError}

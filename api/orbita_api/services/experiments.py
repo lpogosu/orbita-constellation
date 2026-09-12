@@ -59,6 +59,24 @@ async def create_experiment(
         raise InvalidRequestError(
             ErrorDetail(code=ErrorCode.INVALID_SCENARIO_FIELD, message=str(exc))
         ) from exc
+
+    # Validate every requested point before writing the experiment.  A syntactically
+    # valid path can still name a plane absent from this particular variant; that is
+    # a client error, not a half-created experiment followed by a 500.
+    try:
+        planned_points = [
+            (
+                point,
+                canonical := apply_point(base.scenario, point),
+                scenarios.parse_stored(canonical),
+            )
+            for point in points
+        ]
+    except ValueError as exc:
+        raise InvalidRequestError(
+            ErrorDetail(code=ErrorCode.INVALID_SCENARIO_FIELD, message=str(exc))
+        ) from exc
+
     experiment = models.Experiment(
         project_id=base.project_id,
         base_variant_id=base.id,
@@ -71,9 +89,7 @@ async def create_experiment(
     await session.flush()
     run_ids: list[UUID] = []
     seen: dict[str, models.ExperimentPoint] = {}
-    for point in points:
-        canonical = apply_point(base.scenario, point)
-        parsed = scenarios.parse_stored(canonical)
+    for point, canonical, parsed in planned_points:
         config_hash = scenarios.config_hash(parsed)
         existing = seen.get(config_hash)
         ep = models.ExperimentPoint(
@@ -135,8 +151,17 @@ async def get_experiment(
     terminal = {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
     completed = sum(1 for p in points if p.run_id is not None and p._run_status in terminal)
     statuses = [p._run_status for p in points if p.run_id is not None]
-    if statuses and all(s in terminal for s in statuses):
-        experiment.status = RunStatus.SUCCEEDED
+    if statuses and all(status in terminal for status in statuses):
+        if any(status == RunStatus.FAILED for status in statuses):
+            experiment.status = RunStatus.FAILED
+            experiment.error = {
+                "code": "SWEEP_POINT_FAILED",
+                "message": "one or more sweep points failed",
+            }
+        elif any(status == RunStatus.CANCELLED for status in statuses):
+            experiment.status = RunStatus.CANCELLED
+        else:
+            experiment.status = RunStatus.SUCCEEDED
     elif experiment.status in {RunStatus.QUEUED, RunStatus.RUNNING} and experiment.created_at:
         created = experiment.created_at
         if created.tzinfo is None:
@@ -150,9 +175,8 @@ async def get_experiment(
                 "message": "time budget exceeded",
                 "elapsed_seconds": elapsed,
             }
-            for point in points:
-                if point.run_id is not None and point._run_status not in terminal:
-                    await runtime.request_cancel(point.run_id)
+            for run_id in await _owned_active_run_ids(session, experiment.id, points):
+                await runtime.request_cancel(run_id)
     if experiment.status in terminal:
         await session.commit()
     return _serialize_experiment(experiment, points, len(points), completed)
@@ -192,6 +216,32 @@ async def materialize(
     session.add(variant)
     await session.commit()
     return serialization.to_variant(variant)
+
+
+async def cancel_experiment(
+    session: AsyncSession,
+    runtime: RunRuntime,
+    experiment_id: UUID,
+) -> ExperimentSchema:
+    """Cancel unfinished runs created by this sweep without touching reused runs.
+
+    A point may reuse an already active run belonging to a manual variant or a
+    different experiment.  Such a run is shared work and must not be cancelled by
+    cancelling this experiment.
+    """
+    experiment = await ExperimentRepository(session).get(experiment_id)
+    if experiment is None:
+        raise EntityNotFoundError(EXPERIMENT_ENTITY, experiment_id)
+    points = await _points(session, experiment_id)
+    terminal = {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
+    if experiment.status not in terminal:
+        experiment.status = RunStatus.CANCELLED
+        experiment.error = {"code": "CANCELLED", "message": "cancelled by user"}
+        await session.commit()
+        for run_id in await _owned_active_run_ids(session, experiment.id, points):
+            await runtime.request_cancel(run_id)
+    completed = sum(1 for point in points if point.run_id and point._run_status in terminal)
+    return _serialize_experiment(experiment, points, len(points), completed)
 
 
 async def _points(session: AsyncSession, experiment_id: UUID) -> list[Any]:
@@ -244,6 +294,31 @@ async def _points(session: AsyncSession, experiment_id: UUID) -> list[Any]:
         )
         out.append(p)
     return out
+
+
+async def _owned_active_run_ids(
+    session: AsyncSession,
+    experiment_id: UUID,
+    points: Sequence[Any],
+) -> set[UUID]:
+    """Return active runs whose transient variant belongs to this experiment."""
+    active_ids = {
+        point.run_id
+        for point in points
+        if point.run_id is not None
+        and point._run_status not in {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
+    }
+    if not active_ids:
+        return set()
+    result = await session.scalars(
+        select(models.Run.id)
+        .join(models.Variant, models.Variant.id == models.Run.variant_id)
+        .where(
+            models.Run.id.in_(active_ids),
+            models.Variant.experiment_id == experiment_id,
+        )
+    )
+    return set(result.all())
 
 
 def _serialize_experiment(

@@ -42,3 +42,66 @@ def _context_loader(context: object) -> object:
         return context
 
     return load_context
+
+
+class _FakeJob:
+    def __init__(self, *, status: object = "queued") -> None:
+        self.id = uuid4()
+        self.status = status
+        self.payload = {"progress": 0.4}
+        self.error = None
+        self.finished_at = None
+
+
+class _FakeSession:
+    def __init__(self) -> None:
+        self.commits = 0
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+
+@pytest.mark.asyncio
+async def test_criticality_status_reads_persisted_progress(monkeypatch: pytest.MonkeyPatch) -> None:
+    job = _FakeJob(status="running")
+
+    class FakeRepository:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def find_for_criticality(self, run_id: object) -> _FakeJob:
+            return job
+
+    monkeypatch.setattr(criticality, "JobRepository", FakeRepository)
+    run_id = uuid4()
+
+    state = await criticality.get_criticality_status(_FakeSession(), run_id)  # type: ignore[arg-type]
+
+    assert state is not None
+    assert state["job_id"] == job.id
+    assert state["run_id"] == run_id
+    assert state["status"] == "running"
+    assert state["progress"] == pytest.approx(0.4)
+
+
+@pytest.mark.asyncio
+async def test_cancel_criticality_is_idempotent_for_finished_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = _FakeJob(status=criticality.RunStatus.SUCCEEDED)
+
+    class FakeRepository:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def find_for_criticality(self, run_id: object) -> _FakeJob:
+            return job
+
+    monkeypatch.setattr(criticality, "JobRepository", FakeRepository)
+    session = _FakeSession()
+
+    state = await criticality.cancel_criticality(session, uuid4())  # type: ignore[arg-type]
+
+    assert state is not None
+    assert state["status"] == criticality.RunStatus.SUCCEEDED
+    assert session.commits == 0

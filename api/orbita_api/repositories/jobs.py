@@ -16,6 +16,7 @@ from orbita_api.schemas.common import RunStatus
 # Вид задачи совпадает с именем функции arq: по журналу должно быть видно, что именно
 # ставилось в очередь.
 RUN_CALCULATION_KIND: Final[str] = "run_calculation"
+CRITICALITY_KIND: Final[str] = "criticality_analysis"
 
 
 class JobRepository:
@@ -66,6 +67,39 @@ class JobRepository:
             job = self.enqueue_run(run_id)
         job.attempts += 1
         return job
+
+    def enqueue_criticality(self, run_id: UUID) -> models.Job:
+        """Create a persisted resilience-analysis job.
+
+        The report is kept in the JSON payload so this lifecycle works in both the
+        normal Postgres deployment and degraded/local storage mode without a new
+        migration or a second report table.
+        """
+        job = models.Job(
+            kind=CRITICALITY_KIND,
+            payload={"run_id": str(run_id), "progress": 0.0},
+            status=RunStatus.QUEUED,
+            attempts=0,
+        )
+        self._session.add(job)
+        return job
+
+    async def find_for_criticality(self, run_id: UUID) -> models.Job | None:
+        statement = (
+            select(models.Job)
+            .where(
+                models.Job.kind == CRITICALITY_KIND,
+                models.Job.payload["run_id"].astext == str(run_id),
+            )
+            .order_by(models.Job.enqueued_at.desc())
+            .limit(1)
+            # Progress and cancellation may be written from another request (or API
+            # process).  Reuse of an identity-map object here would otherwise hide
+            # the new state from the criticality worker.
+            .execution_options(populate_existing=True)
+        )
+        result = await self._session.scalars(statement)
+        return result.first()
 
 
 def _run_payload(run_id: UUID) -> dict[str, Any]:

@@ -10,6 +10,7 @@ from orbita_api.schemas.common import (
     OutageChangeKind,
     ParameterChange,
     RoutingPolicy,
+    RunStatus,
 )
 from orbita_api.schemas.scenario import Scenario
 
@@ -254,3 +255,14 @@ class CriticalityReport(BaseModel):
 
     run_id: UUID
     satellites: list[SatelliteCriticality]
+
+
+class CriticalityJobStatus(BaseModel):
+    """Persisted lifecycle state for a resilience analysis job."""
+
+    job_id: UUID
+    run_id: UUID
+    status: RunStatus
+    progress: float = Field(ge=0.0, le=1.0)
+    result: CriticalityReport | None = None
+    error: dict[str, object] | None = None

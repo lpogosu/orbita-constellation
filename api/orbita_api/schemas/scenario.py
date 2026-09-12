@@ -64,6 +64,13 @@ class GroundSite(BaseModel):
     role: SiteRole
     lat_deg: float
     lon_deg: float
+    min_elevation_deg: float | None = Field(
+        default=None,
+        description=(
+            "Локальный минимальный угол возвышения для наземных контактов; "
+            "если не задан, используется environment.min_elevation_deg"
+        ),
+    )
 
 
 class SatelliteFailure(BaseModel):

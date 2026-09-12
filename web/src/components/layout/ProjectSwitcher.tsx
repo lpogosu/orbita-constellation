@@ -174,6 +174,7 @@ export function ProjectSwitcher() {
                   title="Список не загрузился"
                   message={projectsError}
                   onRetry={loadProjects}
+                  compact
                 />
               </div>
             )}
@@ -229,6 +230,7 @@ export function ProjectSwitcher() {
                   title="Варианты не загрузились"
                   message={detail.error}
                   onRetry={detail.reload}
+                  compact
                 />
               </div>
             )}

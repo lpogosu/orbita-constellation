@@ -122,6 +122,10 @@ class GroundSite:
     role: SiteRole
     lat_deg: float
     lon_deg: float
+    # Optional local horizon mask.  ``None`` deliberately means "use the
+    # environment default" so old scenario files remain byte-for-byte
+    # canonical-compatible.
+    min_elevation_deg: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -609,13 +613,35 @@ def _parse_ground_sites(
                 value=lon_deg,
             )
             lon_deg = None
+        min_elevation_deg: float | None = None
+        if "min_elevation_deg" in site:
+            min_elevation_deg = validator.number(
+                site, "min_elevation_deg", f"{base}.min_elevation_deg"
+            )
+            if min_elevation_deg is not None and not 0.0 <= min_elevation_deg < ELEVATION_MAX_DEG:
+                validator.add(
+                    ErrorCode.INVALID_SCENARIO_FIELD,
+                    f"{base}.min_elevation_deg",
+                    "минимальный угол возвышения вне [0; 90) градусов",
+                    value=min_elevation_deg,
+                )
+                min_elevation_deg = None
         if site_id is None or role is None or lat_deg is None or lon_deg is None:
             continue
         # Название нужно только для интерфейса и на расчёт не влияет, поэтому его
         # отсутствие не ошибка: подставляем идентификатор.
         raw_name = site.get("name")
         name = raw_name if isinstance(raw_name, str) and raw_name else site_id
-        sites.append(GroundSite(id=site_id, name=name, role=role, lat_deg=lat_deg, lon_deg=lon_deg))
+        sites.append(
+            GroundSite(
+                id=site_id,
+                name=name,
+                role=role,
+                lat_deg=lat_deg,
+                lon_deg=lon_deg,
+                min_elevation_deg=min_elevation_deg,
+            )
+        )
 
     # Роли считаются по объявленным пунктам, а не только по прошедшим проверку: иначе
     # ошибка в координатах единственного шлюза породила бы вторую, ложную ошибку.
@@ -866,6 +892,11 @@ def to_dict(scenario: Scenario) -> dict[str, object]:
                 "role": str(site.role),
                 "lat_deg": site.lat_deg,
                 "lon_deg": site.lon_deg,
+                **(
+                    {"min_elevation_deg": site.min_elevation_deg}
+                    if site.min_elevation_deg is not None
+                    else {}
+                ),
             }
             for site in scenario.ground_sites
         ],

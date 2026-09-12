@@ -15,9 +15,8 @@ export const outagesApi = {
     apiRequest<ComparisonResult>('/api/comparisons', jsonBody({ run_ids: runIds })),
 
   /**
-   * `POST /api/analysis/criticality`. Реализации пока нет: endpoint отвечает 501
-   * `NOT_IMPLEMENTED`. Кнопка блока вызывает его по-настоящему, а ошибка показывается как
-   * состояние «не подключено» — выдуманных рангов на экране нет.
+   * `POST /api/analysis/criticality`. Сервис выполняет контрфактический прогон
+   * по каждому спутнику и возвращает ранжированный отчёт об устойчивости.
    */
   criticality: (runId: string): Promise<CriticalityReport> =>
     apiRequest<CriticalityReport>('/api/analysis/criticality', jsonBody({ run_id: runId })),

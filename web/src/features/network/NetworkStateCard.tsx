@@ -24,6 +24,7 @@ interface NetworkStateCardProps {
   readonly clients: readonly GroundSite[];
   readonly snapshot: Snapshot | null;
   readonly snapshotError: string | null;
+  readonly onReloadSnapshot: () => void;
   readonly metrics: RunMetrics | null;
   readonly outages: readonly OutageInterval[] | null;
   readonly resultsError: string | null;
@@ -100,7 +101,8 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
             <ErrorBlock
               title="Снимок не получен"
               message={props.snapshotError}
-              onRetry={props.onReloadResults}
+              onRetry={props.onReloadSnapshot}
+              compact
             />
           </div>
         ) : props.snapshot === null ? (

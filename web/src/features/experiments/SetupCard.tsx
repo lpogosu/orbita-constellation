@@ -210,38 +210,32 @@ function AxisFields({
     : asItems(options);
 
   return (
-    <>
-      <span
-        className="absolute left-[23px] text-[16px] font-semibold text-ink-primary"
-        style={{ top }}
-      >
+    <section className="absolute left-[23px] w-[376px]" style={{ top }}>
+      <h2 className="h-[20px] text-[16px] font-semibold leading-[20px] text-ink-primary">
         {title}
-      </span>
+      </h2>
       <SelectField
         label={`${title}: параметр`}
-        left={23}
-        top={top + 26}
-        width={FIELD_WIDTH}
+        className="mt-[6px] w-full"
         value={draft.path}
         onChange={(value) => { onChange(withDefaults(value, options)); }}
         options={list}
       />
 
-      <FieldLabel left={23} top={top + 78}>
+      <div className="mt-[10px] grid grid-cols-[124px_124px_minmax(0,1fr)] grid-rows-[12px_42px] gap-x-[10px] gap-y-[4px]">
+      <FieldLabel className="block leading-[12px]">
         ОТ
       </FieldLabel>
-      <FieldLabel left={157} top={top + 78}>
+      <FieldLabel className="block leading-[12px]">
         ДО
       </FieldLabel>
-      <FieldLabel left={291} top={top + 78}>
+      <FieldLabel className="block leading-[12px]">
         ШАГ
       </FieldLabel>
 
       <NumberField
         label={`${title}: от`}
-        left={23}
-        top={top + 94}
-        width={124}
+        className="w-full"
         disabled={disabled}
         invalid={check.problems.length > 0}
         value={draft.from}
@@ -249,9 +243,7 @@ function AxisFields({
       />
       <NumberField
         label={`${title}: до`}
-        left={157}
-        top={top + 94}
-        width={124}
+        className="w-full"
         disabled={disabled}
         invalid={check.problems.length > 0}
         value={draft.to}
@@ -259,26 +251,25 @@ function AxisFields({
       />
       <NumberField
         label={`${title}: шаг`}
-        left={291}
-        top={top + 94}
-        width={108}
+        className="w-full"
         disabled={disabled}
         invalid={check.problems.length > 0}
         value={draft.step}
         onChange={(step) => { onChange({ ...draft, step }); }}
       />
 
+      </div>
+
       {check.problems.length > 0 && (
         <p
           role="alert"
           title={check.problems.join('; ')}
-          className="absolute left-[23px] h-[16px] w-[376px] truncate text-[11px] text-status-danger"
-          style={{ top: top + 140 }}
+          className="mt-[4px] h-[16px] w-full truncate text-[11px] text-status-danger"
         >
           {check.problems.join('; ')}
         </p>
       )}
-    </>
+    </section>
   );
 }
 

@@ -129,7 +129,7 @@ export function useComparison(baseRunId: string | null, otherRunId: string | nul
 export interface CriticalityState {
   readonly report: CriticalityReport | null;
   readonly error: string | null;
-  /** 501: endpoint объявлен, но не реализован — это не ошибка пользователя. */
+  /** Endpoint может вернуть 501 только при несовместимом старом backend. */
   readonly notImplemented: boolean;
   readonly loading: boolean;
   readonly request: () => void;

@@ -73,7 +73,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   // Орбиты проходят за Землёй, как в макете: центральный диск сохраняет
   // читаемый силуэт, а линии появляются по краю и не режут карту пополам.
   if (sprites !== null) {
-    const earth = renderEarth(sprites.globe, view.radiusEquator, input.dpr);
+    const earth = renderEarth(sprites, view.hemisphere, view.radiusEquator, input.dpr);
     const side = earth.width / input.dpr;
     ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
   }
@@ -198,10 +198,6 @@ function drawPlanes(
   }
 
   ctx.save();
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 6]);
-  // Орбиты остаются ориентиром, но не должны конкурировать с Землёй и маршрутом.
-  ctx.globalAlpha = 0.28;
 
   for (const [planeId, satellites] of byPlane) {
     const ordered = [...satellites].sort(
@@ -214,7 +210,8 @@ function drawPlanes(
       continue;
     }
 
-    ctx.strokeStyle = planeColor(palette, model.planeIds, planeId);
+    const color = planeColor(palette, model.planeIds, planeId);
+    ctx.strokeStyle = color;
     ctx.beginPath();
     const first = points[0];
     if (first === undefined) {
@@ -225,6 +222,18 @@ function drawPlanes(
       ctx.lineTo(point.x, point.y);
     }
     ctx.closePath();
+    // Мягкая цветная дорожка отделяет плоскости от подложки, а тонкий пунктир сохраняет
+    // визуальную плотность Figma и не перетягивает внимание у маршрута.
+    ctx.lineCap = 'round';
+    ctx.setLineDash([7, 7]);
+    ctx.globalAlpha = 0.1;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.globalAlpha = 0.38;
+    ctx.lineWidth = 1.25;
+    ctx.shadowBlur = 0;
     ctx.stroke();
   }
   ctx.restore();
@@ -238,9 +247,27 @@ function drawContacts(
   positions: ReadonlyMap<string, Point>,
 ): void {
   ctx.save();
-  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  drawContactSet(ctx, model, positions, 'isl', palette.isl, [5, 6]);
+  if (layers.ground) {
+    drawContactSet(ctx, model, positions, 'ground', palette.groundLink, []);
+  }
+  ctx.restore();
+}
+
+/** Два прохода на тип контакта — постоянное число штриховок, даже когда рёбер сотни. */
+function drawContactSet(
+  ctx: CanvasRenderingContext2D,
+  model: MapModel,
+  positions: ReadonlyMap<string, Point>,
+  kind: 'isl' | 'ground',
+  color: string,
+  dash: readonly number[],
+): void {
+  ctx.beginPath();
+  let hasSegments = false;
   for (const edge of model.edges) {
-    if (edge.kind === 'ground' && !layers.ground) {
+    if (edge.kind !== kind) {
       continue;
     }
     const a = positions.get(edge.a);
@@ -248,13 +275,26 @@ function drawContacts(
     if (a === undefined || b === undefined) {
       continue;
     }
-    ctx.strokeStyle = edge.kind === 'isl' ? palette.isl : palette.groundLink;
-    ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+    hasSegments = true;
   }
-  ctx.restore();
+  if (!hasSegments) {
+    return;
+  }
+
+  ctx.strokeStyle = color;
+  ctx.setLineDash([...dash]);
+  ctx.globalAlpha = kind === 'isl' ? 0.12 : 0.1;
+  ctx.lineWidth = 3.2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 7;
+  ctx.stroke();
+
+  ctx.globalAlpha = kind === 'isl' ? 0.72 : 0.6;
+  ctx.lineWidth = kind === 'isl' ? 1.15 : 1;
+  ctx.shadowBlur = 0;
+  ctx.stroke();
 }
 
 function drawPath(

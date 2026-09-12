@@ -180,6 +180,7 @@ export function ProjectsPage() {
         <ValidationErrorsModal
           fileName={sourceName(review.source)}
           problems={review.problems}
+          sourceText={review.sourceText}
           onClose={() => {
             setProblemsHidden(true);
           }}
@@ -187,8 +188,8 @@ export function ProjectsPage() {
             reset();
             browse();
           }}
-          onRecheck={() => {
-            startCheck(review.source);
+          onValidateText={(text) => {
+            startCheck({ kind: 'inline', name: sourceName(review.source), text });
           }}
         />
       )}

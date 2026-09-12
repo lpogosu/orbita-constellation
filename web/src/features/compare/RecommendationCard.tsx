@@ -1,10 +1,12 @@
 import { ArrowLeftRight, ChevronRight } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { getRecommendation } from '@/api/comparisons';
 import type { ComparisonEntry, Recommendation } from '@/api/types';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/lib/cx';
 import { deltaArrow, deltaTone, formatPoints } from '@/lib/measures';
 import { formatGap, variantLetter } from '@/lib/run-format';
@@ -38,6 +40,7 @@ interface RecommendationCardProps {
  * вывод пришлось бы запрашивать отдельно на каждую пару и мирить между собой.
  */
 export function RecommendationCard({ entries, onApply, onSwap }: RecommendationCardProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const base = entries[0];
   const candidate = entries[1];
   const baseRunId = base?.run_id ?? '';
@@ -76,6 +79,7 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
             title="Вывод не получен"
             message={recommendation.error}
             onRetry={recommendation.reload}
+            compact
           />
         </div>
       ) : recommendation.data === null ? (
@@ -87,12 +91,21 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
           </div>
         </LoadingBlock>
       ) : (
-        <Verdict
-          recommendation={recommendation.data}
-          winnerTitle={winner?.variant_title ?? '—'}
-          winnerLetter={variantLetter(entries.findIndex((entry) => entry.run_id === winner?.run_id))}
-          winnerIsBase={winnerIsBase}
-        />
+        <>
+          <Verdict
+            recommendation={recommendation.data}
+            winnerTitle={winner?.variant_title ?? '—'}
+            winnerLetter={variantLetter(entries.findIndex((entry) => entry.run_id === winner?.run_id))}
+            winnerIsBase={winnerIsBase}
+            onOpenDetails={() => { setDetailsOpen(true); }}
+          />
+          {detailsOpen && (
+            <RecommendationDetailsModal
+              recommendation={recommendation.data}
+              onClose={() => { setDetailsOpen(false); }}
+            />
+          )}
+        </>
       )}
 
       <img
@@ -142,20 +155,19 @@ function Verdict({
   winnerTitle,
   winnerLetter,
   winnerIsBase,
+  onOpenDetails,
 }: {
   recommendation: Recommendation;
   winnerTitle: string;
   winnerLetter: string;
   winnerIsBase: boolean;
+  onOpenDetails: () => void;
 }) {
   const availabilityDelta = recommendation.deltas['min_client_availability'];
 
   return (
-    /*
-      Колонка вместо четырёх абсолютных блоков: вывод и заголовок переменной длины больше
-      не наползают на список критериев, а он виден целиком — прокручивается только то,
-      что за ним, разбор по клиентам и ограничения.
-    */
+    /* Длинные списки открываются явно в окне деталей, а не скрываются за прокруткой
+       небольшой карточки рекомендации. */
     <div className="absolute left-[27px] top-[31px] flex h-[184px] w-[446px] flex-col">
       <h2 className="shrink-0 truncate text-title-l font-bold tracking-[-0.8px] text-accent-cyan">
         {winnerIsBase
@@ -188,53 +200,96 @@ function Verdict({
         ))}
       </ol>
 
-      <div className="scroll-area mt-[10px] min-h-0 flex-1 pr-[6px]">
-        <p className="text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
-          ПО КЛИЕНТАМ
-        </p>
-        <ul className="mt-[4px]">
-          {recommendation.per_client.map((client) => (
-            <li key={client.client_id} className="flex items-center gap-[12px] py-[2px] text-[12px]">
-              <span
-                className="w-[52px] shrink-0 truncate font-semibold text-ink-primary"
-                title={client.client_id}
-              >
-                {client.client_id}
-              </span>
-              <span
-                className={cx(
-                  'w-[120px] shrink-0',
-                  deltaTone(client.availability_delta, 'up') === 'good'
-                    ? 'text-status-success'
-                    : 'text-status-danger',
-                )}
-                data-numeric
-              >
-                {deltaArrow(client.availability_delta)} {formatPoints(client.availability_delta)}
-              </span>
-              <span
-                className={cx(
-                  deltaTone(client.max_gap_delta_s, 'down') === 'good'
-                    ? 'text-status-success'
-                    : 'text-status-danger',
-                )}
-                data-numeric
-              >
-                {deltaArrow(client.max_gap_delta_s)} {formatGap(client.max_gap_delta_s)} перерыв
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-[12px] text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
-          ОГРАНИЧЕНИЯ
-        </p>
-        <ul className="mt-[4px] list-inside list-disc text-[12px] text-ink-secondary">
-          {recommendation.limitations.map((limitation) => (
-            <li key={limitation}>{limitation}</li>
-          ))}
-        </ul>
-      </div>
+      <button
+        type="button"
+        onClick={onOpenDetails}
+        className="mt-[10px] flex h-[34px] w-fit items-center rounded-sm border border-line bg-surface-input px-[12px] text-[12px] font-semibold text-ink-primary transition-colors hover:border-line-strong"
+      >
+        Подробнее: {recommendation.per_client.length} клиентов
+        {recommendation.limitations.length > 0 && ` · ${recommendation.limitations.length} ограничений`}
+      </button>
     </div>
+  );
+}
+
+function RecommendationDetailsModal({
+  recommendation,
+  onClose,
+}: {
+  recommendation: Recommendation;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title="Детали рекомендации"
+      subtitle="Изменения показаны относительно базового варианта."
+      align="start"
+      width={760}
+      onClose={onClose}
+      footer={<Button variant="secondary" onClick={onClose}>Закрыть</Button>}
+    >
+      <section aria-labelledby="recommendation-clients-title">
+        <h3
+          id="recommendation-clients-title"
+          className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted"
+        >
+          По клиентам · {recommendation.per_client.length}
+        </h3>
+        {recommendation.per_client.length === 0 ? (
+          <p className="mt-[10px] text-small text-ink-secondary">Нет данных по клиентам.</p>
+        ) : (
+          <ul className="mt-[10px] divide-y divide-line rounded-sm border border-line bg-surface-input px-[14px]">
+            {recommendation.per_client.map((client) => (
+              <li
+                key={client.client_id}
+                className="grid grid-cols-[minmax(96px,1fr)_minmax(150px,1fr)_minmax(190px,1fr)] gap-[16px] py-[10px] text-small"
+              >
+                <span className="truncate font-semibold text-ink-primary" title={client.client_id}>
+                  {client.client_id}
+                </span>
+                <span
+                  className={cx(
+                    deltaTone(client.availability_delta, 'up') === 'good'
+                      ? 'text-status-success'
+                      : 'text-status-danger',
+                  )}
+                  data-numeric
+                >
+                  {deltaArrow(client.availability_delta)} {formatPoints(client.availability_delta)} доступность
+                </span>
+                <span
+                  className={cx(
+                    deltaTone(client.max_gap_delta_s, 'down') === 'good'
+                      ? 'text-status-success'
+                      : 'text-status-danger',
+                  )}
+                  data-numeric
+                >
+                  {deltaArrow(client.max_gap_delta_s)} {formatGap(client.max_gap_delta_s)} перерыв
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-[24px]" aria-labelledby="recommendation-limitations-title">
+        <h3
+          id="recommendation-limitations-title"
+          className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted"
+        >
+          Ограничения · {recommendation.limitations.length}
+        </h3>
+        {recommendation.limitations.length === 0 ? (
+          <p className="mt-[10px] text-small text-ink-secondary">Ограничений не обнаружено.</p>
+        ) : (
+          <ul className="mt-[10px] list-inside list-disc space-y-[6px] text-small text-ink-secondary">
+            {recommendation.limitations.map((limitation) => (
+              <li key={limitation}>{limitation}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </Modal>
   );
 }

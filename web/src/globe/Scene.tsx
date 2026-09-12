@@ -81,10 +81,12 @@ export function Scene({
 
   return (
     <>
-      <ambientLight color={0x5274b5} intensity={1.05} />
+      {/* Постоянный умеренный холодный свет: CSS-тема меняет интерфейс, но не albedo
+          Земли. Акцентные цвета остаются только у атмосферы и линий орбит. */}
+      <ambientLight color={0x9fb4c9} intensity={0.5} />
       <directionalLight
-        color={0xeaf1ff}
-        intensity={1.65}
+        color={0xd8e8f6}
+        intensity={1.5}
         position={[LIGHT_DIRECTION.x * 10, LIGHT_DIRECTION.y * 10, LIGHT_DIRECTION.z * 10]}
       />
 

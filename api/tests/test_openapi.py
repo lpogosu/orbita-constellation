@@ -171,6 +171,13 @@ def test_openapi_paths_match_the_document(schema: dict[str, Any]) -> None:
     assert openapi_endpoints(schema) == documented_endpoints()
 
 
+def test_criticality_lifecycle_routes_stay_internal(schema: dict[str, Any]) -> None:
+    """Polling/cancel helpers are implementation details, not public API promises."""
+    paths = schema["paths"]
+    assert "/api/analysis/criticality/{run_id}/status" not in paths
+    assert "/api/analysis/criticality/{run_id}/cancel" not in paths
+
+
 def test_document_lists_every_endpoint_group() -> None:
     """Страховка от пустого разбора: молча пройденный тест хуже упавшего."""
     endpoints = documented_endpoints()

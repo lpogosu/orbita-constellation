@@ -53,6 +53,20 @@ async def get_experiment(
     return await experiments.get_experiment(session, runtime, experiment_id)
 
 
+@router.post(
+    "/experiments/{experiment_id}/cancel",
+    include_in_schema=False,
+    summary="Отменить незавершённые точки sweep",
+    responses=error_responses(404, 503),
+)
+async def cancel_experiment(
+    experiment_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    runtime: Annotated[RunRuntime, Depends(get_runtime)],
+) -> Experiment:
+    return await experiments.cancel_experiment(session, runtime, experiment_id)
+
+
 @router.get(
     "/experiments/{experiment_id}/points",
     summary="Точки heatmap с метриками",

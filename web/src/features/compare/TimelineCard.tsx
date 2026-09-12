@@ -64,6 +64,7 @@ export function TimelineCard({
             title="Шкалы не загрузились"
             message={timelines.error}
             onRetry={timelines.reload}
+            compact
           />
         </div>
       )}

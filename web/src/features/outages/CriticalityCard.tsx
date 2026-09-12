@@ -1,4 +1,4 @@
-import { ChevronRight, Crosshair } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 import type { CriticalityState } from './use-comparison';
 import { ErrorBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
@@ -21,15 +21,15 @@ interface CriticalityCardProps {
 /**
  * «Критические аппараты» (`14_SCREENS.md` §3.3), узел макета `43:437`.
  *
- * `POST /api/analysis/criticality` отвечает 501: реализации ещё нет. Кнопка вызывает
- * endpoint по-настоящему, а ответ показывается как есть — списка с выдуманными рангами
- * на экране нет и не будет, пока сервис не начнёт считать.
+ * `POST /api/analysis/criticality` выполняет контрфактический прогон по каждому
+ * аппарату и возвращает ранжированный отчёт; карточка показывает метрики влияния.
  */
 export function CriticalityCard(props: CriticalityCardProps) {
   const { state, focusSatelliteId } = props;
-  // Выбранный аппарат занимает строку над состоянием, и оно на неё ужимается: карточка
-  // стоит на макетных координатах и вырасти не может.
-  const bodyHeight = focusSatelliteId === null ? 128 : 90;
+  // В карточку по макету помещаются три строки. Выбранный на карте аппарат поднимается
+  // первой строкой и подсвечивается в самом списке, а не дублируется отдельной плашкой:
+  // иначе третья строка выходила бы за жёсткую высоту карточки 212px.
+  const bodyHeight = 128;
 
   const ranked = (state.report?.satellites ?? []).map((item, index) => ({
     item,
@@ -66,16 +66,6 @@ export function CriticalityCard(props: CriticalityCardProps) {
         POST /api/analysis/criticality
         {props.runId !== null && ` · прогон ${props.runId.slice(0, 8)}`}
       </p>
-
-      {focusSatelliteId !== null && (
-        <p className="mt-[8px] flex h-[30px] items-center gap-[8px] rounded-sm border border-[rgba(46,139,251,0.45)] bg-[rgba(46,139,251,0.16)] px-[11px]">
-          <Crosshair aria-hidden="true" className="size-[14px] shrink-0 text-accent-blue" />
-          <span className="truncate text-small font-semibold text-ink-primary">
-            {focusSatelliteId}
-          </span>
-          <span className="ml-auto shrink-0 text-micro text-ink-secondary">выбран на карте</span>
-        </p>
-      )}
 
       {props.runId === null ? (
         <div className="mt-[10px]" style={{ height: bodyHeight }}>
@@ -135,7 +125,8 @@ export function CriticalityCard(props: CriticalityCardProps) {
                 <span className="shrink-0 whitespace-nowrap text-caption text-ink-secondary" data-numeric>
                   {formatPoints(item.delta_min_client_availability)} ·{' '}
                   {formatGap(item.delta_worst_max_gap_s)} · клиентов{' '}
-                  {item.affected_clients.length}
+                  {item.affected_clients.length} · min-cut{' '}
+                  {(item.min_cut_frequency * 100).toFixed(0)}%
                 </span>
                 <ChevronRight aria-hidden="true" className="size-[20px] shrink-0 text-ink-muted" />
               </button>

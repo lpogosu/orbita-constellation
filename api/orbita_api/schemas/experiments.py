@@ -24,7 +24,9 @@ class ExperimentBudget(BaseModel):
     """Ограничение sweep: без него перебор двух осей не заканчивается (06_STORAGE.md §7)."""
 
     max_points: int = Field(gt=0, le=2000)
-    max_seconds: int = Field(gt=0, le=86_400)
+    # Storage contract caps a sweep at 30 minutes; a longer request would
+    # monopolize the worker pool and is rejected before any points are queued.
+    max_seconds: int = Field(gt=0, le=1_800)
 
 
 class ExperimentCreateRequest(BaseModel):

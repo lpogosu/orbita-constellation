@@ -15,6 +15,7 @@ from orbita_core.scenario import (
     config_hash,
     load,
     parse,
+    to_dict,
     validate,
 )
 from tests.support import FIXTURES_DIR, SCENARIO_PATHS, read_json, synthetic_scenario
@@ -94,6 +95,18 @@ def test_angles_are_normalized_to_single_turn() -> None:
     scenario = parse(data)
     assert scenario.satellites[0].slot_deg == pytest.approx(40.0)
     assert scenario.environment.earth_angle0_deg == pytest.approx(330.0)
+
+
+def test_ground_site_horizon_override_round_trips_and_old_shape_is_preserved() -> None:
+    """Локальный порог сериализуется, а старый сценарий не получает лишнее поле."""
+    legacy = parse(synthetic_scenario())
+    assert "min_elevation_deg" not in to_dict(legacy)["ground_sites"][0]
+
+    data = synthetic_scenario()
+    data["ground_sites"][1]["min_elevation_deg"] = 25.0
+    scenario = parse(data)
+    assert scenario.ground_sites[1].min_elevation_deg == pytest.approx(25.0)
+    assert to_dict(scenario)["ground_sites"][1]["min_elevation_deg"] == pytest.approx(25.0)
 
 
 def test_lists_are_sorted_by_id() -> None:

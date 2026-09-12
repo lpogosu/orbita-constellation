@@ -140,18 +140,76 @@ def elevation_all(
     return elevation_deg
 
 
-def isl_pair_indices(satellite_count: int) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
-    """Индексы всех неупорядоченных пар аппаратов `i < j`.
+_ISL_PRUNING_MIN_SATELLITES: Final[int] = 128
+
+
+def isl_pair_indices(
+    satellite_count: int,
+    *,
+    positions: NDArray[np.float64] | None = None,
+    isl_range_km: float | None = None,
+    pruning_threshold: int = _ISL_PRUNING_MIN_SATELLITES,
+) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+    """Индексы неупорядоченных пар аппаратов `i < j`.
 
     Линия двунаправленная, поэтому хранится только верхний треугольник: пара учитывается
-    один раз и не может появиться в contact plan дважды.
+    один раз и не может появиться в contact plan дважды.  При переданных
+    ``positions`` и ``isl_range_km`` для больших групп применяется безопасное
+    AABB-pruning: пары, чьи траекторные bounding boxes уже дальше лимита,
+    отбрасываются. Без этих аргументов функция сохраняет полную выборку.
     """
     first, second = np.triu_indices(satellite_count, 1)
-    return first.astype(np.int64), second.astype(np.int64)
+    first = first.astype(np.int64)
+    second = second.astype(np.int64)
+
+    # For small constellations retain the historical full enumeration.  Apart
+    # from avoiding overhead on the normal 48-satellite scenario, this makes
+    # the optimisation an entirely transparent implementation detail.
+    if (
+        satellite_count < pruning_threshold
+        or positions is None
+        or isl_range_km is None
+        or first.size == 0
+    ):
+        return first, second
+    if positions.ndim != 3 or positions.shape[1:] != (satellite_count, 3):
+        raise ValueError("positions must have shape (ticks, satellite_count, 3)")
+    if positions.shape[0] == 0 or not math.isfinite(isl_range_km) or isl_range_km <= 0.0:
+        return first, second
+
+    # A satellite's sampled trajectory is enclosed by an axis-aligned box.
+    # The distance between two boxes is a lower bound for the distance between
+    # any two points in them.  Therefore a pair whose box gap is greater than
+    # or equal to the strict ISL range can never satisfy d < range at any
+    # simulation tick and may be safely omitted.  Process pairs in chunks so
+    # the O(N^2) candidate set does not require another large temporary array.
+    envelope_min = np.min(positions, axis=0)
+    envelope_max = np.max(positions, axis=0)
+    if not (np.isfinite(envelope_min).all() and np.isfinite(envelope_max).all()):
+        return first, second
+    keep = np.ones(first.size, dtype=np.bool_)
+    chunk_size = 262_144
+    for offset in range(0, first.size, chunk_size):
+        end = min(offset + chunk_size, first.size)
+        left = first[offset:end]
+        right = second[offset:end]
+        gap = np.maximum(
+            0.0,
+            np.maximum(
+                envelope_min[right] - envelope_max[left],
+                envelope_min[left] - envelope_max[right],
+            ),
+        )
+        lower_bound = np.linalg.norm(gap, axis=1)
+        # Equality is already invisible by the specification's strict '<'.
+        keep[offset:end] = lower_bound < isl_range_km
+    return first[keep], second[keep]
 
 
 def isl_visible_all(
-    satellite_positions: NDArray[np.float64], isl_range_km: float
+    satellite_positions: NDArray[np.float64],
+    isl_range_km: float,
+    pair_indices: tuple[NDArray[np.int64], NDArray[np.int64]] | None = None,
 ) -> tuple[NDArray[np.bool_], NDArray[np.float64]]:
     """Геометрическая доступность и длины межспутниковых линий на всех отсчётах.
 
@@ -161,7 +219,10 @@ def isl_visible_all(
     отрезка лежит **строго выше** поверхности, иначе линия проходит сквозь планету.
     Активность аппаратов здесь не учитывается: она накладывается в `contacts`.
     """
-    first, second = isl_pair_indices(satellite_positions.shape[1])
+    if pair_indices is None:
+        first, second = isl_pair_indices(satellite_positions.shape[1])
+    else:
+        first, second = pair_indices
     start = satellite_positions[:, first, :]
     delta = satellite_positions[:, second, :] - start
     squared_length = np.einsum("tpk,tpk->tp", delta, delta)

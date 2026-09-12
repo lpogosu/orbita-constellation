@@ -88,6 +88,17 @@ def test_near_vertical_elevation_leaves_no_ground_edges() -> None:
     assert all(_ground_edge_count(plan, tick) == 0 for tick in range(plan.ticks))
 
 
+def test_site_horizon_override_is_applied_with_environment_fallback() -> None:
+    """Локальная маска отключает только выбранный пункт, остальные используют fallback."""
+    data = synthetic_scenario()
+    data["ground_sites"][1]["min_elevation_deg"] = 89.999
+    scenario = parse(data)
+    plan = contacts.build(scenario)
+
+    assert all(plan.client_visible(tick, "TERM-EAST") == () for tick in range(plan.ticks))
+    assert any(plan.client_visible(tick, "GW-NORTH") for tick in range(plan.ticks))
+
+
 def test_vanishing_isl_range_leaves_no_isl_edges() -> None:
     """Инвариант 16: при дальности, стремящейся к нулю, межспутниковых линий нет."""
     scenario = parse(synthetic_scenario(isl_range_km=1e-6))

@@ -60,6 +60,7 @@ export interface SceneState {
   readonly snapshot: Snapshot | null;
   readonly snapshotSource: 'run' | 'preview';
   readonly snapshotError: string | null;
+  readonly reloadSnapshot: () => void;
 
   readonly timeline: RunTimeline | null;
   readonly metrics: RunMetrics | null;
@@ -100,6 +101,7 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [snapshotSource, setSnapshotSource] = useState<'run' | 'preview'>('preview');
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  const [snapshotAttempt, setSnapshotAttempt] = useState(0);
 
   const [timeline, setTimeline] = useState<RunTimeline | null>(null);
   const [metrics, setMetrics] = useState<RunMetrics | null>(null);
@@ -278,7 +280,7 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
       active = false;
       window.clearTimeout(previewTimer.current);
     };
-  }, [draft, dirty, run, tS, policy]);
+  }, [draft, dirty, run, tS, policy, snapshotAttempt]);
 
   useEffect(() => {
     if (run === null || run.status !== 'succeeded') {
@@ -365,6 +367,10 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
     snapshot,
     snapshotSource,
     snapshotError,
+    reloadSnapshot: useCallback(() => {
+      setSnapshotError(null);
+      setSnapshotAttempt((value) => value + 1);
+    }, []),
     timeline,
     metrics,
     outages,

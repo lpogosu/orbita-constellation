@@ -38,7 +38,7 @@ from orbita_core.scenario import Scenario, ScenarioError, load
 # Корень репозитория: `orbita_core` лежит в `core/`, документы и эталон — рядом с ним.
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 DEFAULT_FIXTURES_PATH: Final[Path] = REPO_ROOT / "docs" / "10_FIXTURES.md"
-DEFAULT_REFERENCE_PATH: Final[Path] = REPO_ROOT / "Расчетный модуль" / "geometry.py"
+DEFAULT_REFERENCE_PATH: Final[Path] = REPO_ROOT / "case" / "geometry" / "geometry.py"
 
 # Допуски golden-таблицы `10_FIXTURES.md` §1: доли, число переходов, точное совпадение
 # наибольшего перерыва.

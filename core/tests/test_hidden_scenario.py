@@ -28,11 +28,11 @@ def _load_reference_geometry() -> ModuleType:
     """Эталонный модуль кейсодержателя лежит вне пакета и загружается по пути.
 
     Тип — `ModuleType`, то есть его атрибуты для mypy остаются `Any`: у
-    `Расчетный модуль/geometry.py` нет ни аннотаций, ни stub-файла, а описывать протокол
+    `case/geometry/geometry.py` нет ни аннотаций, ни stub-файла, а описывать протокол
     ради трёх вызовов в одном тесте дороже, чем потерять здесь статическую типизацию.
     Проверять надо именно этот модуль, а не его копию в ядре.
     """
-    module_path = REPO_ROOT / "Расчетный модуль" / "geometry.py"
+    module_path = REPO_ROOT / "case" / "geometry" / "geometry.py"
     spec = importlib.util.spec_from_file_location("case_reference_geometry", module_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Не удалось загрузить эталонный модуль: {module_path}")

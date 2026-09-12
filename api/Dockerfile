@@ -39,7 +39,7 @@ COPY docs/10_FIXTURES.md docs/10_FIXTURES.md
 # Сверка ядра с эталонным модулем и интеграционные тесты api читают файлы сценариев и
 # сам эталон, поэтому обе папки нужны в стадии проверок.
 COPY scenarios scenarios
-COPY ["Расчетный модуль", "Расчетный модуль"]
+COPY case/geometry case/geometry
 COPY core/tests core/tests
 COPY api/tests api/tests
 COPY worker/tests worker/tests

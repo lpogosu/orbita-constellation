@@ -34,7 +34,9 @@ from typing import Any, Final
 import numpy as np
 import zstandard
 from numpy.typing import NDArray
+from orbita_core import geometry
 from orbita_core.contacts import ContactPlan, EdgeKind
+from orbita_core.scenario import Scenario
 
 MAGIC: Final[bytes] = b"ORBT"
 FORMAT_VERSION: Final[int] = 1
@@ -174,4 +176,48 @@ def decode_trace(blob: bytes) -> Trace:
         bits=bits,
         active=active,
         gateway_available=gateway_available,
+    )
+
+
+def restore_plan(trace: Trace, scenario: Scenario) -> ContactPlan:
+    """Собирает contact plan из трассы и сценария, которым она посчитана.
+
+    Трасса хранит то, что зависит от расчёта: какие рёбра существовали, какие аппараты
+    были активны, какие шлюзы доступны. Координаты и длины линий в ней не лежат — они
+    однозначно восстанавливаются из сценария и времени (ADR-010), а их запись увеличила
+    бы объект на порядок.
+
+    Несовпадение состава узлов означает, что трассу посчитали по другому сценарию: молча
+    подставить чужую геометрию нельзя, метрики стали бы ложью.
+    """
+    nodes = tuple(satellite.id for satellite in scenario.satellites) + tuple(
+        site.id for site in scenario.ground_sites
+    )
+    if nodes != trace.nodes:
+        raise TraceFormatError("состав узлов трассы не совпадает со сценарием запуска")
+
+    positions = geometry.positions_all(scenario)
+    site_positions = geometry.ground_positions(scenario)
+    # Пункты неподвижны в земной системе, аппараты движутся: общий массив координат узлов
+    # позволяет взять длину любого ребра одним выражением, не разделяя ISL и наземные.
+    node_positions = np.concatenate(
+        (positions, np.broadcast_to(site_positions, (trace.ticks, *site_positions.shape))),
+        axis=1,
+    )
+    delta = node_positions[:, trace.edges[:, 0], :] - node_positions[:, trace.edges[:, 1], :]
+    distance_km: NDArray[np.float64] = np.linalg.norm(delta, axis=2)
+
+    return ContactPlan(
+        nodes=trace.nodes,
+        node_index={node: index for index, node in enumerate(trace.nodes)},
+        satellite_count=trace.satellite_count,
+        step_s=trace.step_s,
+        edges=trace.edges,
+        kinds=trace.kinds,
+        bits=trace.bits,
+        dist=np.ascontiguousarray(distance_km),
+        active=trace.active,
+        gateway_ids=trace.gateway_ids,
+        gateway_available=trace.gateway_available,
+        positions=positions,
     )

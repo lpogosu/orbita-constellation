@@ -8,14 +8,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from orbita_core import export
 from orbita_core.contacts import ContactPlan
-from sqlalchemy.ext.asyncio import AsyncSession
+from orbita_core.engine import RunResult
+from orbita_worker.artifacts import ArtifactSink, StoredArtifacts
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from orbita_api.adapters.registry import StorageBundle, StorageRegistry
 from orbita_api.adapters.storage import (
@@ -189,3 +193,73 @@ async def persist_run_artifacts(
         export_uri=export_uri,
         graph_saved=graph_saved,
     )
+
+
+def export_document(result: RunResult, run_id: UUID) -> str:
+    """Текст файла выгрузки `cosmo-A-result-1.0` для запуска `run_id`.
+
+    Ядро собирает обязательную часть, а `recommendation` добавляет этот слой: она
+    сравнивает несколько запусков между собой, и ядро о ней не знает (`04_CORE.md` §6).
+    Поле присутствует со значением `null` даже сейчас, когда рекомендацию в файл ещё
+    никто не кладёт: читатель выгрузки не должен гадать, потеряно поле или пусто.
+    """
+    document = dict(export.build_export(result, run_id=str(run_id)))
+    document["recommendation"] = None
+    return export.dumps_export(document)
+
+
+def run_artifact_sink(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    storage: StorageRegistry,
+) -> ArtifactSink:
+    """Сохранение артефактов, которое воркер подключает к завершённому расчёту.
+
+    Живёт на стороне api, потому что хранилищами владеет api: воркер получает готовую
+    функцию и не знает ни про MinIO, ни про реестр артефактов.
+    """
+
+    async def sink(run_id: UUID, result: RunResult) -> StoredArtifacts:
+        # Сборка выгрузки — это обход всех отсчётов и всех клиентов с записью JSON;
+        # держать на ней event loop воркера нельзя, иначе замолкает прогресс.
+        document = await asyncio.to_thread(export_document, result, run_id)
+        async with sessionmaker() as session:
+            report = await persist_run_artifacts(
+                session,
+                run_id,
+                result.plan,
+                document.encode("utf-8"),
+                storage,
+            )
+            await session.commit()
+        return StoredArtifacts(trace_uri=report.trace_uri, degraded_mode=report.degraded_mode)
+
+    return sink
+
+
+async def store_evidence_pack(
+    session: AsyncSession,
+    run_id: UUID,
+    archive: bytes,
+    storage: StorageRegistry,
+) -> str:
+    """Кладёт Evidence Pack рядом с трассой и выгрузкой запуска.
+
+    Срок хранения — до удаления проекта: архив собирают, чтобы приложить к отчёту, и
+    исчезнуть через сутки он не может (`06_STORAGE.md` §6). Повторная сборка перезаписывает
+    объект по тому же ключу, поэтому прежняя запись реестра сначала убирается.
+    """
+    bundle = await storage.resolve()
+    key = artifact_key(run_id, ArtifactKind.EVIDENCE_PACK)
+    uri, _ = await _put_or_fallback(
+        bundle,
+        storage.local_artifacts,
+        key,
+        archive,
+        ArtifactKind.EVIDENCE_PACK,
+        Retention.PROJECT,
+    )
+    repository = ArtifactRepository(session)
+    await repository.delete_kind(run_id, str(ArtifactKind.EVIDENCE_PACK))
+    _register(repository, run_id, ArtifactKind.EVIDENCE_PACK, uri, len(archive), Retention.PROJECT)
+    await session.commit()
+    return uri

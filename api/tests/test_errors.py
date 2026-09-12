@@ -75,7 +75,7 @@ def test_query_parameter_error_names_the_parameter(client: TestClient) -> None:
 
 def test_not_implemented_envelope_has_no_field_path(client: TestClient) -> None:
     """Заглушка сообщает о самом endpoint, поэтому поля с ошибкой у неё нет."""
-    endpoint = f"/api/runs/{SAMPLE_UUID}/metrics"
+    endpoint = f"/api/experiments/{SAMPLE_UUID}"
 
     response = client.get(endpoint)
 

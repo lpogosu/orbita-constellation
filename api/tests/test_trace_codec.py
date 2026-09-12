@@ -8,13 +8,16 @@ from typing import Final
 
 import numpy as np
 import pytest
+from orbita_core import scenario as core_scenario
 
+from conftest import read_json
 from orbita_api.services.trace_codec import (
     FORMAT_VERSION,
     MAGIC,
     TraceFormatError,
     decode_trace,
     encode_trace,
+    restore_plan,
 )
 from plans import CASE_SCENARIO, HIDDEN_SCENARIO, load_plan
 
@@ -74,3 +77,32 @@ def test_unknown_format_version_is_rejected() -> None:
 
     with pytest.raises(TraceFormatError):
         decode_trace(forged)
+
+
+@pytest.mark.parametrize("relative", SCENARIOS)
+def test_restore_plan_returns_the_original_plan(relative: str) -> None:
+    """Из трассы и сценария собирается тот же contact plan, включая длины и координаты.
+
+    Координаты и длины линий в объекте не лежат: они восстанавливаются геометрией ядра
+    (ADR-010), и совпадать обязаны точно, а не приблизительно.
+    """
+    scenario = core_scenario.parse(read_json(relative))
+    plan = load_plan(relative)
+
+    restored = restore_plan(decode_trace(encode_trace(plan)), scenario)
+
+    assert restored.nodes == plan.nodes
+    assert restored.node_index == plan.node_index
+    assert restored.kinds == plan.kinds
+    assert np.array_equal(restored.bits, plan.bits)
+    assert np.array_equal(restored.positions, plan.positions)
+    assert np.allclose(restored.dist[plan.bits], plan.dist[plan.bits])
+
+
+def test_restore_plan_rejects_a_trace_of_another_scenario() -> None:
+    """Трасса другого сценария не подставляется молча: узлы обязаны совпадать."""
+    trace = decode_trace(encode_trace(load_plan(CASE_SCENARIO)))
+    other = core_scenario.parse(read_json(HIDDEN_SCENARIO))
+
+    with pytest.raises(TraceFormatError):
+        restore_plan(trace, other)

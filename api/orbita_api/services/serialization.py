@@ -72,5 +72,6 @@ def to_run(run: models.Run) -> Run:
         finished_at=run.finished_at,
         duration_ms=run.duration_ms,
         trace_uri=run.trace_uri,
+        degraded_mode=run.degraded_mode,
         error=ErrorDetail.model_validate(run.error) if run.error is not None else None,
     )

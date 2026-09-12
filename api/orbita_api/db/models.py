@@ -196,6 +196,10 @@ class Run(Base):
     finished_at: Mapped[datetime | None] = mapped_column()
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     trace_uri: Mapped[str | None] = mapped_column(String(URI_LENGTH))
+    # Артефакты запуска легли мимо внешних хранилищ: трасса в локальном каталоге, граф не
+    # сохранён (`06_STORAGE.md` §7). Признак принадлежит запуску, а не ответу: результат
+    # уже посчитан, и открывший его через сутки обязан видеть, в каких условиях он записан.
+    degraded_mode: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     error: Mapped[dict[str, Any] | None] = mapped_column()
     # В `06_STORAGE.md` §3 у runs нет отдельной даты создания, но список «последних Run»
     # проекта надо чем-то упорядочивать: `started_at` пуст, пока задача стоит в очереди.
@@ -245,6 +249,7 @@ class ConfigMetrics(Base):
     route_switches_total: Mapped[int] = mapped_column(Integer)
     # Пусто, если резервные маршруты не считались или ни один клиент не имел маршрута.
     backup_path_count_min: Mapped[int | None] = mapped_column(Integer)
+    outage_count_by_cause: Mapped[dict[str, Any]]
     target_met_clients: Mapped[list[Any]]
 
 

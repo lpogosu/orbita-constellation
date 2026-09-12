@@ -16,7 +16,6 @@ from orbita_api.schemas.common import (
     SiteRole,
 )
 from orbita_api.schemas.errors import (
-    NOT_FOUND_CODE,
     NOT_IMPLEMENTED_CODE,
     ErrorCode,
     ErrorDetail,
@@ -94,7 +93,6 @@ from orbita_api.schemas.service import (
 )
 
 __all__ = [
-    "NOT_FOUND_CODE",
     "NOT_IMPLEMENTED_CODE",
     "RESULT_SCHEMA_VERSION",
     "SCENARIO_SCHEMA_VERSION",

@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 from uuid import UUID
 
 from arq.connections import ArqRedis
@@ -27,10 +27,17 @@ from redis.asyncio import ConnectionPool
 from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from orbita_api.adapters.registry import StorageRegistry
 from orbita_api.schemas.runs import RunProgressEvent
+from orbita_api.services.artifacts import run_artifact_sink
 from orbita_api.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+# `05_API.md` §4: результат предварительного просмотра живёт в Redis час. Час выбран
+# документом: дольше хранить снимок черновика незачем, а короче — кэш перестаёт помогать
+# при переборе значений одного параметра.
+PREVIEW_TTL_S: Final[int] = 60 * 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,9 +63,15 @@ class IdempotencyRecord:
 class RunRuntime:
     """Один на процесс api: клиент Redis, фабрика сессий и фоновые расчёты."""
 
-    def __init__(self, redis: ArqRedis, sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        redis: ArqRedis,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        storage: StorageRegistry,
+    ) -> None:
         self._redis = redis
         self._sessionmaker = sessionmaker
+        self._storage = storage
         # Отмена расчётов, запущенных прямо здесь: до них флаг в Redis не дойдёт, потому
         # что в degraded mode Redis и нет.
         self._local_events = LocalRunEvents()
@@ -119,6 +132,22 @@ class RunRuntime:
         except RedisError as error:
             logger.warning("Ключ идемпотентности %s не сохранён: %s", key, error)
 
+    async def read_preview(self, config_hash: str, t_s: int) -> str | None:
+        """Готовый снимок черновика. `None` — его нет или Redis недоступен."""
+        try:
+            stored = await self._redis.get(_preview_key(config_hash, t_s))
+        except RedisError as error:
+            logger.warning("Кэш предварительного просмотра недоступен: %s", error)
+            return None
+        return None if stored is None else str(stored.decode("utf-8"))
+
+    async def remember_preview(self, config_hash: str, t_s: int, snapshot: str) -> None:
+        """Запоминает снимок черновика на час; без Redis просмотр работает без кэша."""
+        try:
+            await self._redis.set(_preview_key(config_hash, t_s), snapshot, ex=PREVIEW_TTL_S)
+        except RedisError as error:
+            logger.warning("Снимок предварительного просмотра не сохранён: %s", error)
+
     async def publish(self, event: RunProgressEvent) -> None:
         """Рассылает состояние подписчикам потока событий.
 
@@ -149,7 +178,12 @@ class RunRuntime:
 
     def _start_in_process(self, run_id: UUID) -> None:
         task = asyncio.create_task(
-            execute_run(run_id, self._sessionmaker, self._local_events),
+            execute_run(
+                run_id,
+                self._sessionmaker,
+                self._local_events,
+                artifacts=run_artifact_sink(self._sessionmaker, self._storage),
+            ),
             name=f"run-{run_id}",
         )
         self._background.add(task)
@@ -164,7 +198,20 @@ class RunRuntime:
             logger.error("Расчёт в процессе api завершился ошибкой: %s", error)
 
 
-def build_runtime(settings: Settings, sessionmaker: async_sessionmaker[AsyncSession]) -> RunRuntime:
+def _preview_key(config_hash: str, t_s: int) -> str:
+    """Ключ кэша предварительного просмотра (`05_API.md` §4).
+
+    Конфигурация и отсчёт задают снимок однозначно, а `config_hash` уже включает политику
+    маршрутизации, поэтому третьего слагаемого в ключе не нужно.
+    """
+    return f"preview:{config_hash}:{t_s}"
+
+
+def build_runtime(
+    settings: Settings,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    storage: StorageRegistry,
+) -> RunRuntime:
     """Клиент очереди без подключения к Redis.
 
     Пул создаётся отдельно от клиента: `ArqRedis.from_url` передал бы свои параметры
@@ -181,7 +228,7 @@ def build_runtime(settings: Settings, sessionmaker: async_sessionmaker[AsyncSess
         socket_timeout=settings.probe_timeout_s,
         retry_on_timeout=False,
     )
-    return RunRuntime(ArqRedis(pool, default_queue_name=QUEUE_NAME), sessionmaker)
+    return RunRuntime(ArqRedis(pool, default_queue_name=QUEUE_NAME), sessionmaker, storage)
 
 
 def get_runtime(request: Request) -> RunRuntime:

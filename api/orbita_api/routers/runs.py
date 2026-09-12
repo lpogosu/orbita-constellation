@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette import EventSourceResponse, ServerSentEvent
 
+from orbita_api.adapters.registry import StorageRegistry, get_storage_registry
 from orbita_api.db.session import get_session
-from orbita_api.error_handling import EndpointNotImplementedError
 from orbita_api.runtime import RunRuntime, get_runtime
 from orbita_api.schemas.errors import error_responses
 from orbita_api.schemas.results import OutageInterval, RunExport, RunMetrics
@@ -21,13 +21,14 @@ from orbita_api.schemas.runs import (
     RunTimeline,
     Snapshot,
 )
-from orbita_api.services import runs
+from orbita_api.services import evidence, preview, results, runs
 
 router = APIRouter(tags=["runs"])
 
 TickQuery = Annotated[int, Query(ge=0, description="Отсчёт сетки, секунды от начала расчёта")]
 Session = Annotated[AsyncSession, Depends(get_session)]
 Runtime = Annotated[RunRuntime, Depends(get_runtime)]
+Storage = Annotated[StorageRegistry, Depends(get_storage_registry)]
 
 # Заголовок ответа `POST /api/runs`: расчёт выполняется в процессе api, потому что Redis
 # недоступен (`06_STORAGE.md` §7). В теле Run такого поля контракт не предусматривает.
@@ -39,6 +40,16 @@ HEARTBEAT_INTERVAL_S: float = 15.0
 
 # Имя события SSE. Единственное на весь поток: клиент разбирает `data` как RunProgressEvent.
 PROGRESS_EVENT: Final[str] = "progress"
+
+# Имя файла выгрузки и архива: браузер сохранит ответ под ним, и по имени видно, к какому
+# запуску относится файл, лежащий в папке загрузок рядом с десятком таких же.
+CONTENT_DISPOSITION: Final[str] = "Content-Disposition"
+EXPORT_FILENAME: Final[str] = "orbita-run-{run_id}.json"
+EVIDENCE_FILENAME: Final[str] = "orbita-evidence-{run_id}.zip"
+
+
+def _attachment(filename: str) -> dict[str, str]:
+    return {CONTENT_DISPOSITION: f'attachment; filename="{filename}"'}
 
 
 class RunEventsResponse(EventSourceResponse):
@@ -54,15 +65,15 @@ class RunEventsResponse(EventSourceResponse):
 @router.post(
     "/preview",
     summary="Снимок одного отсчёта для несохранённого draft",
-    responses=error_responses(400, 501, 503),
+    responses=error_responses(400, 503),
 )
-async def preview_snapshot(request: PreviewRequest) -> Snapshot:
+async def preview_snapshot(request: PreviewRequest, runtime: Runtime) -> Snapshot:
     """Считает один отсчёт без создания варианта и запуска.
 
     Нужен левой панели экрана «Сеть»: пользователь двигает RAAN и сразу видит результат,
     не заводя вариант на каждое движение ползунка.
     """
-    raise EndpointNotImplementedError
+    return await preview.preview(runtime, request)
 
 
 @router.post(
@@ -162,61 +173,89 @@ async def cancel_run(run_id: UUID, session: Session, runtime: Runtime) -> Run:
 @router.get(
     "/runs/{run_id}/snapshot",
     summary="Состояние сети на отсчёте",
-    responses=error_responses(400, 404, 501, 503),
+    responses=error_responses(400, 404, 503),
 )
-async def get_run_snapshot(run_id: UUID, t_s: TickQuery) -> Snapshot:
+async def get_run_snapshot(
+    run_id: UUID,
+    t_s: TickQuery,
+    session: Session,
+    storage: Storage,
+) -> Snapshot:
     """Восстанавливает снимок из трассы и сценария: координаты не хранятся (ADR-010)."""
-    raise EndpointNotImplementedError
+    return await results.run_snapshot(session, storage, run_id, t_s)
 
 
 @router.get(
     "/runs/{run_id}/timeline",
     summary="Доступность и причины по отсчётам для каждого клиента",
-    responses=error_responses(404, 501, 503),
+    responses=error_responses(400, 404, 503),
 )
-async def get_run_timeline(run_id: UUID) -> RunTimeline:
+async def get_run_timeline(run_id: UUID, session: Session, storage: Storage) -> RunTimeline:
     """Данные нижней шкалы экрана «Сеть» за один запрос."""
-    raise EndpointNotImplementedError
+    return await results.run_timeline(session, storage, run_id)
 
 
 @router.get(
     "/runs/{run_id}/metrics",
     summary="Показатели клиентов и конфигурации",
-    responses=error_responses(404, 501, 503),
+    responses=error_responses(400, 404, 503),
 )
-async def get_run_metrics(run_id: UUID) -> RunMetrics:
-    raise EndpointNotImplementedError
+async def get_run_metrics(run_id: UUID, session: Session) -> RunMetrics:
+    """Агрегаты читаются из Postgres: пересчитывать их нечем и незачем."""
+    return await results.run_metrics(session, run_id)
 
 
 @router.get(
     "/runs/{run_id}/outages",
     summary="Интервалы без связи с причинами",
-    responses=error_responses(404, 501, 503),
+    responses=error_responses(400, 404, 503),
 )
-async def get_run_outages(run_id: UUID) -> list[OutageInterval]:
-    raise EndpointNotImplementedError
+async def get_run_outages(run_id: UUID, session: Session) -> list[OutageInterval]:
+    """Перерывы вместе с доказательствами причины, записанными расчётом (ADR-005)."""
+    return await results.run_outages(session, run_id)
 
 
 @router.get(
     "/runs/{run_id}/backup-paths",
     summary="Резервные маршруты и минимальный разрез на отсчёте",
-    responses=error_responses(400, 404, 501, 503),
+    responses=error_responses(400, 404, 503),
 )
 async def get_run_backup_paths(
     run_id: UUID,
     t_s: TickQuery,
     client_id: Annotated[str, Query(description="Идентификатор клиентского пункта из сценария")],
+    session: Session,
+    storage: Storage,
 ) -> BackupPaths:
-    raise EndpointNotImplementedError
+    """Сколько независимых маршрутов есть у клиента и без каких аппаратов их не станет."""
+    return await results.run_backup_paths(session, storage, run_id, t_s, client_id)
 
 
 @router.get(
     "/runs/{run_id}/export",
     summary="Выгрузка результата cosmo-A-result-1.0",
-    responses=error_responses(404, 501, 503),
+    response_class=Response,
+    responses={
+        200: {
+            "model": RunExport,
+            "description": "Файл выгрузки результата",
+        },
+        **error_responses(400, 404, 503),
+    },
 )
-async def export_run(run_id: UUID) -> RunExport:
-    raise EndpointNotImplementedError
+async def export_run(run_id: UUID, session: Session, storage: Storage) -> Response:
+    """Отдаёт сохранённый артефакт запуска байт в байт.
+
+    Файл собран тем же расчётом, что и метрики, и лежит в хранилище. Пересборка на каждый
+    запрос давала бы тот же результат ровно до смены версии ядра, а выгрузка обязана
+    оставаться той, по которой метрики получены (инвариант 10 `10_FIXTURES.md` §2).
+    """
+    document = await results.run_export(session, storage, run_id)
+    return Response(
+        content=document,
+        media_type="application/json",
+        headers=_attachment(EXPORT_FILENAME.format(run_id=run_id)),
+    )
 
 
 @router.get(
@@ -228,9 +267,22 @@ async def export_run(run_id: UUID) -> RunExport:
             "description": "zip-архив Evidence Pack",
             "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
         },
-        **error_responses(404, 501, 503),
+        **error_responses(400, 404, 503),
     },
 )
-async def get_run_evidence_pack(run_id: UUID) -> Response:
+async def get_run_evidence_pack(
+    run_id: UUID,
+    session: Session,
+    storage: Storage,
+    base_run_id: Annotated[
+        UUID | None,
+        Query(description="Запуск для сравнения; без него архив идёт без сравнения и вывода"),
+    ] = None,
+) -> Response:
     """Отдаёт zip: всё, чем расчёт подтверждается на защите, одним файлом."""
-    raise EndpointNotImplementedError
+    archive = await evidence.build(session, storage, run_id, base_run_id)
+    return Response(
+        content=archive,
+        media_type="application/zip",
+        headers=_attachment(EVIDENCE_FILENAME.format(run_id=run_id)),
+    )

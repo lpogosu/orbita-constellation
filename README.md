@@ -92,7 +92,9 @@ Python не нужен.
 Схема Postgres описана миграциями Alembic (`api/orbita_api/db/migrations`). Контейнер
 `api` перед стартом uvicorn выполняет `alembic upgrade head`, поэтому `make up` поднимает
 стек с готовой схемой и отдельной команды не требует. Ревизия `0001` создаёт все таблицы
-`docs/06_STORAGE.md` §3.
+`docs/06_STORAGE.md` §3, `0002` делает уникальность запусков частичной и разрешает
+отсутствие метрик переходов, `0003` добавляет `runs.degraded_mode` и
+`config_metrics.outage_count_by_cause`.
 
 Адрес базы задаётся одной переменной и для приложения, и для миграций:
 
@@ -243,6 +245,89 @@ api фоновой задачей (в отдельном потоке, как и
 секунду. Обязательный расчёт при этом работает целиком, теряются только очередь и
 идемпотентность по ключу (`06_STORAGE.md` §7).
 
+## Полный цикл через API
+
+Всё, что нужно для расчёта и защиты результата, доступно без интерфейса. Команды ниже
+выполняются из корня репозитория на поднятом стеке и используют `jq`.
+
+```bash
+# 1. Проверить файл: 200 — сводка сценария, 400 — все найденные ошибки списком
+curl -s -X POST localhost:8000/api/scenarios/validate \
+  -H 'Content-Type: application/json' \
+  --data-binary @scenarios/01_full_constellation.json | jq .
+
+# 2. Завести проект; вместе с ним появляется первый вариант
+VARIANT=$(jq -n --slurpfile file scenarios/01_full_constellation.json \
+    '{title: "Полярная группировка", scenario: $file[0]}' \
+  | curl -s -X POST localhost:8000/api/projects -H 'Content-Type: application/json' -d @- \
+  | jq -r .active_variant_id)
+
+# 3. Посчитать сутки: 202 — новый расчёт, 200 — готовый с тем же config_hash (ADR-011)
+RUN=$(curl -s -X POST localhost:8000/api/runs -H 'Content-Type: application/json' \
+    -d "{\"variant_id\": \"$VARIANT\"}" | jq -r .id)
+
+# 4. Дождаться конца: поток закрывается сам на конечном статусе
+curl -sN localhost:8000/api/runs/$RUN/events
+```
+
+Результат читается семью запросами. Клиентский пункт берётся из самого ответа, а не
+вписывается руками: идентификаторы приходят из файла сценария.
+
+```bash
+CLIENT=$(curl -s "localhost:8000/api/runs/$RUN/snapshot?t_s=0" | jq -r .clients[0].client_id)
+
+curl -s localhost:8000/api/runs/$RUN/metrics  | jq .config
+curl -s localhost:8000/api/runs/$RUN/outages  | jq '[.[] | .primary_cause] | group_by(.) | map({(.[0]): length}) | add'
+curl -s localhost:8000/api/runs/$RUN/timeline | jq '{total_ticks, step_s, clients: [.clients[].client_id]}'
+curl -s "localhost:8000/api/runs/$RUN/snapshot?t_s=21600" | jq '.clients[] | {client_id, reachable, path}'
+curl -s "localhost:8000/api/runs/$RUN/backup-paths?t_s=21600&client_id=$CLIENT" | jq .
+curl -s localhost:8000/api/runs/$RUN/export -o export.json
+curl -s localhost:8000/api/runs/$RUN/evidence-pack -o evidence.zip
+
+# Выгрузка замкнута сама на себя: её effective_scenario снова проходит валидацию
+jq .effective_scenario export.json \
+  | curl -s -X POST localhost:8000/api/scenarios/validate -H 'Content-Type: application/json' -d @- | jq .
+```
+
+Второй вариант, сравнение и вывод. `changed_parameters` показывает ровно то поле, которое
+изменилось, а `deltas` — что это дало по метрикам.
+
+```bash
+PROJECT=$(curl -s localhost:8000/api/variants/$VARIANT | jq -r .project_id)
+SECOND=$(jq '.design.planes[1].raan_deg = (.design.planes[1].raan_deg + 12
+      | if . >= 360 then . - 360 else . end)' scenarios/01_full_constellation.json \
+  | jq '{title: "Сдвиг ориентации плоскости", scenario: .}' \
+  | curl -s -X POST localhost:8000/api/projects/$PROJECT/variants \
+      -H 'Content-Type: application/json' -d @- | jq -r .id)
+RUN2=$(curl -s -X POST localhost:8000/api/runs -H 'Content-Type: application/json' \
+    -d "{\"variant_id\": \"$SECOND\"}" | jq -r .id)
+
+curl -s -X POST localhost:8000/api/comparisons -H 'Content-Type: application/json' \
+    -d "{\"run_ids\": [\"$RUN\", \"$RUN2\"]}" \
+  | jq '.entries[1] | {changed_parameters, deltas}'
+curl -s "localhost:8000/api/runs/$RUN2/recommendation?base_run_id=$RUN" \
+  | jq '{recommended_run_id, deltas, target_reached, limitations}'
+curl -s "localhost:8000/api/runs/$RUN2/evidence-pack?base_run_id=$RUN" -o evidence.zip
+```
+
+Отдельно от запусков работает предварительный просмотр: один отсчёт черновика без Variant
+и Run, с кэшем в Redis на час.
+
+```bash
+jq -n --slurpfile file scenarios/01_full_constellation.json \
+    '{scenario: $file[0], t_s: 21600}' \
+  | curl -s -X POST localhost:8000/api/preview -H 'Content-Type: application/json' -d @- \
+  | jq '.clients[] | {client_id, reachable, hops}'
+```
+
+Тот же цикл целиком, вместе с проверками инвариантов `docs/10_FIXTURES.md` §2, выполняет
+`api/tests/test_e2e_cycle.py`: адрес стека берётся из `ORBITA_TEST_API_URL`, а без
+отвечающего api тесты помечаются `skip`.
+
+```bash
+cd api && ORBITA_TEST_API_URL=http://localhost:8000 pytest -q tests/test_e2e_cycle.py
+```
+
 ## Решения этого среза
 
 - **Пробы доступности изолированы.** Любая ошибка и любое зависание сверх одной секунды
@@ -274,6 +359,34 @@ api фоновой задачей (в отдельном потоке, как и
 - **Прогресс измеряется стадиями, а не отсчётами.** Маршрутизация проходит всю сетку
   одним вызовом ядра и до своего конца сообщает ноль посчитанных отсчётов, поэтому полоса
   прогресса по отсчётам стояла бы, а потом прыгнула к единице.
-- **Направление зависимостей между api и воркером одно.** Воркер берёт из api модели и
-  репозитории — таблицы у процессов общие, и второй набор моделей разошёлся бы с первым;
-  api импортирует из воркера только задачу расчёта и имена ключей Redis.
+- **Направление зависимостей между api и воркером одно.** Воркер берёт из api модели,
+  репозитории и сохранение артефактов — таблицы и хранилища у процессов общие, и второй
+  набор моделей разошёлся бы с первым; api импортирует из воркера только задачу расчёта и
+  имена ключей Redis. Сам расчёт (`orbita_worker.runner`) не знает ни о том, ни о другом:
+  функцию сохранения он получает параметром, а собирает её точка сборки процесса.
+- **Результат собирается из артефактов, а не пересчитывается.** Снимок, шкала времени и
+  резервные маршруты работают поверх выгрузки и трассы запуска: маршруты берутся из
+  `export.json`, состояние линий связи — из `trace.bin`, координаты восстанавливает
+  геометрия ядра (ADR-010). Пересчёт остаётся запасным путём на случай истёкшего срока
+  хранения трассы — он детерминирован (ADR-011) и заново сохраняет артефакты.
+- **Разобранный запуск живёт в памяти процесса.** Распаковка трассы и разбор выгрузки
+  стоят десятки миллисекунд, а ползунок времени дёргает снимок на каждый шаг, поэтому
+  последние восемь контекстов кэшируются. Всё тяжёлое считается в отдельном потоке: event
+  loop api не имеет права стоять на распаковке.
+- **Выгрузка отдаётся байт в байт тем же файлом, который записал расчёт.** Пересборка на
+  каждый запрос давала бы тот же результат ровно до смены версии ядра, а метрики
+  посчитаны по конкретному файлу (инвариант 10 `10_FIXTURES.md` §2).
+- **Метрики и перерывы не пересчитываются вовсе.** Они лежат в Postgres, и `GET /metrics`
+  с `GET /outages` не поднимают ни трассу, ни выгрузку: экран разбора перерывов
+  открывается за один короткий запрос.
+- **Evidence Pack собирается из готовых ответов API и детерминирован.** Файлы архива — то
+  же, что вернут соответствующие endpoint, иначе приложенный к отчёту архив разошёлся бы с
+  живой системой. Метка времени записей zip фиксирована: иначе два архива из одних данных
+  отличались бы байтами.
+- **Рекомендация считает только сравнимое.** Кандидаты — успешные запуски того же проекта
+  с той же политикой маршрутизации; запуски на другой сетке, дальности или угле возвышения
+  из набора исключаются, а сравнение двух таких запусков отвергается ошибкой с путём
+  `environment.step_s` (`01_SPEC.md` §7).
+- **Предварительный просмотр считает один отсчёт.** Contact plan строится на весь горизонт
+  — положение аппаратов определяется сеткой времени целиком, — а маршруты ищутся только на
+  запрошенном отсчёте: 720 поисков вместо одного черновик не оправдывает.

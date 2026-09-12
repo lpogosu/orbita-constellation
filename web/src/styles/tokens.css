@@ -1,0 +1,114 @@
+/**
+ * Токены макета «ОРБИТА — UI Screens». Значения тёмной темы взяты из переменных Figma
+ * (bg/page, surface/*, border/*, text/*, accent/*, status/*, radius/*, эффекты Elevation
+ * и Glow). Светлая тема в макете не нарисована: она выведена из тех же ролей с
+ * сохранением контраста WCAG AA и живёт здесь же, чтобы компоненты не знали о теме.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-page: #060c24;
+  --topbar-bg: #0a1740;
+
+  --surface-raised: rgba(28, 43, 96, 0.94);
+  --surface-input: rgba(26, 40, 96, 0.92);
+  --surface-sunken: rgba(15, 26, 66, 0.82);
+  --surface-glass: rgba(19, 33, 77, 0.9);
+  --surface-chip: rgba(242, 245, 255, 0.1);
+  --surface-row-active: rgba(108, 92, 231, 0.18);
+
+  --border-default: rgba(102, 142, 255, 0.38);
+  --border-strong: rgba(102, 142, 255, 0.62);
+  --border-divider: rgba(92, 122, 224, 0.22);
+
+  --text-primary: #f2f5ff;
+  --text-secondary: #a9b4de;
+  --text-muted: #7b88bc;
+  --text-on-accent: #ffffff;
+
+  --accent-blue: #2e8bfb;
+  --accent-violet: #6a4fee;
+  --accent-violet-light: #9184ff;
+
+  --status-success: #3fe9b0;
+  --status-warning: #ffa05c;
+  --status-danger: #ff5c7c;
+  --status-success-soft: rgba(63, 233, 176, 0.16);
+  --status-danger-soft: rgba(255, 92, 124, 0.16);
+
+  --gradient-violet: linear-gradient(90deg, #8265ff 0%, #6a4fee 100%);
+  --gradient-magenta: linear-gradient(90deg, #a23ff2 0%, #c654e2 100%);
+
+  --shadow-card: 0 16px 40px rgba(0, 11, 34, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --shadow-glow-violet: 0 8px 14px rgba(108, 92, 231, 0.55);
+  --shadow-glow-magenta: 0 8px 14px rgba(199, 91, 232, 0.5);
+  --shadow-glow-blue: 0 0 16px rgba(46, 139, 251, 0.55);
+
+  /* Сцены-иллюстрации из макета: полярная панорама в шапке и общий фон страницы. */
+  --scenery-page: url('/assets/scenery-master.png');
+  --scenery-panorama: url('/assets/scenery-panorama.png');
+  --scenery-card: url('/assets/scenery-panorama.png');
+  --scrim-page: rgba(6, 12, 36, 0.62);
+  --scrim-panorama: rgba(10, 23, 64, 0.4);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-page: #eaeefb;
+  --topbar-bg: #ffffff;
+
+  --surface-raised: rgba(255, 255, 255, 0.96);
+  --surface-input: #ffffff;
+  --surface-sunken: rgba(255, 255, 255, 0.88);
+  --surface-glass: rgba(252, 253, 255, 0.94);
+  --surface-chip: rgba(20, 32, 80, 0.08);
+  --surface-row-active: rgba(106, 79, 238, 0.12);
+
+  --border-default: rgba(52, 84, 170, 0.28);
+  --border-strong: rgba(52, 84, 170, 0.5);
+  --border-divider: rgba(52, 84, 170, 0.16);
+
+  --text-primary: #0f1a3d;
+  --text-secondary: #3c4a78;
+  --text-muted: #5a6693;
+  --text-on-accent: #ffffff;
+
+  --accent-blue: #1559c4;
+  --accent-violet: #5b3fdd;
+  --accent-violet-light: #6a4fee;
+
+  --status-success: #0b7a58;
+  --status-warning: #9a4f0c;
+  --status-danger: #c22645;
+  --status-success-soft: rgba(11, 122, 88, 0.12);
+  --status-danger-soft: rgba(194, 38, 69, 0.12);
+
+  --shadow-card: 0 12px 30px rgba(23, 40, 96, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --shadow-glow-violet: 0 8px 14px rgba(106, 79, 238, 0.28);
+  --shadow-glow-magenta: 0 8px 14px rgba(199, 91, 232, 0.28);
+  --shadow-glow-blue: 0 0 16px rgba(21, 89, 196, 0.3);
+
+  /* Ночные фотосцены на светлом фоне дают нечитаемый текст, поэтому здесь их нет. */
+  --scenery-page: none;
+  --scenery-panorama: none;
+  --scenery-card: none;
+  --scrim-page: transparent;
+  --scrim-panorama: transparent;
+}
+
+:root {
+  --radius-sm: 12px;
+  --radius-md: 15px;
+  --radius-lg: 18px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-display: 'Montserrat', 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-script: 'Caveat', 'Inter Variable', cursive;
+}

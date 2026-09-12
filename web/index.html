@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="ОРБИТА — расчёт временного графа спутниковой группировки: сквозная достижимость, причины разрывов связи и выбор устойчивой конфигурации."
+    />
+    <link rel="icon" type="image/png" href="/assets/logo-mark.png" />
+    <title>ОРБИТА</title>
+    <script>
+      // Тема применяется до первой отрисовки: иначе тёмный интерфейс моргает светлым.
+      (function () {
+        try {
+          var stored = localStorage.getItem('orbita.theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch (error) {
+          void error;
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

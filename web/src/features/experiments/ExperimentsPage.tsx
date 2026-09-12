@@ -2,10 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { comparisonsApi } from '@/api/comparisons';
-import { experimentsApi, isNotImplemented } from '@/api/experiments';
+import {
+  createExperiment,
+  isNotImplemented,
+  materializePoint,
+} from '@/api/experiments';
+import { getProject } from '@/api/projects';
 import type { ExperimentPoint, ProjectDetail, RoutingPolicy, Variant } from '@/api/types';
-import { NETWORK_PATH } from '@/app/sections';
+import { useProjectSelection } from '@/app/project-selection';
+import { COMPARISON_PATH, NETWORK_PATH } from '@/app/sections';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { groupRuns, pickRun } from '@/features/compare/runs';
@@ -36,9 +41,13 @@ const DEFAULT_BUDGET: BudgetDraft = { maxPoints: '100', maxSeconds: '600' };
  */
 export function ExperimentsPage() {
   const navigate = useNavigate();
-  const { projectId = '' } = useParams<{ projectId: string }>();
+  const params = useParams<{ projectId: string }>();
+  // Пункт меню ведёт на «/experiments» без проекта: тогда экран берёт текущий выбор,
+  // сделанный на «Проектах» или «Результате».
+  const { selection, select } = useProjectSelection();
+  const projectId = params.projectId ?? selection.projectId ?? '';
 
-  const loadProject = useCallback(() => comparisonsApi.getProject(projectId), [projectId]);
+  const loadProject = useCallback(() => getProject(projectId), [projectId]);
   const project = useResource<ProjectDetail>(loadProject);
 
   const [axisX, setAxisX] = useState<AxisDraft>(EMPTY_AXIS);
@@ -71,6 +80,15 @@ export function ExperimentsPage() {
     () => (baseVariant === null ? [] : axisOptions(baseVariant.scenario)),
     [baseVariant],
   );
+
+  // Шапка показывает «Проект › Вариант» из общего выбора, а не из своих запросов.
+  useEffect(() => {
+    select({
+      projectId: projectId === '' ? null : projectId,
+      variantId: baseVariant?.id ?? null,
+      runId: null,
+    });
+  }, [select, projectId, baseVariant]);
 
   // Ось X обязательна, и пустой список в поле выбора показывал бы первый параметр,
   // которого нет в состоянии формы: кнопка запуска молча оставалась бы недоступной.
@@ -111,14 +129,12 @@ export function ExperimentsPage() {
     setStartNotImplemented(false);
     setNotice(null);
 
-    void experimentsApi
-      .create({
+    void createExperiment({
         variant_id: baseVariant.id,
         axes: checkY.axis === null ? [checkX.axis] : [checkX.axis, checkY.axis],
         budget: { max_points: maxPoints, max_seconds: maxSeconds },
         routing_policy: policy,
-      })
-      .then(
+      }).then(
         (experiment) => {
           setStarting(false);
           setExperimentId(experiment.id);
@@ -147,7 +163,7 @@ export function ExperimentsPage() {
         return;
       }
       const runs = baseRunId === null ? runId : `${baseRunId},${runId}`;
-      navigate(`/compare?project=${projectId}&runs=${runs}`);
+      navigate(`${COMPARISON_PATH}?project=${projectId}&runs=${runs}`);
     },
     [baseRunId, navigate, projectId],
   );
@@ -168,7 +184,7 @@ export function ExperimentsPage() {
       }
       setMaterializing(true);
       setNotice(null);
-      void experimentsApi.materialize(experimentId, point.id, pointVariantTitle(point)).then(
+      void materializePoint(experimentId, point.id, pointVariantTitle(point)).then(
         (variant) => {
           setMaterializing(false);
           setNotice(`Точка сохранена вариантом «${variant.title}».`);

@@ -1,13 +1,7 @@
 import type { ClientComparison, ComparisonEntry } from '@/api/types';
-import {
-  deltaArrow,
-  deltaTone,
-  formatDecimal,
-  formatGap,
-  formatPoints,
-  formatShare,
-} from '@/lib/measures';
+import { deltaArrow, deltaTone, formatDecimal, formatPoints } from '@/lib/measures';
 import type { Better } from '@/lib/measures';
+import { formatGap, formatShare } from '@/lib/run-format';
 
 /** Ячейка таблицы: значение показателя и его отличие от базы. */
 export interface Cell {

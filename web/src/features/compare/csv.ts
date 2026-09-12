@@ -1,6 +1,6 @@
 import type { ComparisonEntry } from '@/api/types';
 import { metricSections } from './metrics';
-import { slotLetter } from './slots';
+import { variantLetter } from '@/lib/run-format';
 
 /**
  * «Скачать сравнение CSV» из `14_SCREENS.md` §6. Отдельного endpoint под это нет, а числа
@@ -16,9 +16,9 @@ export function comparisonCsv(entries: readonly ComparisonEntry[]): string {
 
   const header = ['Метрика'];
   for (const [index, entry] of entries.entries()) {
-    header.push(`${slotLetter(index)} · ${entry.variant_title}`);
+    header.push(`${variantLetter(index)} · ${entry.variant_title}`);
     if (index > 0) {
-      header.push(`Δ ${slotLetter(index)}`);
+      header.push(`Δ ${variantLetter(index)}`);
     }
   }
 

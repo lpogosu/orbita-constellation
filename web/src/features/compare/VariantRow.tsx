@@ -4,13 +4,11 @@ import { useState } from 'react';
 import type { ComparisonEntry, RoutingPolicy } from '@/api/types';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
-import { deltaArrow, deltaTone, formatPoints, formatShare } from '@/lib/measures';
-import { policyTitle, ROUTING_POLICIES } from './policies';
+import { deltaArrow, deltaTone, formatPoints } from '@/lib/measures';
+import { formatShare, policyLabel, ROUTING_POLICIES, variantLetter } from '@/lib/run-format';
 import { pickRun } from './runs';
 import type { VariantRuns } from './runs';
-import { slotColor, slotLetter } from './slots';
-
-const MAX_SLOTS = 4;
+import { MAX_SLOTS, slotColor } from './slots';
 
 const ROW_TOP = 166;
 const SLOT_STEP = 471;
@@ -131,7 +129,7 @@ function VariantChip({
         style={{ background: slotColor(index) }}
       />
       <p className="absolute left-[36px] top-[15px] text-caption font-semibold text-ink-muted">
-        Вариант {slotLetter(index)}
+        Вариант {variantLetter(index)}
       </p>
 
       {isBase ? (
@@ -143,7 +141,7 @@ function VariantChip({
           <button
             type="button"
             onClick={onRemove}
-            aria-label={`Убрать вариант ${slotLetter(index)} из сравнения`}
+            aria-label={`Убрать вариант ${variantLetter(index)} из сравнения`}
             className="absolute left-[124px] top-[11px] rounded-sm p-[2px] text-ink-muted transition-colors duration-150 hover:text-ink-primary"
           >
             <X aria-hidden="true" className="size-[14px]" />
@@ -161,7 +159,7 @@ function VariantChip({
             {entry.variant_title}
           </p>
           <span className="absolute left-[18px] top-[58px] rounded-[7px] bg-surface-chip px-[8px] py-[3px] text-micro font-medium tracking-normal text-ink-secondary">
-            {policyTitle(entry.routing_policy)}
+            {policyLabel(entry.routing_policy)}
           </span>
           <p
             className="absolute right-[22px] top-[28px] text-title-m font-bold text-ink-primary"
@@ -250,7 +248,7 @@ function RunPicker({
                           'disabled:cursor-not-allowed disabled:opacity-50',
                         )}
                       >
-                        нет расчёта · Рассчитать с политикой «{policyTitle(policy)}»
+                        нет расчёта · Рассчитать с политикой «{policyLabel(policy)}»
                       </button>
                     );
                   }
@@ -269,7 +267,7 @@ function RunPicker({
                           : 'border-line text-ink-secondary hover:border-line-strong hover:text-ink-primary',
                       )}
                     >
-                      {policyTitle(policy)}
+                      {policyLabel(policy)}
                       {chosen ? ' · уже в сравнении' : ''}
                     </button>
                   );

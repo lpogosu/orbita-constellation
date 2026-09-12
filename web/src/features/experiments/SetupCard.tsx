@@ -2,7 +2,7 @@ import { AlertTriangle, Play } from 'lucide-react';
 
 import type { Experiment, RoutingPolicy, Variant } from '@/api/types';
 import { Card } from '@/components/ui/Card';
-import { policyTitle, ROUTING_POLICIES } from '@/features/compare/policies';
+import { policyLabel, ROUTING_POLICIES } from '@/lib/run-format';
 import { cx } from '@/lib/cx';
 import { formatShareShort } from '@/lib/measures';
 import { draftFor, NO_AXIS } from './axes';
@@ -112,7 +112,7 @@ export function SetupCard({
         width={FIELD_WIDTH}
         value={policy}
         onChange={(value) => { onPolicy(value as RoutingPolicy); }}
-        options={ROUTING_POLICIES.map((item) => ({ value: item, title: policyTitle(item) }))}
+        options={ROUTING_POLICIES.map((item) => ({ value: item, title: policyLabel(item) }))}
       />
 
       <FieldLabel left={23} top={445}>

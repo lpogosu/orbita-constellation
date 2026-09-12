@@ -3,13 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { comparisonsApi } from '@/api/comparisons';
+import { comparisonEvidencePackPath, compareRuns } from '@/api/comparisons';
+import { getProject } from '@/api/projects';
+import { createRun } from '@/api/runs';
 import type { ComparisonResult, ProjectDetail, RoutingPolicy } from '@/api/types';
+import { useProjectSelection } from '@/app/project-selection';
 import { NETWORK_PATH } from '@/app/sections';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
-import { saveBlob, saveText } from '@/lib/download';
+import { downloadFile, saveText } from '@/lib/download';
 import { describe, useResource } from '@/lib/use-resource';
 import { AvailabilityCard } from './AvailabilityCard';
 import { ChangedParametersCard } from './ChangedParametersCard';
@@ -39,13 +42,13 @@ export function ComparePage() {
   const [busyVariantId, setBusyVariantId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const projectId = params.get('project') ?? '';
+  // Проект приходит адресом, а без него — из общего выбора: на «Сравнение» переходят и
+  // пунктом меню, когда проект уже открыт на соседнем экране.
+  const { selection, select } = useProjectSelection();
+  const projectId = params.get('project') ?? selection.projectId ?? '';
   const runsParam = params.get('runs') ?? '';
 
-  const loadProject = useCallback(
-    () => comparisonsApi.getProject(projectId),
-    [projectId],
-  );
+  const loadProject = useCallback(() => getProject(projectId), [projectId]);
   const project = useResource<ProjectDetail>(loadProject);
 
   const groups = useMemo(
@@ -89,12 +92,21 @@ export function ComparePage() {
     if (ids.length < MIN_RUNS) {
       return 'incomplete';
     }
-    return comparisonsApi.compare(ids);
+    return compareRuns(ids);
   }, [comparisonKey]);
   const comparison = useResource<ComparisonState>(loadComparison);
 
   const entries =
     comparison.data === null || comparison.data === 'incomplete' ? null : comparison.data.entries;
+
+  // Шапка показывает «Проект › Вариант» из общего выбора, а не из своих запросов.
+  useEffect(() => {
+    select({
+      projectId: projectId === '' ? null : projectId,
+      variantId: entries?.[0]?.variant_id ?? null,
+      runId: runIds[0] ?? null,
+    });
+  }, [select, projectId, entries, runIds]);
 
   const target =
     runIds[0] === undefined
@@ -123,7 +135,7 @@ export function ComparePage() {
     (variantId: string, policy: RoutingPolicy) => {
       setBusyVariantId(variantId);
       setNotice(null);
-      void comparisonsApi.createRun({ variant_id: variantId, routing_policy: policy }).then(
+      void createRun({ variant_id: variantId, routing_policy: policy }).then(
         (run) => {
           setBusyVariantId(null);
           setNotice(
@@ -148,10 +160,10 @@ export function ComparePage() {
       return;
     }
     setNotice(null);
-    void comparisonsApi.evidencePack(candidateRunId, baseRunId).then(
-      (blob) => { saveBlob(blob, `evidence-${candidateRunId}.zip`); },
-      (error: unknown) => { setNotice(describe(error)); },
-    );
+    void downloadFile(
+      comparisonEvidencePackPath(candidateRunId, baseRunId),
+      `evidence-pack-${candidateRunId.slice(0, 8)}.zip`,
+    ).catch((error: unknown) => { setNotice(describe(error)); });
   }, [runIds]);
 
   const downloadCsv = useCallback(() => {

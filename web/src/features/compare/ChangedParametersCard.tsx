@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { ComparisonEntry, ParameterChange } from '@/api/types';
 import { EmptyState } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
-import { slotLetter } from './slots';
+import { variantLetter } from '@/lib/run-format';
 
 const LEFT = 1202;
 const TOP = 266;
@@ -51,10 +51,10 @@ export function ChangedParametersCard({ entries }: { entries: readonly Compariso
             style={{ gridTemplateColumns: template(candidates.length) }}
           >
             <span>ПАРАМЕТР</span>
-            <span className="truncate">{slotLetter(0)} · база</span>
+            <span className="truncate">{variantLetter(0)} · база</span>
             {candidates.map((entry, index) => (
               <span key={entry.run_id} className="truncate">
-                {slotLetter(index + 1)} · {entry.variant_title}
+                {variantLetter(index + 1)} · {entry.variant_title}
               </span>
             ))}
           </div>

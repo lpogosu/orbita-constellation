@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 
 import type { Experiment, ExperimentPoint, RoutingPolicy } from '@/api/types';
 import { Card } from '@/components/ui/Card';
-import { policyTitle } from '@/features/compare/policies';
 import { cx } from '@/lib/cx';
-import { formatGap, formatShareShort } from '@/lib/measures';
+import { formatShareShort } from '@/lib/measures';
+import { formatGap, policyLabel } from '@/lib/run-format';
 import { pointTitle } from './points';
 
 const LEFT = 25;
@@ -100,7 +100,7 @@ export function RunsCard({
                     {pointTitle(point, axisTitle)}
                   </button>
                   <span className="truncate pr-[10px] text-caption text-ink-secondary">
-                    {policyTitle(policy)}
+                    {policyLabel(policy)}
                   </span>
                   <span className="text-caption text-ink-secondary" data-numeric>
                     {point.min_client_availability === null ||

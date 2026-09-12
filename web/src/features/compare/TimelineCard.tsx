@@ -1,14 +1,16 @@
 import { useCallback, useMemo } from 'react';
 
-import { comparisonsApi } from '@/api/comparisons';
+import { getRunTimeline } from '@/api/runs';
 import type { ComparisonEntry, OutageCause, RunTimeline } from '@/api/types';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
-import { formatClock } from '@/lib/measures';
+// Разбор битовых масок и склейка отрезков едины со шкалой экрана «Результат»: два
+// декодера одного `availability_bitset` рано или поздно разойдутся в краевом отсчёте.
+import { segmentsOf } from '@/features/result/timeline';
+import type { TimelineSegment } from '@/features/result/timeline';
+import { causeView, formatTick, variantLetter } from '@/lib/run-format';
 import { useResource } from '@/lib/use-resource';
-import { slotColor, slotLetter } from './slots';
-import { buildTracks, CAUSE_COLORS, CAUSE_TITLES } from './timeline';
-import type { ClientTrack } from './timeline';
+import { slotColor } from './slots';
 
 const LEFT = 26;
 const TOP = 862;
@@ -17,11 +19,13 @@ const TRACK_WIDTH = 1736;
 const TRACK_HEIGHT = 20;
 const BAR_HEIGHT = 8;
 const AXIS_TICKS = 8;
+const BLOCK_BASE_HEIGHT = 34;
+const BAR_PITCH = 12;
 
 /**
- * «Окна недоступности» (узел Figma `47:526`): толстая шкала — база, тонкие полосы под ней —
- * остальные варианты на той же оси времени. Общая ось здесь и есть смысл блока: сдвиг
- * перерыва на полчаса виден только тогда, когда обе шкалы начинаются в одной точке.
+ * «Окна недоступности» (узел Figma `47:526`): толстая шкала — база, тонкие полосы над ней —
+ * остальные варианты на той же оси времени. Общая ось и есть смысл блока: сдвиг перерыва
+ * на полчаса виден только тогда, когда обе шкалы начинаются в одной точке.
  */
 export function TimelineCard({
   entries,
@@ -33,7 +37,7 @@ export function TimelineCard({
   const key = entries.map((entry) => entry.run_id).join(',');
 
   const load = useCallback(
-    () => Promise.all(key.split(',').map((runId) => comparisonsApi.timeline(runId))),
+    () => Promise.all(key.split(',').map((runId) => getRunTimeline(runId))),
     [key],
   );
   const timelines = useResource<RunTimeline[]>(load);
@@ -49,10 +53,10 @@ export function TimelineCard({
         Окна недоступности
       </h2>
       <p className="absolute left-[300px] top-[17px] text-caption text-ink-muted">
-        толстая шкала — вариант {slotLetter(0)} · тонкие полосы — остальные варианты
+        толстая шкала — вариант {variantLetter(0)} · тонкие полосы — остальные варианты
       </p>
 
-      {timelines.data !== null && <Legend tracks={timelines.data} />}
+      {timelines.data !== null && <Legend timelines={timelines.data} />}
 
       {timelines.error !== null && (
         <div className="absolute inset-x-[31px] top-[46px] h-[150px]">
@@ -91,7 +95,18 @@ function Tracks({
   onOpenTick: (variantId: string, seconds: number) => void;
 }) {
   const base = timelines[0];
-  const tracks = useMemo(() => timelines.map(buildTracks), [timelines]);
+
+  const tracks = useMemo(
+    () =>
+      timelines.map((timeline) =>
+        timeline.clients.map((client) => ({
+          clientId: client.client_id,
+          segments: segmentsOf(client, timeline.total_ticks),
+          totalTicks: timeline.total_ticks,
+        })),
+      ),
+    [timelines],
+  );
   const baseTracks = tracks[0];
 
   if (base === undefined || baseTracks === undefined) {
@@ -99,14 +114,18 @@ function Tracks({
   }
 
   const horizon = base.total_ticks * base.step_s;
-  const blockHeight = 34 + 12 * Math.max(1, timelines.length - 1);
+  const candidates = Math.max(1, timelines.length - 1);
+  const blockHeight = BLOCK_BASE_HEIGHT + BAR_PITCH * candidates;
 
   return (
     <>
       <div className="scroll-area absolute left-[31px] top-[39px] h-[136px] w-[1812px]">
         {baseTracks.map((track, clientIndex) => (
           <div key={track.clientId} style={{ height: blockHeight }} className="relative">
-            <span className="absolute left-0 top-[16px] text-base font-semibold text-ink-primary">
+            <span
+              className="absolute left-0 text-base font-semibold text-ink-primary"
+              style={{ top: BAR_PITCH * candidates + 4 }}
+            >
               {track.clientId}
             </span>
 
@@ -115,16 +134,19 @@ function Tracks({
               return line === undefined ? null : (
                 <CandidateBar
                   key={entries[index + 1]?.run_id ?? index}
-                  track={line}
+                  segments={line.segments}
+                  totalTicks={line.totalTicks}
                   colorIndex={index + 1}
-                  top={index * 12}
+                  top={index * BAR_PITCH}
                 />
               );
             })}
 
             <BaseTrack
-              track={track}
-              top={12 * Math.max(1, timelines.length - 1)}
+              segments={track.segments}
+              totalTicks={track.totalTicks}
+              clientId={track.clientId}
+              top={BAR_PITCH * candidates}
               horizon={horizon}
               onOpen={(seconds) => {
                 const variantId = entries[0]?.variant_id;
@@ -145,7 +167,7 @@ function Tracks({
             style={{ left: LABEL_WIDTH + (index * TRACK_WIDTH) / AXIS_TICKS }}
             data-numeric
           >
-            {formatClock((index * horizon) / AXIS_TICKS)}
+            {formatTick((index * horizon) / AXIS_TICKS)}
           </span>
         ))}
       </div>
@@ -154,45 +176,47 @@ function Tracks({
 }
 
 function BaseTrack({
-  track,
+  segments,
+  totalTicks,
+  clientId,
   top,
   horizon,
   onOpen,
 }: {
-  track: ClientTrack;
+  segments: readonly TimelineSegment[];
+  totalTicks: number;
+  clientId: string;
   top: number;
   horizon: number;
   onOpen: (seconds: number) => void;
 }) {
-  const cellWidth = TRACK_WIDTH / track.cells.length;
-
   return (
     <button
       type="button"
-      aria-label={`Открыть «Сеть» на выбранном отсчёте для пункта ${track.clientId}`}
-      className="absolute rounded-sm"
+      aria-label={`Открыть «Сеть» на выбранном отсчёте для пункта ${clientId}`}
+      className="absolute overflow-hidden rounded-[3px]"
       style={{ left: LABEL_WIDTH, top, width: TRACK_WIDTH, height: TRACK_HEIGHT }}
       onClick={(event) => {
         const box = event.currentTarget.getBoundingClientRect();
-        // `detail === 0` — нажатие с клавиатуры: координаты курсора нет, и открывать
-        // полночь вместо интересного места было бы обманом. Берётся первый перерыв.
+        // `detail === 0` — нажатие с клавиатуры: позиции курсора нет, и открывать полночь
+        // вместо интересного места было бы обманом. Берётся первый перерыв.
         const share =
           event.detail === 0
-            ? (track.outages[0]?.from ?? 0)
+            ? firstOutageShare(segments, totalTicks)
             : (event.clientX - box.left) / box.width;
         onOpen(Math.round(share * horizon));
       }}
     >
       <svg width={TRACK_WIDTH} height={TRACK_HEIGHT} aria-hidden="true">
-        {track.cells.map((cell, index) => (
+        {segments.map((segment) => (
           <rect
-            key={index}
-            x={index * cellWidth}
+            key={segment.from}
+            x={(segment.from / totalTicks) * TRACK_WIDTH}
             y={0}
-            width={Math.max(cellWidth - 0.6, 0.6)}
+            width={Math.max(((segment.to - segment.from) / totalTicks) * TRACK_WIDTH, 1)}
             height={TRACK_HEIGHT}
             style={{
-              fill: cell.cause === null ? 'var(--chart-ok)' : CAUSE_COLORS[cell.cause],
+              fill: segment.cause === null ? 'var(--chart-ok)' : causeView(segment.cause).color,
             }}
           />
         ))}
@@ -202,11 +226,13 @@ function BaseTrack({
 }
 
 function CandidateBar({
-  track,
+  segments,
+  totalTicks,
   colorIndex,
   top,
 }: {
-  track: ClientTrack;
+  segments: readonly TimelineSegment[];
+  totalTicks: number;
   colorIndex: number;
   top: number;
 }) {
@@ -227,25 +253,27 @@ function CandidateBar({
         opacity={0.6}
         style={{ fill: slotColor(colorIndex) }}
       />
-      {track.outages.map((outage) => (
-        <rect
-          key={outage.from}
-          x={outage.from * TRACK_WIDTH}
-          y={0}
-          width={Math.max((outage.to - outage.from) * TRACK_WIDTH, 1)}
-          height={BAR_HEIGHT}
-          style={{ fill: 'var(--chart-no-sat)' }}
-        />
-      ))}
+      {segments
+        .filter((segment) => segment.cause !== null)
+        .map((segment) => (
+          <rect
+            key={segment.from}
+            x={(segment.from / totalTicks) * TRACK_WIDTH}
+            y={0}
+            width={Math.max(((segment.to - segment.from) / totalTicks) * TRACK_WIDTH, 1)}
+            height={BAR_HEIGHT}
+            style={{ fill: 'var(--chart-no-sat)' }}
+          />
+        ))}
     </svg>
   );
 }
 
 /** В легенде только те причины, которые встретились на шкалах: словарь целиком не нужен. */
-function Legend({ tracks }: { tracks: readonly RunTimeline[] }) {
+function Legend({ timelines }: { timelines: readonly RunTimeline[] }) {
   const causes = useMemo(() => {
     const found = new Set<OutageCause>();
-    for (const timeline of tracks) {
+    for (const timeline of timelines) {
       for (const client of timeline.clients) {
         for (const cause of client.causes) {
           if (cause !== null) {
@@ -255,7 +283,7 @@ function Legend({ tracks }: { tracks: readonly RunTimeline[] }) {
       }
     }
     return [...found];
-  }, [tracks]);
+  }, [timelines]);
 
   return (
     <div className="absolute right-[31px] top-[13px] flex items-center gap-[22px]">
@@ -272,11 +300,16 @@ function Legend({ tracks }: { tracks: readonly RunTimeline[] }) {
           <span
             aria-hidden="true"
             className="size-[14px] rounded-full"
-            style={{ background: CAUSE_COLORS[cause] }}
+            style={{ background: causeView(cause).color }}
           />
-          {CAUSE_TITLES[cause]}
+          {causeView(cause).full}
         </span>
       ))}
     </div>
   );
+}
+
+function firstOutageShare(segments: readonly TimelineSegment[], totalTicks: number): number {
+  const outage = segments.find((segment) => segment.cause !== null);
+  return outage === undefined ? 0 : outage.from / totalTicks;
 }

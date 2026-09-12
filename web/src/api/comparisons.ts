@@ -1,40 +1,26 @@
-import { jsonBody, request, requestBlob } from './client';
-import type {
-  ComparisonResult,
-  ProjectDetail,
-  Recommendation,
-  Run,
-  RunCreateRequest,
-  RunTimeline,
-} from './types';
+import { apiPost, apiRequest } from './client';
+import { runEvidencePackPath } from './runs';
+import type { ComparisonResult, Recommendation } from './types';
 
-/** Запросы экрана «05 · Сравнение вариантов» (`05_API.md` §2). */
-export const comparisonsApi = {
-  /** `GET /api/projects/{id}` — варианты проекта и его последние запуски. */
-  getProject: (projectId: string): Promise<ProjectDetail> =>
-    request<ProjectDetail>(`/api/projects/${encodeURIComponent(projectId)}`),
+/**
+ * `POST /api/comparisons` — метрики запусков рядом, дельты и изменённые параметры.
+ * Первый идентификатор списка сервис считает базой (`05_API.md` §1).
+ */
+export function compareRuns(runIds: readonly string[]): Promise<ComparisonResult> {
+  return apiPost<ComparisonResult>('/api/comparisons', { run_ids: [...runIds] });
+}
 
-  /** `POST /api/comparisons` — первый запуск списка считается базой. */
-  compare: (runIds: readonly string[]): Promise<ComparisonResult> =>
-    request<ComparisonResult>('/api/comparisons', jsonBody({ run_ids: [...runIds] })),
+/** `GET /api/runs/{id}/recommendation?base_run_id=` — вывод из ранжирования ADR-006. */
+export function getRecommendation(runId: string, baseRunId: string): Promise<Recommendation> {
+  return apiRequest<Recommendation>(
+    `/api/runs/${runId}/recommendation?base_run_id=${baseRunId}`,
+  );
+}
 
-  /** `GET /api/runs/{id}/recommendation?base_run_id=` — вывод из ранжирования ADR-006. */
-  recommendation: (runId: string, baseRunId: string): Promise<Recommendation> =>
-    request<Recommendation>(
-      `/api/runs/${encodeURIComponent(runId)}/recommendation?base_run_id=${encodeURIComponent(baseRunId)}`,
-    ),
-
-  /** `GET /api/runs/{id}/timeline` — доступность по отсчётам, упакованная битами. */
-  timeline: (runId: string): Promise<RunTimeline> =>
-    request<RunTimeline>(`/api/runs/${encodeURIComponent(runId)}/timeline`),
-
-  /** `POST /api/runs` — расчёт варианта под выбранной политикой маршрутизации. */
-  createRun: (payload: RunCreateRequest): Promise<Run> =>
-    request<Run>('/api/runs', jsonBody(payload)),
-
-  /** `GET /api/runs/{id}/evidence-pack?base_run_id=` — zip с экспортом, сравнением и выводом. */
-  evidencePack: (runId: string, baseRunId: string): Promise<Blob> =>
-    requestBlob(
-      `/api/runs/${encodeURIComponent(runId)}/evidence-pack?base_run_id=${encodeURIComponent(baseRunId)}`,
-    ),
-};
+/**
+ * Путь Evidence Pack со сравнением: без `base_run_id` архив собирается без сравнения и
+ * вывода (`05_API.md` §2), а на экране сравнения нужен именно он.
+ */
+export function comparisonEvidencePackPath(runId: string, baseRunId: string): string {
+  return `${runEvidencePackPath(runId)}?base_run_id=${baseRunId}`;
+}

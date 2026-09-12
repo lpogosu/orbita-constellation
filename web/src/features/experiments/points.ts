@@ -1,5 +1,6 @@
 import type { ExperimentPoint } from '@/api/types';
-import { formatDecimal, formatGap, formatShareShort } from '@/lib/measures';
+import { formatDecimal, formatShareShort } from '@/lib/measures';
+import { formatGap } from '@/lib/run-format';
 
 /** Метрика, которой красится тепловая карта. Все три приходят в `ExperimentPoint`. */
 export type PointMetric =

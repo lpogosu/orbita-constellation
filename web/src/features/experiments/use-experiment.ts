@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { experimentsApi, isNotImplemented } from '@/api/experiments';
+import { getExperiment, getExperimentPoints, isNotImplemented } from '@/api/experiments';
 import type { Experiment, ExperimentPoint } from '@/api/types';
 import { describe } from '@/lib/use-resource';
 
@@ -52,8 +52,8 @@ export function useExperiment(experimentId: string | null): ExperimentState {
 
     const fetchOnce = (): void => {
       void Promise.all([
-        experimentsApi.get(experimentId),
-        experimentsApi.points(experimentId),
+        getExperiment(experimentId),
+        getExperimentPoints(experimentId),
       ]).then(
         ([nextExperiment, nextPoints]) => {
           if (cancelled) {

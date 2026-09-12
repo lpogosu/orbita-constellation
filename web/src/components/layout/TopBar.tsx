@@ -1,8 +1,14 @@
-import { FolderClosed, Moon, Sun } from 'lucide-react';
+import { ChevronRight, FolderClosed, FolderOpen, Moon, Sun } from 'lucide-react';
+import { useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 
+import { getProject } from '@/api/projects';
+import type { ProjectDetail } from '@/api/types';
 import { cx } from '@/lib/cx';
 import { NAV_SECTIONS } from '@/app/sections';
+import { useProjectSelection } from '@/app/project-selection';
+import { Skeleton } from '@/components/state/States';
+import { useResource } from '@/lib/use-resource';
 import { useTheme } from '@/theme/use-theme';
 
 /**
@@ -91,17 +97,58 @@ function NavItem({ to, label }: { to: string; label: string }) {
 }
 
 /**
- * Контекст «Проект › Вариант» (14_SCREENS.md §0.1). На экране «Проекты» проект ещё не
- * открыт, поэтому элемент показан недоступным с объяснением, а не выдуманным названием.
+ * Контекст «Проект › Вариант» (14_SCREENS.md §0.1). Пока проект не открыт, элемент
+ * недоступен и объясняет почему; на экранах проекта и результата он показывает название
+ * из API. Названия не хранятся в контексте выбора, поэтому шапка читает их сама — так
+ * страницы не обязаны ничего в него класть, кроме идентификаторов.
  */
 function ProjectContext() {
+  const { selection } = useProjectSelection();
+  const { projectId, variantId } = selection;
+
+  const load = useCallback(
+    (): Promise<ProjectDetail | null> =>
+      projectId === null ? Promise.resolve(null) : getProject(projectId),
+    [projectId],
+  );
+  const project = useResource<ProjectDetail | null>(load);
+
+  if (projectId === null) {
+    return (
+      <div
+        className="absolute left-[1268px] top-[24px] flex h-[44px] w-[272px] items-center gap-[8px] rounded-sm border border-line bg-surface-input pl-[14px] pr-[12px] opacity-70"
+        title="Откройте проект, чтобы переключать его варианты"
+      >
+        <FolderClosed aria-hidden="true" className="size-[16px] text-ink-muted" />
+        <span className="text-[13px] font-medium text-ink-secondary">Проект не выбран</span>
+      </div>
+    );
+  }
+
+  const detail = project.data;
+  const variant =
+    detail === null ? undefined : detail.variants.find((item) => item.id === variantId);
+
   return (
-    <div
-      className="absolute left-[1268px] top-[24px] flex h-[44px] w-[272px] items-center gap-[8px] rounded-sm border border-line bg-surface-input pl-[14px] pr-[12px] opacity-70"
-      title="Откройте проект, чтобы переключать его варианты"
-    >
-      <FolderClosed aria-hidden="true" className="size-[16px] text-ink-muted" />
-      <span className="text-[13px] font-medium text-ink-secondary">Проект не выбран</span>
+    <div className="absolute left-[1268px] top-[24px] flex h-[44px] w-[272px] items-center gap-[8px] rounded-sm border border-line bg-surface-input pl-[14px] pr-[12px]">
+      <FolderOpen aria-hidden="true" className="size-[16px] shrink-0 text-ink-secondary" />
+      {detail === null && project.error === null && <Skeleton className="h-[16px] w-[200px]" />}
+      {project.error !== null && (
+        <span className="truncate text-[13px] font-medium text-ink-muted" title={project.error}>
+          Проект не загрузился
+        </span>
+      )}
+      {detail !== null && (
+        <>
+          <span className="truncate text-[13px] font-semibold text-ink-primary">
+            {detail.project.title}
+          </span>
+          <ChevronRight aria-hidden="true" className="size-[14px] shrink-0 text-ink-muted" />
+          <span className="truncate text-[13px] font-medium text-ink-secondary">
+            {variant?.title ?? 'все варианты'}
+          </span>
+        </>
+      )}
     </div>
   );
 }

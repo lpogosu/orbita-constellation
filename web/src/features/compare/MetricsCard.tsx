@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { metricSections } from './metrics';
 import type { Cell } from './metrics';
-import { slotLetter } from './slots';
+import { variantLetter } from '@/lib/run-format';
 
 const LEFT = 26;
 const TOP = 266;
@@ -56,9 +56,9 @@ export function MetricsCard({ entries }: { entries: readonly ComparisonEntry[] }
             style={{ gridTemplateColumns: columns }}
           >
             <span>МЕТРИКА</span>
-            <span>ВАРИАНТ {slotLetter(0)} · БАЗА</span>
+            <span>ВАРИАНТ {variantLetter(0)} · БАЗА</span>
             {candidates.map((entry, index) => (
-              <HeadPair key={entry.run_id} letter={slotLetter(index + 1)} />
+              <HeadPair key={entry.run_id} letter={variantLetter(index + 1)} />
             ))}
           </div>
           <div className="h-px w-full bg-line-divider" />

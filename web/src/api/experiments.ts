@@ -1,4 +1,4 @@
-import { ApiError, jsonBody, request } from './client';
+import { ApiError, apiPost, apiRequest } from './client';
 import type { Experiment, ExperimentCreateRequest, ExperimentPoint, Variant } from './types';
 
 /**
@@ -8,26 +8,33 @@ import type { Experiment, ExperimentCreateRequest, ExperimentPoint, Variant } fr
  * расчёт перебора появится позже. Экран вызывает их по-настоящему и показывает ответ
  * сервиса, а не подставляет данные вместо него.
  */
-export const experimentsApi = {
-  /** `POST /api/experiments` — поставить перебор по одной или двум осям. */
-  create: (payload: ExperimentCreateRequest): Promise<Experiment> =>
-    request<Experiment>('/api/experiments', jsonBody(payload)),
 
-  /** `GET /api/experiments/{id}` — статус, прогресс и лучшие точки. */
-  get: (experimentId: string): Promise<Experiment> =>
-    request<Experiment>(`/api/experiments/${encodeURIComponent(experimentId)}`),
+/** `POST /api/experiments` — поставить перебор по одной или двум осям. */
+export function createExperiment(payload: ExperimentCreateRequest): Promise<Experiment> {
+  return apiPost<Experiment>('/api/experiments', payload);
+}
 
-  /** `GET /api/experiments/{id}/points` — точки тепловой карты с метриками. */
-  points: (experimentId: string): Promise<ExperimentPoint[]> =>
-    request<ExperimentPoint[]>(`/api/experiments/${encodeURIComponent(experimentId)}/points`),
+/** `GET /api/experiments/{id}` — статус, прогресс и лучшие точки. */
+export function getExperiment(experimentId: string): Promise<Experiment> {
+  return apiRequest<Experiment>(`/api/experiments/${experimentId}`);
+}
 
-  /** `POST /api/experiments/{id}/points/{point_id}/materialize` — из точки в Variant. */
-  materialize: (experimentId: string, pointId: string, title: string): Promise<Variant> =>
-    request<Variant>(
-      `/api/experiments/${encodeURIComponent(experimentId)}/points/${encodeURIComponent(pointId)}/materialize`,
-      jsonBody({ title }),
-    ),
-};
+/** `GET /api/experiments/{id}/points` — точки тепловой карты с метриками. */
+export function getExperimentPoints(experimentId: string): Promise<ExperimentPoint[]> {
+  return apiRequest<ExperimentPoint[]>(`/api/experiments/${experimentId}/points`);
+}
+
+/** `POST /api/experiments/{id}/points/{point_id}/materialize` — из точки в Variant. */
+export function materializePoint(
+  experimentId: string,
+  pointId: string,
+  title: string,
+): Promise<Variant> {
+  return apiPost<Variant>(
+    `/api/experiments/${experimentId}/points/${pointId}/materialize`,
+    { title },
+  );
+}
 
 /**
  * Отличает «сервис ещё не умеет» от «сервис сломался»: 501 — это объявленный, но не

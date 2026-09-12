@@ -4,7 +4,8 @@ import type { Experiment, ExperimentPoint } from '@/api/types';
 import { EmptyState } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
-import { formatGap, formatShareShort } from '@/lib/measures';
+import { formatShareShort } from '@/lib/measures';
+import { formatGap } from '@/lib/run-format';
 import { pointTitle } from './points';
 
 const LEFT = 1403;

@@ -1,14 +1,14 @@
 import { ArrowLeftRight, ChevronRight } from 'lucide-react';
 import { useCallback } from 'react';
 
-import { comparisonsApi } from '@/api/comparisons';
+import { getRecommendation } from '@/api/comparisons';
 import type { ComparisonEntry, Recommendation } from '@/api/types';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
-import { deltaArrow, deltaTone, formatGap, formatPoints } from '@/lib/measures';
+import { deltaArrow, deltaTone, formatPoints } from '@/lib/measures';
+import { formatGap, variantLetter } from '@/lib/run-format';
 import { useResource } from '@/lib/use-resource';
-import { slotLetter } from './slots';
 
 const LEFT = 1202;
 const TOP = 564;
@@ -44,7 +44,7 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
   const candidateRunId = candidate?.run_id ?? '';
 
   const load = useCallback(
-    () => comparisonsApi.recommendation(candidateRunId, baseRunId),
+    () => getRecommendation(candidateRunId, baseRunId),
     [candidateRunId, baseRunId],
   );
   const recommendation = useResource<Recommendation>(load);
@@ -90,7 +90,7 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
         <Verdict
           recommendation={recommendation.data}
           winnerTitle={winner?.variant_title ?? '—'}
-          winnerLetter={slotLetter(entries.findIndex((entry) => entry.run_id === winner?.run_id))}
+          winnerLetter={variantLetter(entries.findIndex((entry) => entry.run_id === winner?.run_id))}
           winnerIsBase={winnerIsBase}
         />
       )}

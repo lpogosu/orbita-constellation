@@ -32,6 +32,9 @@ build/
 .tsbuildinfo
 *.tsbuildinfo
 
+# Локальные артефакты degraded mode: трассы и экспорт, записанные мимо MinIO
+var/
+
 # Отчёты о покрытии
 .coverage
 htmlcov/

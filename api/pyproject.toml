@@ -18,6 +18,8 @@ dependencies = [
   "redis>=5.1",
   "neo4j>=5.25",
   "boto3>=1.35",
+  # Формат trace.bin (ADR-010): zstd сжимает битовую матрицу трассы.
+  "zstandard>=0.23",
   "sse-starlette>=2.1",
   "arq>=0.26",
 ]
@@ -31,6 +33,9 @@ dev = [
   # starlette.testclient требует httpx2: со старым httpx он выводит предупреждение
   # об устаревании при каждом запуске тестов.
   "httpx2>=2.12",
+  # Свойства интервалов контактов проверяются на случайных матрицах, а не на
+  # единственном примере.
+  "hypothesis>=6.112",
   "ruff>=0.14",
   "mypy>=1.18",
   # Интеграционные тесты поднимают postgres:16 сами; в CI вместо контейнера задаётся
@@ -55,9 +60,9 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN", "TID"]
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
-# `contract_data` и `conftest` - модули тестов, лежащие рядом с ними; для isort они не
-# сторонние пакеты, иначе импорт уезжает в блок зависимостей.
-known-first-party = ["orbita_api", "conftest", "contract_data"]
+# `contract_data`, `conftest` и `plans` - модули тестов, лежащие рядом с ними; для isort
+# они не сторонние пакеты, иначе импорт уезжает в блок зависимостей.
+known-first-party = ["orbita_api", "conftest", "contract_data", "plans"]
 
 [tool.mypy]
 # Версия интерпретатора не фиксируется: проверка идёт под тем Python, которым проект

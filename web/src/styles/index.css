@@ -1,0 +1,66 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/montserrat/700.css';
+@import '@fontsource/caveat/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Числа в таблицах и сводках выравниваются по разрядам (07_UI.md). */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Фон страницы: ночная сцена макета под затемняющим слоем. В светлой теме обе
+     переменные пусты, и остаётся ровная заливка. */
+  .app-scenery {
+    background-image: linear-gradient(var(--scrim-page), var(--scrim-page)), var(--scenery-page);
+    background-size: cover;
+    background-position: center top;
+    background-attachment: fixed;
+  }
+
+  .card-scenery {
+    background-image: linear-gradient(var(--surface-glass), var(--surface-glass)),
+      var(--scenery-card);
+    background-size: cover;
+    background-position: center;
+  }
+}

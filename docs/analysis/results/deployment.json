@@ -1,0 +1,299 @@
+{
+  "description": "Этапы развёртывания 1/2/3 на проекте 01_full_constellation, политика bfs_shortest",
+  "base_scenario": {
+    "id": "01_full_constellation",
+    "title": "Полная группировка"
+  },
+  "stages": {
+    "1": {
+      "policy": "bfs_shortest",
+      "config_hash": "8dc0c8fa0127f0d03bca5c81842ae447f3f416c4b91d4992918449ec90aee7ca",
+      "engine_version": "orbita-core-0.1.0",
+      "grid": {
+        "horizon_s": 86400,
+        "step_s": 120,
+        "ticks": 720
+      },
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.2722222222222222,
+          "visibility": 0.3819444444444444,
+          "max_gap_s": 34320,
+          "mean_hops": 2.066326530612245,
+          "max_hops": 3,
+          "route_switches": 66,
+          "target_met": false,
+          "outage_count": 25,
+          "outage_total_s": 62880,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 11,
+            "NO_GATEWAY_COVERAGE": 14
+          }
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.15833333333333333,
+          "visibility": 0.4875,
+          "max_gap_s": 39480,
+          "mean_hops": 2.1403508771929824,
+          "max_hops": 3,
+          "route_switches": 36,
+          "target_met": false,
+          "outage_count": 34,
+          "outage_total_s": 72720,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 20,
+            "NO_GATEWAY_COVERAGE": 14
+          }
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.12638888888888888,
+          "visibility": 0.5847222222222223,
+          "max_gap_s": 47760,
+          "mean_hops": 3.120879120879121,
+          "max_hops": 4,
+          "route_switches": 29,
+          "target_met": false,
+          "outage_count": 34,
+          "outage_total_s": 75480,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 25,
+            "NO_GATEWAY_COVERAGE": 9
+          }
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.12638888888888888,
+        "mean_client_availability": 0.18564814814814815,
+        "worst_max_gap_s": 47760,
+        "mean_hops": 2.4425188428947826,
+        "max_hops": 4,
+        "route_switches_total": 131,
+        "backup_path_count_min": 1,
+        "target_met_clients": [],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 56,
+          "NO_GATEWAY_COVERAGE": 37
+        }
+      },
+      "cause_ticks": {
+        "C65": {
+          "NO_CLIENT_COVERAGE": 445,
+          "NO_GATEWAY_COVERAGE": 383
+        },
+        "C70": {
+          "NO_CLIENT_COVERAGE": 369,
+          "NO_GATEWAY_COVERAGE": 383
+        },
+        "C72": {
+          "NO_CLIENT_COVERAGE": 299,
+          "NO_GATEWAY_COVERAGE": 383
+        }
+      },
+      "deployed_satellite_count": 16,
+      "planes_in_use": [
+        "P1"
+      ],
+      "gateway_visibility": {
+        "G_MUR": 0.46805555555555556
+      }
+    },
+    "2": {
+      "policy": "bfs_shortest",
+      "config_hash": "426a8931a4dac6652d5e116a734931bbf405fc96cad207fa27cee7e9c63e4807",
+      "engine_version": "orbita-core-0.1.0",
+      "grid": {
+        "horizon_s": 86400,
+        "step_s": 120,
+        "ticks": 720
+      },
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.6180555555555556,
+          "visibility": 0.7166666666666667,
+          "max_gap_s": 19800,
+          "mean_hops": 2.191011235955056,
+          "max_hops": 4,
+          "route_switches": 188,
+          "target_met": false,
+          "outage_count": 31,
+          "outage_total_s": 33000,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 14,
+            "NO_GATEWAY_COVERAGE": 17
+          }
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.625,
+          "visibility": 0.8236111111111111,
+          "max_gap_s": 12000,
+          "mean_hops": 2.7288888888888887,
+          "max_hops": 4,
+          "route_switches": 230,
+          "target_met": false,
+          "outage_count": 56,
+          "outage_total_s": 32400,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 32,
+            "NO_GATEWAY_COVERAGE": 24
+          }
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.6597222222222222,
+          "visibility": 0.8652777777777778,
+          "max_gap_s": 12000,
+          "mean_hops": 3.334736842105263,
+          "max_hops": 4,
+          "route_switches": 282,
+          "target_met": false,
+          "outage_count": 50,
+          "outage_total_s": 29400,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 18,
+            "NO_GATEWAY_COVERAGE": 32
+          }
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.6180555555555556,
+        "mean_client_availability": 0.6342592592592592,
+        "worst_max_gap_s": 19800,
+        "mean_hops": 2.751545655649736,
+        "max_hops": 4,
+        "route_switches_total": 700,
+        "backup_path_count_min": 1,
+        "target_met_clients": [],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 64,
+          "NO_GATEWAY_COVERAGE": 73
+        }
+      },
+      "cause_ticks": {
+        "C65": {
+          "NO_CLIENT_COVERAGE": 204,
+          "NO_GATEWAY_COVERAGE": 148
+        },
+        "C70": {
+          "NO_CLIENT_COVERAGE": 127,
+          "NO_GATEWAY_COVERAGE": 148
+        },
+        "C72": {
+          "NO_CLIENT_COVERAGE": 97,
+          "NO_GATEWAY_COVERAGE": 148
+        }
+      },
+      "deployed_satellite_count": 32,
+      "planes_in_use": [
+        "P1",
+        "P2"
+      ],
+      "gateway_visibility": {
+        "G_MUR": 0.7944444444444444
+      }
+    },
+    "3": {
+      "policy": "bfs_shortest",
+      "config_hash": "e79788e8736a2b6d2c1ff1270e6610dfe0f5babf55eddd28b089ee79309b4359",
+      "engine_version": "orbita-core-0.1.0",
+      "grid": {
+        "horizon_s": 86400,
+        "step_s": 120,
+        "ticks": 720
+      },
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.9666666666666667,
+          "visibility": 0.9777777777777777,
+          "max_gap_s": 480,
+          "mean_hops": 2.2873563218390807,
+          "max_hops": 5,
+          "route_switches": 354,
+          "target_met": true,
+          "outage_count": 19,
+          "outage_total_s": 2880,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 11,
+            "NO_GATEWAY_COVERAGE": 8
+          }
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.9875,
+          "visibility": 0.9986111111111111,
+          "max_gap_s": 120,
+          "mean_hops": 2.6554149085794654,
+          "max_hops": 4,
+          "route_switches": 486,
+          "target_met": true,
+          "outage_count": 9,
+          "outage_total_s": 1080,
+          "outage_count_by_cause": {
+            "NO_CLIENT_COVERAGE": 1,
+            "NO_GATEWAY_COVERAGE": 8
+          }
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.9888888888888889,
+          "visibility": 1.0,
+          "max_gap_s": 120,
+          "mean_hops": 3.1530898876404496,
+          "max_hops": 4,
+          "route_switches": 599,
+          "target_met": true,
+          "outage_count": 8,
+          "outage_total_s": 960,
+          "outage_count_by_cause": {
+            "NO_GATEWAY_COVERAGE": 8
+          }
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "max_hops": 5,
+        "route_switches_total": 1439,
+        "backup_path_count_min": 1,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 12,
+          "NO_GATEWAY_COVERAGE": 24
+        }
+      },
+      "cause_ticks": {
+        "C65": {
+          "NO_CLIENT_COVERAGE": 16,
+          "NO_GATEWAY_COVERAGE": 8
+        },
+        "C70": {
+          "NO_CLIENT_COVERAGE": 1,
+          "NO_GATEWAY_COVERAGE": 8
+        },
+        "C72": {
+          "NO_GATEWAY_COVERAGE": 8
+        }
+      },
+      "deployed_satellite_count": 48,
+      "planes_in_use": [
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "gateway_visibility": {
+        "G_MUR": 0.9888888888888889
+      }
+    }
+  }
+}

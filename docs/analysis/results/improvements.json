@@ -1,0 +1,390 @@
+{
+  "description": "Чувствительность доступности к отдельным мерам на базе сценария 01, политика bfs_shortest",
+  "baseline": {
+    "label": "база 01_full_constellation",
+    "min_client_availability": 0.9666666666666667,
+    "mean_client_availability": 0.9810185185185185,
+    "worst_max_gap_s": 480,
+    "mean_hops": 2.6986203726863316,
+    "target_met_clients": [
+      "C65",
+      "C70",
+      "C72"
+    ],
+    "availability": {
+      "C65": 0.9666666666666667,
+      "C70": 0.9875,
+      "C72": 0.9888888888888889
+    }
+  },
+  "second_gateway": [
+    {
+      "label": "G_NOR",
+      "lat_deg": 69.35,
+      "lon_deg": 88.2,
+      "min_client_availability": 0.9777777777777777,
+      "mean_client_availability": 0.9921296296296296,
+      "worst_max_gap_s": 480,
+      "mean_hops": 2.1024621212121213,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9777777777777777,
+        "C70": 0.9986111111111111,
+        "C72": 1.0
+      }
+    },
+    {
+      "label": "G_TIK",
+      "lat_deg": 71.63,
+      "lon_deg": 128.87,
+      "min_client_availability": 0.9777777777777777,
+      "mean_client_availability": 0.9921296296296296,
+      "worst_max_gap_s": 480,
+      "mean_hops": 2.082316559194167,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9777777777777777,
+        "C70": 0.9986111111111111,
+        "C72": 1.0
+      }
+    },
+    {
+      "label": "G_ANA",
+      "lat_deg": 64.73,
+      "lon_deg": 177.51,
+      "min_client_availability": 0.9777777777777777,
+      "mean_client_availability": 0.9921296296296296,
+      "worst_max_gap_s": 480,
+      "mean_hops": 2.4634303161424165,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9777777777777777,
+        "C70": 0.9986111111111111,
+        "C72": 1.0
+      }
+    }
+  ],
+  "min_elevation": [
+    {
+      "label": "min_elevation_deg=5",
+      "min_elevation_deg": 5.0,
+      "min_client_availability": 1.0,
+      "mean_client_availability": 1.0,
+      "worst_max_gap_s": 0,
+      "mean_hops": 2.200925925925926,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 1.0,
+        "C70": 1.0,
+        "C72": 1.0
+      }
+    },
+    {
+      "label": "min_elevation_deg=10",
+      "min_elevation_deg": 10.0,
+      "min_client_availability": 0.9666666666666667,
+      "mean_client_availability": 0.9810185185185185,
+      "worst_max_gap_s": 480,
+      "mean_hops": 2.6986203726863316,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9666666666666667,
+        "C70": 0.9875,
+        "C72": 0.9888888888888889
+      }
+    },
+    {
+      "label": "min_elevation_deg=15",
+      "min_elevation_deg": 15.0,
+      "min_client_availability": 0.7736111111111111,
+      "mean_client_availability": 0.8569444444444444,
+      "worst_max_gap_s": 3960,
+      "mean_hops": 3.0547147926603393,
+      "target_met_clients": [
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.7736111111111111,
+        "C70": 0.8930555555555556,
+        "C72": 0.9041666666666667
+      }
+    },
+    {
+      "label": "min_elevation_deg=20",
+      "min_elevation_deg": 20.0,
+      "min_client_availability": 0.35694444444444445,
+      "mean_client_availability": 0.4708333333333334,
+      "worst_max_gap_s": 11880,
+      "mean_hops": 3.0929446328279013,
+      "target_met_clients": [],
+      "availability": {
+        "C65": 0.35694444444444445,
+        "C70": 0.5055555555555555,
+        "C72": 0.55
+      }
+    }
+  ],
+  "inclination": [
+    {
+      "label": "inclination_deg=75",
+      "inclination_deg": 75.0,
+      "min_client_availability": 0.6458333333333334,
+      "mean_client_availability": 0.6902777777777778,
+      "worst_max_gap_s": 27000,
+      "mean_hops": 2.5622429814794416,
+      "target_met_clients": [],
+      "availability": {
+        "C65": 0.7569444444444444,
+        "C70": 0.6680555555555555,
+        "C72": 0.6458333333333334
+      }
+    },
+    {
+      "label": "inclination_deg=80",
+      "inclination_deg": 80.0,
+      "min_client_availability": 0.7986111111111112,
+      "mean_client_availability": 0.8101851851851851,
+      "worst_max_gap_s": 13680,
+      "mean_hops": 2.680374600856529,
+      "target_met_clients": [],
+      "availability": {
+        "C65": 0.825,
+        "C70": 0.7986111111111112,
+        "C72": 0.8069444444444445
+      }
+    },
+    {
+      "label": "inclination_deg=85",
+      "inclination_deg": 85.0,
+      "min_client_availability": 0.9291666666666667,
+      "mean_client_availability": 0.9462962962962963,
+      "worst_max_gap_s": 2640,
+      "mean_hops": 2.7380877095697707,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9291666666666667,
+        "C70": 0.9541666666666667,
+        "C72": 0.9555555555555556
+      }
+    },
+    {
+      "label": "inclination_deg=87",
+      "inclination_deg": 87.0,
+      "min_client_availability": 0.9666666666666667,
+      "mean_client_availability": 0.9810185185185185,
+      "worst_max_gap_s": 480,
+      "mean_hops": 2.6986203726863316,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9666666666666667,
+        "C70": 0.9875,
+        "C72": 0.9888888888888889
+      }
+    },
+    {
+      "label": "inclination_deg=90",
+      "inclination_deg": 90.0,
+      "min_client_availability": 1.0,
+      "mean_client_availability": 1.0,
+      "worst_max_gap_s": 0,
+      "mean_hops": 2.6625,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 1.0,
+        "C70": 1.0,
+        "C72": 1.0
+      }
+    },
+    {
+      "label": "inclination_deg=95",
+      "inclination_deg": 95.0,
+      "min_client_availability": 0.9111111111111111,
+      "mean_client_availability": 0.9393518518518519,
+      "worst_max_gap_s": 2640,
+      "mean_hops": 2.6912787525056516,
+      "target_met_clients": [
+        "C65",
+        "C70",
+        "C72"
+      ],
+      "availability": {
+        "C65": 0.9111111111111111,
+        "C70": 0.95,
+        "C72": 0.9569444444444445
+      }
+    }
+  ],
+  "constellation_size": {
+    "by_plane_size": [
+      {
+        "label": "3 плоскости x 12",
+        "plane_count": 3,
+        "plane_size": 12,
+        "satellite_count": 36,
+        "min_client_availability": 0.6708333333333333,
+        "mean_client_availability": 0.7458333333333332,
+        "worst_max_gap_s": 840,
+        "mean_hops": 2.7928658182146173,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.6708333333333333,
+          "C70": 0.7444444444444445,
+          "C72": 0.8222222222222222
+        }
+      },
+      {
+        "label": "3 плоскости x 16",
+        "plane_count": 3,
+        "plane_size": 16,
+        "satellite_count": 48,
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9666666666666667,
+          "C70": 0.9875,
+          "C72": 0.9888888888888889
+        }
+      },
+      {
+        "label": "3 плоскости x 20",
+        "plane_count": 3,
+        "plane_size": 20,
+        "satellite_count": 60,
+        "min_client_availability": 0.9888888888888889,
+        "mean_client_availability": 0.9962962962962963,
+        "worst_max_gap_s": 240,
+        "mean_hops": 2.5609238451935084,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9888888888888889,
+          "C70": 1.0,
+          "C72": 1.0
+        }
+      },
+      {
+        "label": "3 плоскости x 24",
+        "plane_count": 3,
+        "plane_size": 24,
+        "satellite_count": 72,
+        "min_client_availability": 0.9916666666666667,
+        "mean_client_availability": 0.9972222222222222,
+        "worst_max_gap_s": 360,
+        "mean_hops": 2.5296685340802987,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9916666666666667,
+          "C70": 1.0,
+          "C72": 1.0
+        }
+      }
+    ],
+    "by_plane_count": [
+      {
+        "label": "3 плоскости x 16",
+        "plane_count": 3,
+        "plane_size": 16,
+        "satellite_count": 48,
+        "raan_step_deg": 60.0,
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9666666666666667,
+          "C70": 0.9875,
+          "C72": 0.9888888888888889
+        }
+      },
+      {
+        "label": "4 плоскости x 12",
+        "plane_count": 4,
+        "plane_size": 12,
+        "satellite_count": 48,
+        "raan_step_deg": 45.0,
+        "min_client_availability": 0.9305555555555556,
+        "mean_client_availability": 0.9634259259259258,
+        "worst_max_gap_s": 240,
+        "mean_hops": 2.7092236864819017,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9305555555555556,
+          "C70": 0.9791666666666666,
+          "C72": 0.9805555555555555
+        }
+      },
+      {
+        "label": "6 плоскости x 8",
+        "plane_count": 6,
+        "plane_size": 8,
+        "satellite_count": 48,
+        "raan_step_deg": 30.0,
+        "min_client_availability": 0.7375,
+        "mean_client_availability": 0.7824074074074074,
+        "worst_max_gap_s": 360,
+        "mean_hops": 2.6820465541838012,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.7375,
+          "C70": 0.7972222222222223,
+          "C72": 0.8125
+        }
+      }
+    ]
+  }
+}

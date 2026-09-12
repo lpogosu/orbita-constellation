@@ -1,0 +1,827 @@
+{
+  "description": "Сценарий отказов против штатного и контрфактический прогон по каждому аппарату, политика bfs_shortest",
+  "outage_scenario": {
+    "base": "01_full_constellation",
+    "other": "03_satellite_outages",
+    "clients": [
+      {
+        "client_id": "C65",
+        "affected": true,
+        "availability_before": 0.9666666666666667,
+        "availability_after": 0.7930555555555555,
+        "availability_delta": -0.17361111111111116,
+        "max_gap_before_s": 480,
+        "max_gap_after_s": 1440,
+        "max_gap_delta_s": 960,
+        "route_kept_ticks": 559,
+        "route_rebuilt_ticks": 12,
+        "first_divergence_t_s": 22080,
+        "first_new_outage_t_s": 22200,
+        "outage_changes_total": 38,
+        "outage_changes_added": 31,
+        "max_hops_after": 18
+      },
+      {
+        "client_id": "C70",
+        "affected": true,
+        "availability_before": 0.9875,
+        "availability_after": 0.8083333333333333,
+        "availability_delta": -0.1791666666666667,
+        "max_gap_before_s": 120,
+        "max_gap_after_s": 1440,
+        "max_gap_delta_s": 1320,
+        "route_kept_ticks": 544,
+        "route_rebuilt_ticks": 38,
+        "first_divergence_t_s": 21960,
+        "first_new_outage_t_s": 24840,
+        "outage_changes_total": 36,
+        "outage_changes_added": 34,
+        "max_hops_after": 18
+      },
+      {
+        "client_id": "C72",
+        "affected": true,
+        "availability_before": 0.9888888888888889,
+        "availability_after": 0.825,
+        "availability_delta": -0.16388888888888897,
+        "max_gap_before_s": 120,
+        "max_gap_after_s": 1200,
+        "max_gap_delta_s": 1080,
+        "route_kept_ticks": 502,
+        "route_rebuilt_ticks": 92,
+        "first_divergence_t_s": 21960,
+        "first_new_outage_t_s": 24840,
+        "outage_changes_total": 37,
+        "outage_changes_added": 37,
+        "max_hops_after": 17
+      }
+    ],
+    "max_hops_before": 5,
+    "max_hops_after": 18
+  },
+  "criticality": {
+    "base_min_client_availability": 0.9666666666666667,
+    "base_worst_max_gap_s": 480,
+    "satellite_count": 48,
+    "harmful_count": 48,
+    "top": [
+      {
+        "satellite_id": "S19",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S33",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S44",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S45",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S02",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S22",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04722222222222222,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S23",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S24",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S29",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S30",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.011111111111111112
+      }
+    ],
+    "all": [
+      {
+        "satellite_id": "S19",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S33",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S44",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S45",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.023611111111111138,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S02",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S22",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04722222222222222,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S23",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S24",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S29",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S30",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S43",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S46",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.022222222222222254,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S03",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S15",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S16",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S17",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S26",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.0125
+      },
+      {
+        "satellite_id": "S28",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04722222222222222,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S31",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S32",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S34",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05555555555555555,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S47",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S48",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.02083333333333337,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S01",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S12",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S18",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S20",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04722222222222222,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S21",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04583333333333333,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S27",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.019444444444444486,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.011111111111111112
+      },
+      {
+        "satellite_id": "S07",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 360,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05555555555555555,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S05",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 120,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S06",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 120,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05555555555555555,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S04",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S13",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S14",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S25",
+        "plane_id": "P2",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.009722222222222222
+      },
+      {
+        "satellite_id": "S35",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05694444444444444,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S36",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.018055555555555602,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05694444444444444,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S42",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 240,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S38",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 120,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S08",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S09",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.04861111111111111,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S11",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S37",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.01666666666666672,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05416666666666667,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S39",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.015277777777777835,
+        "delta_worst_max_gap_s": 120,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S10",
+        "plane_id": "P1",
+        "delta_min_client_availability": -0.015277777777777835,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S41",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.015277777777777835,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05138888888888889,
+        "articulation_frequency": 0.008333333333333333
+      },
+      {
+        "satellite_id": "S40",
+        "plane_id": "P3",
+        "delta_min_client_availability": -0.01388888888888895,
+        "delta_worst_max_gap_s": 0,
+        "affected_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "min_cut_frequency": 0.05277777777777778,
+        "articulation_frequency": 0.006944444444444444
+      }
+    ],
+    "duration_ms": 26504
+  }
+}

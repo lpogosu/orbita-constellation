@@ -1,6 +1,22 @@
+from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class StorageMode(StrEnum):
+    """Как выбираются хранилища артефактов и графа.
+
+    `auto` подходит и для полного стека, и для degraded: адаптер выбирается по ответу
+    хранилища. Явные режимы нужны, чтобы воспроизвести поведение без остановки сервисов:
+    `local` заставляет работать на локальных адаптерах при живом MinIO, `full` запрещает
+    тихо съехать на них, когда внешние хранилища обязаны работать.
+    """
+
+    AUTO = "auto"
+    LOCAL = "local"
+    FULL = "full"
 
 
 class Settings(BaseSettings):
@@ -22,6 +38,16 @@ class Settings(BaseSettings):
     minio_access_key: str = "orbita"
     minio_secret_key: str = "orbita-secret"
     minio_region: str = "us-east-1"
+    minio_bucket: str = "orbita"
+
+    storage_mode: StorageMode = StorageMode.AUTO
+
+    # Куда пишутся артефакты, когда MinIO недоступен. В контейнере путь переопределяется
+    # на том, иначе трассы исчезнут вместе с контейнером.
+    artifacts_dir: Path = Path("var/artifacts")
+
+    # Запись трассы — не проба доступности: мегабайты по сети идут дольше секунды.
+    storage_timeout_s: float = 15.0
 
     # Ключ, в который arq записывает отметку живости воркера. Значение должно совпадать
     # с `WORKER_HEALTH_KEY` в `worker/orbita_worker/settings.py`: это единственный

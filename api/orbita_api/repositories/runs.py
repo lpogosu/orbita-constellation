@@ -15,6 +15,9 @@ class RunRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def get(self, run_id: UUID) -> models.Run | None:
+        return await self._session.get(models.Run, run_id)
+
     async def list_recent_for_project(
         self,
         project_id: UUID,

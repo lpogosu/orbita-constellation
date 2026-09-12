@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Protocol, runtime_checkable
 
 from orbita_api.schemas import ServiceName, ServiceStatus
@@ -21,14 +22,20 @@ class ServiceProbe(Protocol):
     async def aclose(self) -> None: ...
 
 
-async def probe_status(probe: ServiceProbe, timeout_s: float) -> ServiceStatus:
-    """Превращает результат пробы в статус, не давая отказу хранилища уронить api.
+async def is_alive(ping: Callable[[], Awaitable[bool]], timeout_s: float) -> bool:
+    """Отвечает ли хранилище за отведённое время.
 
     Недоступный Memgraph или MinIO — штатная ситуация degraded mode (06_STORAGE.md §7),
-    поэтому любая ошибка и любое зависание сверх таймаута означают `down`, а не 500.
+    поэтому любая ошибка и любое зависание сверх таймаута означают «не отвечает», а не
+    исключение наружу. Через эту же проверку идёт выбор адаптера в `StorageRegistry`:
+    у health и у выбора хранилища должны быть одинаковые таймаут и трактовка отказа.
     """
     try:
-        alive = await asyncio.wait_for(probe.ping(), timeout=timeout_s)
+        return await asyncio.wait_for(ping(), timeout=timeout_s)
     except Exception:
-        return ServiceStatus.DOWN
-    return ServiceStatus.UP if alive else ServiceStatus.DOWN
+        return False
+
+
+async def probe_status(probe: ServiceProbe, timeout_s: float) -> ServiceStatus:
+    """Превращает результат пробы в статус, не давая отказу хранилища уронить api."""
+    return ServiceStatus.UP if await is_alive(probe.ping, timeout_s) else ServiceStatus.DOWN

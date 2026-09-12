@@ -78,13 +78,14 @@ variants            id, project_id, parent_variant_id, title, scenario jsonb,
                     diff_from_parent jsonb, config_hash, created_at
 runs                id, variant_id, routing_policy, engine_version, config_hash,
                     status, stage, progress, completed_ticks, total_ticks,
-                    created_at, started_at, finished_at, duration_ms, trace_uri, error jsonb
+                    created_at, started_at, finished_at, duration_ms, trace_uri, error jsonb,
+                    degraded_mode
 client_metrics      run_id, client_id, availability, visibility, max_gap_s,
                     mean_hops, max_hops, route_switches, target_met,
                     outage_count_by_cause jsonb
 config_metrics      run_id, min_client_availability, mean_client_availability,
                     worst_max_gap_s, mean_hops, max_hops, route_switches_total,
-                    backup_path_count_min, target_met_clients jsonb
+                    backup_path_count_min, outage_count_by_cause jsonb, target_met_clients jsonb
 outage_intervals    id, run_id, client_id, start_s, end_s, truncated_by_horizon,
                     primary_cause, causes jsonb, evidence jsonb
 experiments         id, project_id, base_variant_id, axes jsonb, budget jsonb,

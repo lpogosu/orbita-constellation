@@ -30,8 +30,11 @@
   "status": "queued", "stage": "validate", "progress": 0.0,
   "completed_ticks": 0, "total_ticks": 720,
   "started_at": null, "finished_at": null, "duration_ms": null,
-  "trace_uri": null, "error": null }
+  "trace_uri": null, "error": null, "degraded_mode": false }
 ```
+
+`degraded_mode` — артефакты запуска лежат в локальных адаптерах, а не в MinIO/Memgraph
+(`06_STORAGE.md` §7); признак описывает текущее место хранения и обновляется при пересчёте.
 
 ### Snapshot
 ```json
@@ -70,6 +73,18 @@
   "outage_count_by_cause": { "NETWORK_PARTITION": 5, "NO_CLIENT_COVERAGE": 2 },
   "target_met_clients": ["C65", "C70", "C72"] }
 ```
+
+### ComparisonEntry (ответ `POST /api/comparisons`)
+```json
+{ "run_id": "uuid", "variant_id": "uuid", "is_base": false,
+  "config": { "...ConfigMetrics..." }, "clients": [ { "...ClientMetrics..." } ],
+  "changed_parameters": [ { "path": "design.planes[1].raan_deg", "from": 60, "to": 72 } ],
+  "deltas": { "min_client_availability": 0.036, "worst_max_gap_s": -1440 },
+  "per_client": [ { "client_id": "C65", "availability_delta": 0.036, "max_gap_delta_s": -1440 } ] }
+```
+Первый `run_id` в запросе — база; у неё `changed_parameters`, `deltas` и `per_client`
+пустые. Run на разных сетках не сравниваются: 400 `INVALID_SCENARIO_FIELD` с
+`path: "environment.step_s"`.
 
 ### Recommendation
 ```json

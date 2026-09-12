@@ -54,6 +54,7 @@ export function MapCanvas({
   const [sprites, setSprites] = useState<MapSprites | null>(null);
   const [hover, setHover] = useState<MapHit | null>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     let active = true;
@@ -102,7 +103,7 @@ export function MapCanvas({
         centerY: height / 2,
         // Диск должен быть главным объектом экрана. Раньше 0.24 оставлял слишком
         // много пустого поля и маршрут превращался в россыпь мелких точек.
-        radiusEquator: Math.min(width, height) * 0.34,
+        radiusEquator: Math.min(width, height) * 0.29 * zoom,
         hemisphere,
       };
 
@@ -124,7 +125,7 @@ export function MapCanvas({
     return () => {
       cancelAnimationFrame(frameRef.current);
     };
-  }, [model, layers, hemisphere, width, height, sprites, hover, palette]);
+  }, [model, layers, hemisphere, width, height, sprites, hover, palette, zoom]);
 
   const locate = useCallback((event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -149,7 +150,7 @@ export function MapCanvas({
     <div className="relative" style={{ width, height }}>
       <canvas
         ref={canvasRef}
-        style={{ width, height }}
+        style={{ width, height, touchAction: 'none' }}
         className="block"
         role="img"
         aria-label="Карта группировки в полярной проекции"
@@ -158,6 +159,13 @@ export function MapCanvas({
         }}
         onPointerLeave={() => {
           setHover(null);
+        }}
+        onWheel={(event) => {
+          event.preventDefault();
+          setZoom((current) => {
+            const factor = event.deltaY < 0 ? 1.1 : 0.9;
+            return Math.min(1.45, Math.max(0.72, current * factor));
+          });
         }}
         onClick={(event) => {
           const found = locate(event);

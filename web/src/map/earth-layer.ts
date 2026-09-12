@@ -1,6 +1,8 @@
 /**
  * Подложка карты: фотография Земли из макета (узел «Globe»), перепроецированная в ту же
- * азимутальную равнопромежуточную сетку, в которой рисуются данные.
+ * азимутальную равнопромежуточную сетку, в которой рисуются данные. Сам ассет
+ * уже содержит готовый полярный диск, поэтому мы рисуем его один раз без
+ * повторного наложения концентрических колец.
  *
  * Снимок глобуса ортографический: точка с коширотой θ лежит на радиусе `R·sin θ`. Данные
  * же по ADR-014 ложатся на радиус `R·θ/90`. Без пересчёта береговая линия и пункты
@@ -10,11 +12,8 @@
  * перерисовывается только при смене размера или плотности пикселей.
  */
 
-/** Доля радиуса диска Земли от ширины файла: из макета — 525.78 диаметра на 762 кадра. */
+/** Доля радиуса диска Земли от ширины исходного полярного ассета. */
 const SURFACE_RATIO = 262.89 / 762;
-
-/** Колец достаточно, чтобы стык между ними не читался: проверено на радиусе 400 px. */
-const RINGS = 64;
 
 const GLOBE_SRC = '/assets/globe-polar.webp';
 // Use the production cut-outs with a real alpha channel. The older WebP files
@@ -89,27 +88,12 @@ export function renderEarth(
 
   // Сначала свечение атмосферы целиком: оно лежит вне диска, и перепроецировать его
   // нечем — там нет поверхности, только ореол.
+  // Исходный полярный рендер слишком неоновый для основной карты. Приглушаем
+  // его в Canvas, сохраняя холодный оттенок и контраст маршрута.
+  ctx.filter = 'saturate(0.72) brightness(0.76)';
   drawScaled(ctx, globe, center, baseScale);
 
-  // Затем кольца поверх диска: от центра к экватору.
-  for (let i = 0; i < RINGS; i += 1) {
-    const inner = (radiusEquator * i) / RINGS;
-    const outer = (radiusEquator * (i + 1)) / RINGS;
-    const colatMid = ((i + 0.5) / RINGS) * 90;
-    const sourceRadius = sourceSurface * Math.sin((colatMid * Math.PI) / 180);
-    const destRadius = ((colatMid / 90) * radiusEquator);
-    const scale = destRadius / sourceRadius;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(center, center, outer, 0, Math.PI * 2);
-    if (inner > 0) {
-      ctx.arc(center, center, inner, 0, Math.PI * 2, true);
-    }
-    ctx.clip('evenodd');
-    drawScaled(ctx, globe, center, scale);
-    ctx.restore();
-  }
+  ctx.filter = 'none';
 
   cached = { radiusEquator, dpr, canvas };
   return canvas;

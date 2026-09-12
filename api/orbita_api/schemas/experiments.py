@@ -23,8 +23,8 @@ class ExperimentAxis(BaseModel):
 class ExperimentBudget(BaseModel):
     """Ограничение sweep: без него перебор двух осей не заканчивается (06_STORAGE.md §7)."""
 
-    max_points: int
-    max_seconds: int
+    max_points: int = Field(gt=0, le=2000)
+    max_seconds: int = Field(gt=0, le=86_400)
 
 
 class ExperimentCreateRequest(BaseModel):

@@ -28,7 +28,7 @@ export function MapModeToggle({ mode, onChange }: MapModeToggleProps) {
             onChange(value);
           }}
           className={cx(
-            'h-[22px] w-[34px] rounded-[6px] text-micro font-bold uppercase tracking-[0.4px] transition-colors duration-150',
+            'h-[22px] w-[34px] rounded-[6px] text-micro font-bold uppercase tracking-[0.4px] transition-colors duration-150 focus-visible:outline-offset-[-2px]',
             mode === value
               ? 'bg-accent-blue text-white shadow-sm'
               : 'text-ink-muted hover:bg-surface-rowActive hover:text-ink-secondary',

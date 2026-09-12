@@ -73,6 +73,11 @@ IMPLEMENTED_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("get", "/api/runs/{run_id}/evidence-pack"),
         ("post", "/api/comparisons"),
         ("get", "/api/runs/{run_id}/recommendation"),
+        ("post", "/api/analysis/criticality"),
+        ("post", "/api/experiments"),
+        ("get", "/api/experiments/{experiment_id}"),
+        ("get", "/api/experiments/{experiment_id}/points"),
+        ("post", "/api/experiments/{experiment_id}/points/{point_id}/materialize"),
     },
 )
 
@@ -143,11 +148,7 @@ def documented_endpoints() -> set[tuple[str, str]]:
 
 
 def openapi_endpoints(schema: dict[str, Any]) -> set[tuple[str, str]]:
-    return {
-        (method, path)
-        for path, operations in schema["paths"].items()
-        for method in operations
-    }
+    return {(method, path) for path, operations in schema["paths"].items() for method in operations}
 
 
 def concrete_url(path: str) -> str:

@@ -100,7 +100,9 @@ export function Satellites({
         const hovered = hoveredId === satellite.id;
         const muted = mutedIds.has(satellite.id);
         const color = planeColor(palette, planeIds, satellite.plane_id);
-        const label = showLabels || hovered || inRoute || failed || highlighted;
+        // Не выводим 720 HTML-подписей поверх Земли. Слой подписей раскрывает
+        // только маршрут и проблемные узлы; остальные читаются по наведению.
+        const label = hovered || inRoute || failed || highlighted;
 
         const bodyMaterial = satellite.active ? SATELLITE_BODY_MATERIAL : SATELLITE_BODY_DIMMED_MATERIAL;
         const collarMaterial = satellite.active ? SATELLITE_COLLAR_MATERIAL : SATELLITE_COLLAR_DIMMED_MATERIAL;

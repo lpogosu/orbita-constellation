@@ -45,14 +45,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   ctx.setTransform(input.dpr, 0, 0, input.dpr, 0, 0);
   ctx.clearRect(0, 0, input.width, input.height);
 
-  if (sprites !== null) {
-    const earth = renderEarth(sprites.globe, view.radiusEquator, input.dpr);
-    const side = earth.width / input.dpr;
-    ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
-  }
-
-  drawGraticule(ctx, input, palette);
-
   const positions = new Map<string, Point>();
 
   for (const satellite of model.satellites) {
@@ -67,6 +59,16 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   if (layers.planes) {
     drawPlanes(ctx, model, palette, positions);
   }
+
+  // Орбиты проходят за Землёй, как в макете: центральный диск сохраняет
+  // читаемый силуэт, а линии появляются по краю и не режут карту пополам.
+  if (sprites !== null) {
+    const earth = renderEarth(sprites.globe, view.radiusEquator, input.dpr);
+    const side = earth.width / input.dpr;
+    ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
+  }
+  drawGraticule(ctx, input, palette);
+
   if (layers.allContacts) {
     drawContacts(ctx, model, layers, palette, positions);
   }
@@ -341,7 +343,7 @@ function drawSatellite(
   point: Point,
   muted: boolean,
 ): void {
-  const { model, palette, layers, sprites } = input;
+  const { model, palette, sprites } = input;
   const failed = satellite.failed || model.draftFailedSatellites.includes(satellite.id);
   const inRoute = model.selectedRoute.includes(satellite.id);
   const candidate = model.failureCandidates.includes(satellite.id);
@@ -414,7 +416,9 @@ function drawSatellite(
     ctx.stroke();
   }
 
-  if (layers.labels || hovered || inRoute || failed || highlighted) {
+  // 720 спутников нельзя подписывать одновременно: слой оставляет подписи
+  // маршрута и событий, остальные доступны через hover/tooltip.
+  if (hovered || inRoute || failed || highlighted) {
     ctx.fillStyle = hovered ? palette.label : palette.labelMuted;
     ctx.font = `600 11px ${SANS}`;
     ctx.textAlign = 'center';

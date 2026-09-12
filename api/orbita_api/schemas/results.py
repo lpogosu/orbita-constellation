@@ -224,6 +224,9 @@ class SatelliteCriticality(BaseModel):
     """Вклад одного аппарата в устойчивость конфигурации (`04_CORE.md` §5.3)."""
 
     satellite_id: str
+    # Plane is useful for grouping criticality in the constellation view.  It was
+    # absent from the initial API draft, so it remains optional for old clients.
+    plane_id: str | None = None
     delta_min_client_availability: float = Field(
         description="Изменение min_client_availability при отказе аппарата на весь горизонт",
     )
@@ -233,6 +236,10 @@ class SatelliteCriticality(BaseModel):
     affected_clients: list[str]
     min_cut_frequency: float = Field(
         description="Доля отсчётов, где аппарат входит в минимальный разрез, [0; 1]",
+    )
+    articulation_frequency: float = Field(
+        default=0.0,
+        description="Доля отсчётов, где аппарат является точкой сочленения сети, [0; 1]",
     )
 
 

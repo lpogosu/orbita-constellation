@@ -72,10 +72,10 @@ export function Scene({
 
   return (
     <>
-      <ambientLight color={0x5274b5} intensity={0.92} />
+      <ambientLight color={0x5274b5} intensity={1.05} />
       <directionalLight
         color={0xeaf1ff}
-        intensity={1.45}
+        intensity={1.65}
         position={[LIGHT_DIRECTION.x * 10, LIGHT_DIRECTION.y * 10, LIGHT_DIRECTION.z * 10]}
       />
 

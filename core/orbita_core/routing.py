@@ -174,6 +174,86 @@ def _still_valid(route: _Route, is_end: list[bool], edge_present: list[bool]) ->
     return all(edge_present[edge] for edge in edges)
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class _TickGraph:
+    """Данные отсчёта, общие для всех клиентов: строятся один раз на отсчёт."""
+
+    adjacency: Adjacency
+    labels: list[int]
+    is_end: list[bool]
+    edge_present: list[bool]
+    edge_length_km: list[float]
+
+
+def _tick_graph(plan: ContactPlan, tick: int) -> _TickGraph:
+    is_end = [False] * len(plan.nodes)
+    for gateway_node in available_gateway_nodes(plan, tick):
+        is_end[gateway_node] = True
+    return _TickGraph(
+        adjacency=build_adjacency(plan, tick),
+        labels=components(plan, tick),
+        is_end=is_end,
+        edge_present=usable_edge_mask(plan, tick).tolist(),
+        edge_length_km=plan.dist[tick].tolist(),
+    )
+
+
+def _route_client(
+    plan: ContactPlan,
+    graph: _TickGraph,
+    tick: int,
+    client: str,
+    policy: RoutingPolicy,
+    held: _Route | None,
+) -> _Route | None:
+    """Маршрут одного клиента на одном отсчёте со сверкой по Union-Find.
+
+    `held` — маршрут, удерживаемый политикой `persistent` с предыдущего отсчёта; `None`
+    означает, что удерживать нечего, и все три политики начинают с поиска.
+    """
+    source = plan.node_index[client]
+    satellite_count = plan.satellite_count
+    route: _Route | None
+    if policy is RoutingPolicy.DIJKSTRA_DISTANCE:
+        route = _dijkstra_distance(
+            graph.adjacency, source, satellite_count, graph.is_end, graph.edge_length_km
+        )
+    elif policy is RoutingPolicy.PERSISTENT and held is not None:
+        route = (
+            held
+            if _still_valid(held, graph.is_end, graph.edge_present)
+            else _bfs_shortest(graph.adjacency, source, satellite_count, graph.is_end)
+        )
+    else:
+        route = _bfs_shortest(graph.adjacency, source, satellite_count, graph.is_end)
+
+    expected = reachable_in_components(plan, tick, client, graph.labels)
+    if (route is not None) != expected:
+        raise InternalInconsistencyError(
+            f"поиск пути дал {route is not None}, Union-Find дал {expected}",
+            tick=tick,
+            client=client,
+        )
+    return route
+
+
+def route_tick(plan: ContactPlan, tick: int, policy: RoutingPolicy) -> dict[str, list[str] | None]:
+    """Маршруты всех клиентов на одном отсчёте, без прохода по всей сетке.
+
+    Нужен предварительному просмотру конфигурации: показать один отсчёт дешевле, чем
+    посчитать сутки, а результат для `bfs_shortest` и `dijkstra_distance` совпадает с тем,
+    что даст `route_all` на этом же отсчёте. Политика `persistent` удерживает маршрут
+    предыдущего отсчёта, которого у одиночного отсчёта нет, поэтому здесь она вырождается
+    в поиск в ширину — то же самое делает и `route_all` на первом отсчёте горизонта.
+    """
+    graph = _tick_graph(plan, tick)
+    routes: dict[str, list[str] | None] = {}
+    for client in plan.client_ids:
+        route = _route_client(plan, graph, tick, client, policy, held=None)
+        routes[client] = None if route is None else [plan.nodes[node] for node in route[0]]
+    return routes
+
+
 def route_all(plan: ContactPlan, policy: RoutingPolicy) -> RouteTable:
     """Маршруты всех клиентов на всех отсчётах по выбранной политике.
 
@@ -183,8 +263,6 @@ def route_all(plan: ContactPlan, policy: RoutingPolicy) -> RouteTable:
     """
     clients = plan.client_ids
     node_names = plan.nodes
-    satellite_count = plan.satellite_count
-    client_nodes = {client: plan.node_index[client] for client in clients}
 
     paths: dict[str, list[list[str] | None]] = {client: [] for client in clients}
     hops: dict[str, list[int | None]] = {client: [] for client in clients}
@@ -194,37 +272,11 @@ def route_all(plan: ContactPlan, policy: RoutingPolicy) -> RouteTable:
     previous: dict[str, list[str] | None] = dict.fromkeys(clients, None)
 
     for tick in range(plan.ticks):
-        adjacency = build_adjacency(plan, tick)
-        labels = components(plan, tick)
-        is_end = [False] * len(node_names)
-        for gateway_node in available_gateway_nodes(plan, tick):
-            is_end[gateway_node] = True
-        edge_present: list[bool] = usable_edge_mask(plan, tick).tolist()
-        edge_length_km: list[float] = plan.dist[tick].tolist()
+        graph = _tick_graph(plan, tick)
+        edge_length_km = graph.edge_length_km
 
         for client in clients:
-            source = client_nodes[client]
-            route: _Route | None
-            if policy is RoutingPolicy.DIJKSTRA_DISTANCE:
-                route = _dijkstra_distance(
-                    adjacency, source, satellite_count, is_end, edge_length_km
-                )
-            elif policy is RoutingPolicy.PERSISTENT and (current := held[client]) is not None:
-                route = (
-                    current
-                    if _still_valid(current, is_end, edge_present)
-                    else _bfs_shortest(adjacency, source, satellite_count, is_end)
-                )
-            else:
-                route = _bfs_shortest(adjacency, source, satellite_count, is_end)
-
-            expected = reachable_in_components(plan, tick, client, labels)
-            if (route is not None) != expected:
-                raise InternalInconsistencyError(
-                    f"поиск пути дал {route is not None}, Union-Find дал {expected}",
-                    tick=tick,
-                    client=client,
-                )
+            route = _route_client(plan, graph, tick, client, policy, held[client])
 
             held[client] = route
             if route is None:

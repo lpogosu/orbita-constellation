@@ -21,7 +21,13 @@ from hypothesis import strategies as st
 
 from orbita_core import contacts, graph, scenario
 from orbita_core.contacts import ContactPlan
-from orbita_core.routing import RouteTable, RoutingPolicy, disjoint_paths, route_all
+from orbita_core.routing import (
+    RouteTable,
+    RoutingPolicy,
+    disjoint_paths,
+    route_all,
+    route_tick,
+)
 from tests.support import SCENARIO_PATHS, single_tick_plan, synthetic_scenario
 
 # `mean_hops` по `bfs_shortest` из `10_FIXTURES.md` §1, допуск ±0,01.
@@ -264,6 +270,36 @@ def test_routing_is_reproducible(path: Path) -> None:
     second = route_all(plan, RoutingPolicy.BFS_SHORTEST)
     assert first.paths == second.paths
     assert first.route_switches == second.route_switches
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [RoutingPolicy.BFS_SHORTEST, RoutingPolicy.DIJKSTRA_DISTANCE],
+    ids=lambda item: item.value,
+)
+@pytest.mark.parametrize("path", SCENARIO_PATHS, ids=lambda item: item.stem)
+def test_route_tick_matches_full_horizon(path: Path, policy: RoutingPolicy) -> None:
+    """Маршрут одного отсчёта совпадает с тем же отсчётом полного расчёта.
+
+    Обе политики без памяти, поэтому совпадение обязано быть на каждом отсчёте: именно на
+    этом держится предварительный просмотр конфигурации.
+    """
+    plan = _plan(path)
+    table = _table(path, policy)
+    for tick in range(plan.ticks):
+        assert route_tick(plan, tick, policy) == {
+            client: table.paths[client][tick] for client in plan.client_ids
+        }
+
+
+@pytest.mark.parametrize("path", SCENARIO_PATHS, ids=lambda item: item.stem)
+def test_route_tick_without_history_equals_bfs(path: Path) -> None:
+    """`persistent` на одиночном отсчёте вырождается в поиск в ширину: удерживать нечего."""
+    plan = _plan(path)
+    tick = plan.ticks // 2
+    assert route_tick(plan, tick, RoutingPolicy.PERSISTENT) == route_tick(
+        plan, tick, RoutingPolicy.BFS_SHORTEST
+    )
 
 
 @pytest.mark.parametrize("stem", sorted(GOLDEN_MEAN_HOPS), ids=lambda item: str(item))

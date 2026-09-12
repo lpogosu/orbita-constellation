@@ -286,23 +286,28 @@ function Legend({ timelines }: { timelines: readonly RunTimeline[] }) {
   }, [timelines]);
 
   return (
-    <div className="absolute right-[31px] top-[13px] flex items-center gap-[22px]">
-      <span className="flex items-center gap-[10px] text-base text-ink-secondary">
+    /* Короткие названия причин и перенос: полные пять названий доходили до подписи слева. */
+    <div className="absolute right-[31px] top-[13px] flex max-w-[1100px] flex-wrap items-center justify-end gap-x-[22px] gap-y-[4px]">
+      <span className="flex items-center gap-[10px] whitespace-nowrap text-small text-ink-secondary">
         <span
           aria-hidden="true"
-          className="size-[14px] rounded-full"
+          className="size-[14px] shrink-0 rounded-full"
           style={{ background: 'var(--chart-ok)' }}
         />
         Связь доступна
       </span>
       {causes.map((cause) => (
-        <span key={cause} className="flex items-center gap-[10px] text-base text-ink-secondary">
+        <span
+          key={cause}
+          title={causeView(cause).full}
+          className="flex items-center gap-[10px] whitespace-nowrap text-small text-ink-secondary"
+        >
           <span
             aria-hidden="true"
-            className="size-[14px] rounded-full"
+            className="size-[14px] shrink-0 rounded-full"
             style={{ background: causeView(cause).color }}
           />
-          {causeView(cause).full}
+          {causeView(cause).short}
         </span>
       ))}
     </div>

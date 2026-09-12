@@ -342,7 +342,11 @@ function Screen({ children, notice }: { children: ReactNode; notice?: string | n
         Перебор конфигураций по осям сценария · метрика min_client_availability
       </p>
       {notice !== undefined && notice !== null && (
-        <p role="status" className="absolute left-[600px] top-[158px] text-caption text-ink-secondary">
+        <p
+          role="status"
+          title={notice}
+          className="absolute left-[600px] top-[158px] w-[1280px] truncate text-caption text-ink-secondary"
+        >
           {notice}
         </p>
       )}

@@ -9,6 +9,7 @@ import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
+import { MapLegend } from '@/map/MapLegend';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
@@ -21,6 +22,7 @@ import { segmentsOf } from '@/features/result/timeline';
 import { FailureModal } from '@/features/network/FailureModal';
 import type { FailureDraft } from '@/features/network/FailureModal';
 import { clientSites, withFailures, withGatewayOutages } from '@/features/network/draft';
+import { useSceneEntry } from '@/features/network/entry';
 import { useNetworkScene } from '@/features/network/use-network-scene';
 import { CriticalityCard } from './CriticalityCard';
 import { FailuresCard } from './FailuresCard';
@@ -48,7 +50,7 @@ type MapView = 'before' | 'after' | 'side';
 export function OutagesPage() {
   const { projectId = '' } = useParams();
   const [search] = useSearchParams();
-  const scene = useNetworkScene(projectId);
+  const scene = useNetworkScene(projectId, useSceneEntry(search));
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
@@ -460,6 +462,7 @@ export function OutagesPage() {
             onSelectSite={selectClient}
             satelliteActions={satelliteActions}
             missing={baseRunId === null}
+            planeColors={palette.planes}
           />
           <MapSlot
             x={LAYOUT.mapPair.x + LAYOUT.mapPair.width + LAYOUT.mapPair.gap}
@@ -473,6 +476,7 @@ export function OutagesPage() {
             onSelectSite={selectClient}
             satelliteActions={satelliteActions}
             missing={false}
+            planeColors={palette.planes}
           />
         </>
       ) : (
@@ -492,6 +496,7 @@ export function OutagesPage() {
           onSelectSite={selectClient}
           satelliteActions={satelliteActions}
           missing={view === 'before' && baseRunId === null}
+          planeColors={palette.planes}
         />
       )}
 
@@ -500,8 +505,6 @@ export function OutagesPage() {
           width={view === 'side' ? mapWidth * 2 + LAYOUT.mapPair.gap : mapWidth}
           layers={layers}
           onChange={setLayers}
-          planeIds={draft.design.planes.map((plane) => plane.id)}
-          planeColors={palette.planes}
           hemisphere={hemisphere}
           onHemisphere={setHemisphere}
         />
@@ -562,6 +565,7 @@ export function OutagesPage() {
                   <EmptyState
                     title="Шкал ещё нет"
                     hint="Задайте отказ и нажмите «Применить отказ»: снизу появятся две полосы на клиента — до и после."
+                    compact
                   />
                 )
           }
@@ -592,6 +596,7 @@ function MapSlot({
   onSelectSite,
   satelliteActions,
   missing,
+  planeColors,
 }: {
   x: number;
   y: number;
@@ -604,6 +609,7 @@ function MapSlot({
   onSelectSite: (siteId: string) => void;
   satelliteActions: (satelliteId: string) => SatelliteAction[];
   missing: boolean;
+  planeColors: readonly string[];
 }) {
   return (
     <div className="absolute" style={{ left: x, top: y }}>
@@ -631,6 +637,7 @@ function MapSlot({
           )}
         />
       )}
+      {!missing && <MapLegend planeIds={model.planeIds} planeColors={planeColors} />}
       <p
         className="pointer-events-none absolute left-[14px] top-[10px] rounded-pill border border-line bg-surface-raised px-[14px] py-[6px] text-caption font-semibold text-ink-primary"
         data-numeric

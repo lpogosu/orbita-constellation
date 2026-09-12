@@ -52,6 +52,13 @@ const LABEL_WIDTH = 67;
 const TRACK_LEFT = 36;
 const ROW_GAP = 8;
 
+/** Треки начинаются под шапкой (12 + 38) с местом на полосу маркеров отказов. */
+const ROWS_TOP = 62;
+/** Низ карточки занят двумя строками: ось времени и подсказка клавиш под ней. */
+const FOOTER_HEIGHT = 52;
+const ROW_HEIGHT_MIN = 18;
+const ROW_HEIGHT_MAX = 34;
+
 /**
  * Шкала суток: трек на клиента, маркер времени, воспроизведение и подсказки. Компонент
  * общий — им пользуются и «Сеть», и «Отказы», поэтому он ничего не знает ни про run, ни
@@ -157,9 +164,15 @@ export function Timeline({
     };
   }, [currentTick, seekTick, totalTicks]);
 
-  const rowsTop = 63;
+  const rowsTop = ROWS_TOP;
   const rowHeight = tracks.length > 0
-    ? Math.min(34, Math.max(22, (height - rowsTop - 46) / tracks.length))
+    ? Math.min(
+        ROW_HEIGHT_MAX,
+        Math.max(
+          ROW_HEIGHT_MIN,
+          (height - rowsTop - FOOTER_HEIGHT) / tracks.length - ROW_GAP,
+        ),
+      )
     : 30;
   const cursorRatio = totalTicks > 1 ? currentTick / (totalTicks - 1) : 0;
 
@@ -169,81 +182,80 @@ export function Timeline({
       className="relative overflow-hidden rounded-2xl border border-line bg-surface-glass shadow-card"
       style={{ width, height }}
     >
-      <h2
-        className="absolute left-[36px] top-[13px] font-display text-heading-m font-bold text-ink-primary"
-        data-numeric
-      >
-        {title}
-      </h2>
-
-      <div className="absolute left-[175px] top-[13px] flex items-center gap-[6px]">
-        <TransportButton label="В начало" onClick={() => { seekTick(0); }}>
-          <SkipBack aria-hidden="true" className="size-[16px]" />
-        </TransportButton>
-        <TransportButton label="Назад на отсчёт" onClick={() => { seekTick(currentTick - 1); }}>
-          <ChevronLeft aria-hidden="true" className="size-[16px]" />
-        </TransportButton>
-        <button
-          type="button"
-          aria-label={playing ? 'Пауза' : 'Воспроизвести'}
-          aria-pressed={playing}
-          onClick={() => { setPlaying((value) => !value); }}
-          className="flex h-[34px] w-[40px] items-center justify-center rounded-[10px] bg-accent-violet text-ink-onAccent transition-[filter] duration-150 hover:brightness-110"
+      {/*
+        Шапка — три зоны фиксированной ширины: заголовок слева, транспорт по центру,
+        отсчёт справа. Ширины заданы, поэтому ни «23:58», ни нажатая скорость ×16 не
+        наезжают на соседа при любой ширине карточки.
+      */}
+      <div className="absolute left-[36px] right-[24px] top-[12px] flex h-[38px] items-center gap-[16px]">
+        <h2
+          className="w-[120px] shrink-0 truncate font-display text-heading-m font-bold text-ink-primary"
+          data-numeric
         >
-          {playing ? (
-            <Pause aria-hidden="true" className="size-[16px]" />
-          ) : (
-            <Play aria-hidden="true" className="size-[16px]" />
-          )}
-        </button>
-        <TransportButton label="Вперёд на отсчёт" onClick={() => { seekTick(currentTick + 1); }}>
-          <ChevronRight aria-hidden="true" className="size-[16px]" />
-        </TransportButton>
-        <TransportButton label="В конец" onClick={() => { seekTick(totalTicks - 1); }}>
-          <SkipForward aria-hidden="true" className="size-[16px]" />
-        </TransportButton>
+          {title}
+        </h2>
 
-        <div className="ml-[6px] flex items-start gap-[2px] rounded-[10px] bg-surface-chip p-[3px]">
-          {([1, 4, 16] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={speed === value}
-              onClick={() => { setSpeed(value); }}
-              className={cx(
-                'h-[28px] w-[36px] rounded-[8px] text-caption font-semibold transition-colors duration-150',
-                speed === value ? 'bg-accent-violet text-ink-onAccent' : 'text-ink-secondary',
-              )}
-            >
-              {value}×
-            </button>
-          ))}
+        <div className="flex flex-1 items-center justify-center gap-[6px]">
+          <TransportButton label="В начало" onClick={() => { seekTick(0); }}>
+            <SkipBack aria-hidden="true" className="size-[16px]" />
+          </TransportButton>
+          <TransportButton label="Назад на отсчёт" onClick={() => { seekTick(currentTick - 1); }}>
+            <ChevronLeft aria-hidden="true" className="size-[16px]" />
+          </TransportButton>
+          <button
+            type="button"
+            aria-label={playing ? 'Пауза' : 'Воспроизвести'}
+            aria-pressed={playing}
+            onClick={() => { setPlaying((value) => !value); }}
+            className="flex h-[34px] w-[40px] shrink-0 items-center justify-center rounded-[10px] bg-accent-violet text-ink-onAccent transition-[filter] duration-150 hover:brightness-110"
+          >
+            {playing ? (
+              <Pause aria-hidden="true" className="size-[16px]" />
+            ) : (
+              <Play aria-hidden="true" className="size-[16px]" />
+            )}
+          </button>
+          <TransportButton label="Вперёд на отсчёт" onClick={() => { seekTick(currentTick + 1); }}>
+            <ChevronRight aria-hidden="true" className="size-[16px]" />
+          </TransportButton>
+          <TransportButton label="В конец" onClick={() => { seekTick(totalTicks - 1); }}>
+            <SkipForward aria-hidden="true" className="size-[16px]" />
+          </TransportButton>
+
+          <div className="ml-[6px] flex shrink-0 items-center gap-[2px] rounded-[10px] bg-surface-chip p-[3px]">
+            {([1, 4, 16] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={speed === value}
+                onClick={() => { setSpeed(value); }}
+                className={cx(
+                  'h-[28px] w-[36px] rounded-[8px] text-caption font-semibold transition-colors duration-150',
+                  speed === value ? 'bg-accent-violet text-ink-onAccent' : 'text-ink-secondary',
+                )}
+              >
+                {value}×
+              </button>
+            ))}
+          </div>
         </div>
+
+        <output
+          className="flex h-[36px] w-[88px] shrink-0 items-center justify-center rounded-sm border border-line bg-surface-raised text-base font-medium text-ink-primary"
+          data-numeric
+        >
+          {formatTick(tS)}
+        </output>
       </div>
 
-      <output
-        className="absolute top-[23px] flex h-[36px] w-[88px] items-center justify-center rounded-sm border border-line bg-surface-raised text-base font-medium text-ink-primary"
-        style={{ left: 443 }}
-        data-numeric
-      >
-        {formatTick(tS)}
-      </output>
-
-      <ul className="absolute right-[24px] top-[21px] flex items-center gap-[14px]">
-        <CauseLegendItem color="var(--chart-ok)" label="связь есть" />
-        {CAUSES.map((cause) => (
-          <CauseLegendItem key={cause} color={causeView(cause).color} label={causeView(cause).short} />
-        ))}
-      </ul>
-
       {placeholder !== undefined ? (
-        <div className="absolute inset-x-0 bottom-0 top-[60px]">{placeholder}</div>
+        <div className="absolute inset-x-0 bottom-0 top-[56px]">{placeholder}</div>
       ) : (
         <>
           {markers.length > 0 && (
             <div
               className="absolute h-[10px]"
-              style={{ left: TRACK_LEFT + LABEL_WIDTH, top: rowsTop - 14, width: trackWidth }}
+              style={{ left: TRACK_LEFT + LABEL_WIDTH, top: rowsTop - 12, width: trackWidth }}
             >
               {markers.map((marker) => (
                 <span
@@ -272,9 +284,10 @@ export function Timeline({
             >
               <button
                 type="button"
+                title={track.clientId}
                 onClick={() => onSelectClient?.(track.clientId)}
                 className={cx(
-                  'w-[60px] shrink-0 text-left text-base font-semibold transition-colors duration-150',
+                  'w-[60px] shrink-0 truncate text-left text-base font-semibold transition-colors duration-150',
                   track.clientId === selectedClientId ? 'text-ink-primary' : 'text-ink-secondary',
                 )}
               >
@@ -316,9 +329,10 @@ export function Timeline({
             }}
           />
 
+          {/* Ось времени — отдельная строка ровно под треками, по их же сетке. */}
           <div
-            className="absolute flex justify-between text-caption text-ink-muted"
-            style={{ left: TRACK_LEFT + LABEL_WIDTH, width: trackWidth, bottom: 14 }}
+            className="absolute flex h-[16px] items-center justify-between text-caption text-ink-muted"
+            style={{ left: TRACK_LEFT + LABEL_WIDTH, width: trackWidth, bottom: 30 }}
             data-numeric
           >
             {hourTicks(horizonS).map((seconds) => (
@@ -326,15 +340,27 @@ export function Timeline({
             ))}
           </div>
 
-          {baselineLabel !== undefined && (
-            <p className="absolute bottom-[14px] right-[24px] text-caption text-ink-muted">
-              {baselineLabel}
+          {/*
+            Нижняя строка: подсказка клавиш слева, легенда причин справа. Подсказка
+            сжимается многоточием, легенда не сжимается — она обязана читаться целиком.
+          */}
+          <div className="absolute inset-x-[36px] bottom-[8px] flex h-[18px] items-center justify-between gap-[16px]">
+            <p className="min-w-0 truncate text-micro text-ink-muted">
+              Space — пуск/пауза · ← → — шаг · Home/End — края
+              {baselineLabel === undefined ? '' : ` · ${baselineLabel}`}
             </p>
-          )}
 
-          <p className="absolute bottom-[14px] left-[36px] text-caption text-ink-muted">
-            Space — пуск/пауза · ← → — шаг · Home/End — края
-          </p>
+            <ul className="flex shrink-0 items-center gap-[14px]">
+              <CauseLegendItem color="var(--chart-ok)" label="связь есть" />
+              {CAUSES.map((cause) => (
+                <CauseLegendItem
+                  key={cause}
+                  color={causeView(cause).color}
+                  label={causeView(cause).short}
+                />
+              ))}
+            </ul>
+          </div>
         </>
       )}
 

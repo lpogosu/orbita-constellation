@@ -23,6 +23,16 @@ import type { RunControl } from './use-run';
 /** Задержка автообновления предпросмотра после правки параметра (`14_SCREENS.md` §2.1). */
 const PREVIEW_DEBOUNCE_MS = 500;
 
+/**
+ * Позиция, с которой открыт экран: она приходит в адресе (`run`, `t`) и применяется один
+ * раз, при входе. Дальше отсчётом и расчётом распоряжается сам экран, иначе ссылка,
+ * оставшаяся в адресной строке, возвращала бы пользователя назад на каждую перерисовку.
+ */
+export interface SceneEntry {
+  readonly runId: string | null;
+  readonly tS: number | null;
+}
+
 export interface SceneState {
   readonly project: ProjectDetail | null;
   readonly projectError: string | null;
@@ -69,8 +79,13 @@ export interface SceneState {
  * к нему привязано. Хук ничего не считает — он только решает, какой источник показывать
  * на текущем отсчёте: снимок расчёта или предпросмотр черновика (`14_SCREENS.md` §0.3).
  */
-export function useNetworkScene(projectId: string): SceneState {
+export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneState {
   const { selection, select } = useProjectSelection();
+
+  const entryRunId = entry?.runId ?? null;
+  // Расчёт из адреса подставляется только первым: после «Запустить расчёт» экран живёт
+  // своим прогоном, а прежний идентификатор в запросе уже не команда.
+  const entryRunUsed = useRef(false);
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
@@ -79,7 +94,7 @@ export function useNetworkScene(projectId: string): SceneState {
   const [variant, setVariant] = useState<Variant | null>(null);
   const [draft, setDraftState] = useState<Scenario | null>(null);
   const [policy, setPolicy] = useState<RoutingPolicy>('bfs_shortest');
-  const [tS, setTS] = useState(0);
+  const [tS, setTS] = useState(entry?.tS ?? 0);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -155,20 +170,29 @@ export function useNetworkScene(projectId: string): SceneState {
     if (project === null || variant !== null) {
       return;
     }
-    const wanted = selection.variantId ?? project.project.active_variant_id;
+    // Вариант расчёта из адреса важнее последнего выбранного: переход «показать эту
+    // точку» обязан открыть тот вариант, которому точка принадлежит.
+    const wanted =
+      (entryRunId === null
+        ? null
+        : (project.recent_runs.find((item) => item.id === entryRunId)?.variant_id ?? null)) ??
+      selection.variantId ??
+      project.project.active_variant_id;
     const chosen =
       project.variants.find((item) => item.id === wanted) ?? project.variants[0] ?? null;
     if (chosen !== null) {
       setVariant(chosen);
       setDraftState(chosen.scenario);
     }
-  }, [project, variant, selection.variantId]);
+  }, [project, variant, selection.variantId, entryRunId]);
 
   useEffect(() => {
     if (project === null || variant === null) {
       return;
     }
+    const requested = entryRunUsed.current ? null : entryRunId;
     const wanted =
+      requested ??
       selection.runId ??
       project.recent_runs.find(
         (item) => item.variant_id === variant.id && item.status === 'succeeded',
@@ -177,10 +201,11 @@ export function useNetworkScene(projectId: string): SceneState {
     // Запуск, поставленный с этого же экрана, уже слушается: второй раз подписываться
     // на его события незачем.
     if (wanted !== null && attached.current !== wanted && run?.id !== wanted) {
+      entryRunUsed.current = true;
       attached.current = wanted;
       attach(wanted);
     }
-  }, [project, variant, selection.runId, attach, run]);
+  }, [project, variant, selection.runId, entryRunId, attach, run]);
 
   const changes = useMemo(
     () => (variant === null || draft === null ? [] : draftChanges(variant.scenario, draft)),

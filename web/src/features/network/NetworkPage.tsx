@@ -9,6 +9,7 @@ import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
+import { MapLegend } from '@/map/MapLegend';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { ComponentSplit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
@@ -19,6 +20,7 @@ import type { TimelineTrack } from '@/timeline/Timeline';
 import { formatTick } from '@/lib/run-format';
 import { segmentsOf } from '@/features/result/timeline';
 import { ConfigCard } from './ConfigCard';
+import { useSceneEntry } from './entry';
 import { FailureModal } from './FailureModal';
 import type { FailureDraft } from './FailureModal';
 import { NetworkStateCard } from './NetworkStateCard';
@@ -39,7 +41,9 @@ export function NetworkPage() {
   const { projectId = '' } = useParams();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
-  const scene = useNetworkScene(projectId);
+  // Экран открывают ссылкой «показать этот момент»: вариант, расчёт и отсчёт берутся из
+  // адреса, а не начинаются с нуля.
+  const scene = useNetworkScene(projectId, useSceneEntry(search));
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
@@ -298,6 +302,8 @@ export function NetworkPage() {
           {scene.snapshotSource === 'preview' && ' · предпросмотр черновика'}
         </p>
 
+        <MapLegend planeIds={model.planeIds} planeColors={palette.planes} />
+
         {scene.snapshot === null && scene.snapshotError === null && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <Skeleton className="size-[320px] rounded-pill" />
@@ -319,8 +325,6 @@ export function NetworkPage() {
           width={LAYOUT.map.width}
           layers={layers}
           onChange={setLayers}
-          planeIds={model.planeIds}
-          planeColors={palette.planes}
           hemisphere={hemisphere}
           onHemisphere={setHemisphere}
         />
@@ -379,6 +383,7 @@ export function NetworkPage() {
                       title="Шкала не получена"
                       message={scene.resultsError}
                       onRetry={scene.reloadResults}
+                      compact
                     />
                   )
                 : run === null
@@ -386,6 +391,7 @@ export function NetworkPage() {
                       <EmptyState
                         title="Расчётов ещё нет"
                         hint="Нажмите «Запустить расчёт» в левой панели — здесь появится доступность каждого клиента по суткам."
+                        compact
                       />
                     )
                   : run.status === 'failed'
@@ -395,12 +401,14 @@ export function NetworkPage() {
                           message={run.error?.message ?? 'Причина не пришла'}
                           onRetry={startRun}
                           retryLabel="Повторить расчёт"
+                          compact
                         />
                       )
                     : (
                         <UnavailableBlock
                           title="Расчёт выполняется"
                           hint="Шкала заполнится, как только расчёт дойдёт до стадии аналитики."
+                          compact
                         />
                       )
           }

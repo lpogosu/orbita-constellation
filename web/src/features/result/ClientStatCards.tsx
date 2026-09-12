@@ -69,7 +69,9 @@ export function ClientStatCards({
       )}
 
       {error === null && clients !== null && clients.length > 0 && (
-        <ul className="scroll-area flex h-full gap-[40px] overflow-x-auto pb-[6px]">
+        // Полоса ровно по высоте карточек: нижний отступ добавлял седьмой десяток
+        // пикселей содержимому и включал вертикальную прокрутку поверх карточек.
+        <ul className="flex h-full gap-[40px] overflow-x-auto [scrollbar-width:thin]">
           {clients.map((client, index) => (
             <li key={client.client_id} className="shrink-0">
               <ClientStatCard
@@ -118,9 +120,12 @@ function ClientStatCard({
         className="pointer-events-none absolute left-[252px] top-[163px] h-[140px] w-[152px] opacity-80"
       />
 
-      <div className="absolute left-[30px] top-[26px] flex items-center gap-[14px]">
-        <span aria-hidden="true" className={cx('size-[17px] rounded-pill', dot)} />
-        <span className="font-display text-[26px] font-bold leading-[1.1] text-ink-primary">
+      <div className="absolute left-[30px] top-[26px] flex w-[345px] items-center gap-[14px]">
+        <span aria-hidden="true" className={cx('size-[17px] shrink-0 rounded-pill', dot)} />
+        <span
+          title={client.client_id}
+          className="min-w-0 truncate font-display text-[26px] font-bold leading-[1.1] text-ink-primary"
+        >
           {client.client_id}
         </span>
       </div>

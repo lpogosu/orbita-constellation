@@ -135,10 +135,16 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                           route?.reachable === true ? 'var(--chart-ok)' : 'var(--chart-no-client)',
                       }}
                     />
-                    <span className="ml-[9px] w-[56px] text-small font-semibold text-ink-primary">
+                    <span
+                      title={client.id}
+                      className="ml-[9px] w-[56px] shrink-0 truncate text-small font-semibold text-ink-primary"
+                    >
                       {client.id}
                     </span>
-                    <span className="w-[82px] text-small font-semibold text-ink-primary" data-numeric>
+                    <span
+                      className="w-[82px] shrink-0 text-small font-semibold text-ink-primary"
+                      data-numeric
+                    >
                       {clientMetrics === undefined
                         ? '—'
                         : `${(clientMetrics.availability * 100).toFixed(2)} %`}
@@ -150,8 +156,13 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                         <AlertCircle aria-hidden="true" className="size-[13px] text-status-warning" />
                       ))}
                     <span
+                      title={
+                        route === undefined || route.reachable
+                          ? undefined
+                          : causeView(route.primary_cause ?? 'INTERNAL_INCONSISTENCY').full
+                      }
                       className={cx(
-                        'ml-[8px] flex-1 text-caption font-medium',
+                        'ml-[8px] min-w-0 flex-1 truncate text-caption font-medium',
                         route?.reachable === true ? 'text-status-success' : 'text-status-danger',
                       )}
                     >
@@ -161,7 +172,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                           ? 'связь есть'
                           : causeView(route.primary_cause ?? 'INTERNAL_INCONSISTENCY').full}
                     </span>
-                    <span className="text-caption text-ink-muted" data-numeric>
+                    <span className="shrink-0 text-caption text-ink-muted" data-numeric>
                       {route?.hops ?? '—'} пер.
                     </span>
                     <ChevronRight aria-hidden="true" className="ml-[8px] size-[15px] text-ink-muted" />
@@ -221,7 +232,12 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
               title={props.runReady ? undefined : 'Нужен завершённый расчёт'}
             >
               <Repeat aria-hidden="true" className="size-[14px] text-ink-secondary" />
-              <span className="ml-[10px] flex-1 text-caption text-ink-secondary">
+              <span
+                title={
+                  props.backup === null ? undefined : (props.backup.paths[1] ?? []).join(' → ')
+                }
+                className="ml-[10px] min-w-0 flex-1 truncate text-caption text-ink-secondary"
+              >
                 {props.backup === null
                   ? 'Резервный маршрут'
                   : props.backup.paths.length < 2
@@ -229,7 +245,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
                     : `Резервный: ${(props.backup.paths[1] ?? []).join(' → ')}`}
               </span>
               {props.backup !== null && (
-                <span className="text-micro text-ink-muted" data-numeric>
+                <span className="ml-[8px] shrink-0 text-micro text-ink-muted" data-numeric>
                   непересекающихся: {props.backup.backup_path_count}
                 </span>
               )}
@@ -265,6 +281,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
               title="Метрики не получены"
               message={props.resultsError}
               onRetry={props.onReloadResults}
+              compact
             />
           </div>
         ) : !props.runReady ? (
@@ -272,6 +289,7 @@ export function NetworkStateCard(props: NetworkStateCardProps) {
             <UnavailableBlock
               title="Нужен завершённый расчёт"
               hint="Доступность за сутки, худший перерыв и число перестроений появляются после «Запустить расчёт»."
+              compact
             />
           </div>
         ) : props.metrics === null ? (

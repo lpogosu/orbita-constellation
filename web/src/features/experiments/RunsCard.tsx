@@ -10,7 +10,7 @@ import { pointTitle } from './points';
 
 const LEFT = 25;
 const TOP = 872;
-const COLUMNS = '46px 260px 150px 140px 160px 180px 150px 220px 1fr';
+const COLUMNS = '46px 260px 150px 140px 160px 180px 150px 280px 1fr';
 
 interface RunsCardProps {
   readonly experiment: Experiment | null;
@@ -132,7 +132,7 @@ export function RunsCard({
                     )}
                     {ready ? 'готов' : 'считается'}
                   </span>
-                  <span className="flex items-center gap-[18px]">
+                  <span className="flex items-center gap-[18px] whitespace-nowrap">
                     <RowAction disabled={!ready} onClick={() => { onOpenNetwork(point); }}>
                       Открыть
                     </RowAction>

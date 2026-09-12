@@ -125,7 +125,10 @@ export function ConfigCard(props: ConfigCardProps) {
                 className="size-[9px] rounded-pill"
                 style={{ background: PLANE_DOT[index % PLANE_DOT.length] }}
               />
-              <span className="ml-[9px] w-[120px] text-small font-semibold text-ink-primary">
+              <span
+                title={plane.id}
+                className="ml-[9px] w-[120px] shrink-0 truncate text-small font-semibold text-ink-primary"
+              >
                 {plane.id}
               </span>
               <DegreeInput

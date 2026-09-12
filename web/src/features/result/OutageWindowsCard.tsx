@@ -28,6 +28,7 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
     [outages],
   );
 
+  const longest = sorted?.[0];
   const totalSeconds = sorted?.reduce((sum, outage) => sum + outage.duration_s, 0) ?? 0;
   const truncated = sorted?.some((outage) => outage.truncated_by_horizon) ?? false;
 
@@ -100,8 +101,9 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
                 }}
               >
                 <span
-                  className="absolute top-[10px] font-semibold text-ink-primary"
-                  style={{ left: COLUMNS.client - 17 }}
+                  title={outage.client_id}
+                  className="absolute top-[10px] truncate pr-[6px] font-semibold text-ink-primary"
+                  style={{ left: COLUMNS.client - 17, width: COLUMNS.start - COLUMNS.client }}
                 >
                   {outage.client_id}
                 </span>
@@ -163,7 +165,9 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
 
       {projectId !== null && (
         <Link
-          to={`${NETWORK_PATH}/${projectId}`}
+          // Отсчёт в адресе — начало самого длинного окна: «Сеть» открывается на нём, а не
+          // на нуле, иначе переход заставляет искать это окно заново.
+          to={`${NETWORK_PATH}/${projectId}${longest === undefined ? '' : `?t=${longest.start_s}`}`}
           className="absolute left-[23px] top-[365px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
         >
           Открыть в таймлайне

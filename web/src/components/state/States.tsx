@@ -33,11 +33,25 @@ export function EmptyState({
   title,
   hint,
   icon = <Inbox aria-hidden="true" className="size-6" />,
+  compact = false,
 }: {
   title: string;
   hint: string;
   icon?: ReactNode;
+  /** Блок в одну строку: для полос ниже 150 пикселей, где столбик обрезается краем. */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div className="flex h-full items-center gap-[10px] px-[16px] text-left">
+        <span className="shrink-0 text-ink-muted">{icon}</span>
+        <p className="line-clamp-2 min-w-0 flex-1 text-small text-ink-secondary" title={hint}>
+          <span className="font-semibold text-ink-primary">{title}. </span>
+          {hint}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center">
       <span className="text-ink-muted">{icon}</span>
@@ -52,12 +66,34 @@ export function ErrorBlock({
   message,
   onRetry,
   retryLabel = 'Повторить',
+  compact = false,
 }: {
   title: string;
   message: string;
   onRetry: () => void;
   retryLabel?: string;
+  /** Блок в одну строку: кнопка повтора обязана остаться видимой и в низкой полосе. */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div role="alert" className="flex h-full items-center gap-[10px] px-[16px] text-left">
+        <AlertTriangle aria-hidden="true" className="size-5 shrink-0 text-status-danger" />
+        <p className="line-clamp-2 min-w-0 flex-1 text-small text-ink-secondary" title={message}>
+          <span className="font-semibold text-ink-primary">{title}. </span>
+          {message}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="flex shrink-0 items-center gap-[6px] whitespace-nowrap rounded-sm border border-line px-[12px] py-[6px] text-caption font-semibold text-ink-primary transition-colors duration-150 hover:border-line-strong"
+        >
+          <RotateCw aria-hidden="true" className="size-[14px]" />
+          {retryLabel}
+        </button>
+      </div>
+    );
+  }
   return (
     <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center">
       <AlertTriangle aria-hidden="true" className="size-6 text-status-danger" />
@@ -75,7 +111,26 @@ export function ErrorBlock({
 }
 
 /** Блок затемнён и объясняет, чего не хватает; кнопок здесь нет намеренно. */
-export function UnavailableBlock({ title, hint }: { title: string; hint: string }) {
+export function UnavailableBlock({
+  title,
+  hint,
+  compact = false,
+}: {
+  title: string;
+  hint: string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div className="flex h-full items-center gap-[10px] px-[16px] text-left opacity-70">
+        <Lock aria-hidden="true" className="size-5 shrink-0 text-ink-muted" />
+        <p className="line-clamp-2 min-w-0 flex-1 text-small text-ink-secondary" title={hint}>
+          <span className="font-semibold text-ink-primary">{title}. </span>
+          {hint}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center opacity-70">
       <Lock aria-hidden="true" className="size-6 text-ink-muted" />

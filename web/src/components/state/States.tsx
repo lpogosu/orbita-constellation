@@ -1,5 +1,5 @@
 import { AlertTriangle, Inbox, Lock, RotateCw } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { cx } from '@/lib/cx';
@@ -10,10 +10,11 @@ import { cx } from '@/lib/cx';
  */
 
 /** Скелетон повторяет форму будущего содержимого, а не крутится в центре блока. */
-export function Skeleton({ className }: { className?: string }) {
+export function Skeleton({ className, style }: { className?: string; style?: CSSProperties }) {
   return (
     <div
       className={cx('animate-pulse rounded-sm bg-surface-chip', className)}
+      style={style}
       aria-hidden="true"
     />
   );

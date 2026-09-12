@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '@/components/layout/AppLayout';
+import { ProjectPage } from '@/features/project/ProjectPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
+import { ResultPage } from '@/features/result/ResultPage';
 import { SectionUnderConstruction } from '@/pages/SectionUnderConstruction';
 import { NAV_SECTIONS, NETWORK_PATH, PROJECTS_PATH, sectionByPath } from './sections';
 
@@ -29,6 +31,8 @@ export function App() {
             path={`${NETWORK_PATH}/:projectId`}
             element={<SectionUnderConstruction section={sectionByPath(NETWORK_PATH)} />}
           />
+          <Route path={`${PROJECTS_PATH}/:projectId`} element={<ProjectPage />} />
+          <Route path="/result/:runId" element={<ResultPage />} />
           <Route path="*" element={<Navigate to={PROJECTS_PATH} replace />} />
         </Route>
       </Routes>

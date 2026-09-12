@@ -33,11 +33,17 @@ const config: Config = {
           blue: 'var(--accent-blue)',
           violet: 'var(--accent-violet)',
           'violet-light': 'var(--accent-violet-light)',
+          cyan: 'var(--accent-cyan)',
         },
         status: {
           success: 'var(--status-success)',
           warning: 'var(--status-warning)',
           danger: 'var(--status-danger)',
+          neutral: 'var(--status-neutral)',
+        },
+        chart: {
+          ok: 'var(--chart-ok)',
+          empty: 'var(--chart-empty)',
         },
       },
       backgroundImage: {
@@ -57,6 +63,7 @@ const config: Config = {
         'glow-violet': 'var(--shadow-glow-violet)',
         'glow-magenta': 'var(--shadow-glow-magenta)',
         'glow-blue': 'var(--shadow-glow-blue)',
+        'glow-cyan': 'var(--shadow-glow-cyan)',
       },
       fontFamily: {
         sans: 'var(--font-sans)',

@@ -1,6 +1,6 @@
 """Приспособления интеграционных тестов: база, миграции и клиент приложения.
 
-База берётся тремя способами, в порядке убывания приоритета:
+База и Redis берутся тремя способами, в порядке убывания приоритета:
 
 1. `ORBITA_TEST_DATABASE_URL` — готовая база; так работает CI, где Postgres поднят
    сервисом workflow;
@@ -16,6 +16,7 @@ import asyncio
 import json
 import os
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Final
 
@@ -35,9 +36,22 @@ POSTGRES_DSN_ENV: Final[str] = "ORBITA_POSTGRES_DSN"
 POSTGRES_IMAGE: Final[str] = "postgres:16.15-alpine"
 ASYNC_SCHEME: Final[str] = "postgresql+asyncpg://"
 
+TEST_REDIS_URL_ENV: Final[str] = "ORBITA_TEST_REDIS_URL"
+REDIS_URL_ENV: Final[str] = "ORBITA_REDIS_URL"
+REDIS_IMAGE: Final[str] = "redis:7.4.11-alpine"
+
+# Адрес, по которому Redis заведомо не отвечает: на нём проверяется degraded mode. Порт
+# из динамического диапазона, слушать его в тестовой машине некому.
+UNREACHABLE_REDIS_URL: Final[str] = "redis://127.0.0.1:63799/0"
+
 SKIP_REASON: Final[str] = (
     "Нужна база Postgres: задайте ORBITA_TEST_DATABASE_URL или дайте доступ к Docker "
     "для testcontainers"
+)
+
+REDIS_SKIP_REASON: Final[str] = (
+    "Нужен Redis: задайте ORBITA_TEST_REDIS_URL или дайте доступ к Docker для "
+    "testcontainers"
 )
 
 # `jobs` ни с чем не связана внешними ключами, поэтому CASCADE до неё не доходит и она
@@ -104,24 +118,74 @@ def migrated_database(database_url: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def client(migrated_database: str) -> Iterator[TestClient]:
-    """Приложение с движком, направленным на тестовую базу.
+def redis_url() -> Iterator[str | None]:
+    """Адрес тестового Redis или `None`, если его негде взять.
+
+    Возвращается `None`, а не `skip`: без Redis проверяется degraded mode, и остальные
+    тесты приложения обязаны идти дальше.
+    """
+    configured = os.environ.get(TEST_REDIS_URL_ENV)
+    if configured:
+        yield configured
+        return
+
+    try:
+        from testcontainers.community.redis import RedisContainer
+    except ImportError:
+        yield None
+        return
+
+    try:
+        container = RedisContainer(REDIS_IMAGE)
+        container.start()
+    except Exception:
+        yield None
+        return
+
+    try:
+        host = container.get_container_host_ip()
+        port = container.get_exposed_port(6379)
+        yield f"redis://{host}:{port}/0"
+    finally:
+        container.stop()
+
+
+@pytest.fixture(scope="session")
+def required_redis_url(redis_url: str | None) -> str:
+    """Тот же адрес для тестов, которым очередь обязательна."""
+    if redis_url is None:
+        pytest.skip(REDIS_SKIP_REASON)
+    return redis_url
+
+
+@contextmanager
+def application(database_url: str, redis_url: str) -> Iterator[TestClient]:
+    """Приложение с движком и очередью, направленными на тестовое окружение.
 
     Настройки кэшируются на процесс, поэтому кэш сбрасывается до создания приложения и
-    после тестов: иначе адрес тестовой базы утёк бы в остальные тесты того же запуска.
+    после тестов: иначе адреса тестовых хранилищ утекли бы в остальные тесты того же
+    запуска.
     """
-    previous = os.environ.get(POSTGRES_DSN_ENV)
-    os.environ[POSTGRES_DSN_ENV] = migrated_database
+    previous = {name: os.environ.get(name) for name in (POSTGRES_DSN_ENV, REDIS_URL_ENV)}
+    os.environ[POSTGRES_DSN_ENV] = database_url
+    os.environ[REDIS_URL_ENV] = redis_url
     get_settings.cache_clear()
     try:
         with TestClient(create_app()) as test_client:
             yield test_client
     finally:
-        if previous is None:
-            os.environ.pop(POSTGRES_DSN_ENV, None)
-        else:
-            os.environ[POSTGRES_DSN_ENV] = previous
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
         get_settings.cache_clear()
+
+
+@pytest.fixture(scope="session")
+def client(migrated_database: str, redis_url: str | None) -> Iterator[TestClient]:
+    with application(migrated_database, redis_url or UNREACHABLE_REDIS_URL) as test_client:
+        yield test_client
 
 
 @pytest.fixture

@@ -5,6 +5,7 @@ import { api } from '@/api/client';
 import { loadScenarioExamples } from '@/api/scenario-files';
 import type { ScenarioExample } from '@/api/scenario-files';
 import type { Project, Scenario } from '@/api/types';
+import { useProjectSelection } from '@/app/project-selection';
 import { NETWORK_PATH, PROJECTS_PATH } from '@/app/sections';
 import { describe, useResource } from '@/lib/use-resource';
 import { DropzoneCard } from './DropzoneCard';
@@ -25,6 +26,7 @@ import { useScenarioReview } from './use-scenario-review';
  */
 export function ProjectsPage() {
   const navigate = useNavigate();
+  const { select } = useProjectSelection();
   const { review, check, reset } = useScenarioReview();
 
   const examples = useResource<ScenarioExample[]>(loadScenarioExamples);
@@ -72,6 +74,9 @@ export function ProjectsPage() {
       })
       .then(
         (project) => {
+          // Созданный проект сразу становится текущим: меню разделов обязано вести в него
+          // ещё до того, как экран сети успеет загрузиться и сообщить о нём сам.
+          select({ projectId: project.id, variantId: null, runId: null });
           navigate(`${NETWORK_PATH}/${project.id}`);
         },
         (error: unknown) => {
@@ -79,7 +84,7 @@ export function ProjectsPage() {
           setCreateError(describe(error));
         },
       );
-  }, [navigate, review, title]);
+  }, [navigate, review, select, title]);
 
   const browse = useCallback(() => {
     fileInput.current?.click();
@@ -151,6 +156,7 @@ export function ProjectsPage() {
         onOpen={(project) => {
           // Строка списка ведёт на экран проекта: там варианты, прогоны и происхождение.
           // На «Сеть» ведёт кнопка «Открыть проект» — она открывает только что созданный.
+          select({ projectId: project.id, variantId: null, runId: null });
           navigate(`${PROJECTS_PATH}/${project.id}`);
         }}
       />

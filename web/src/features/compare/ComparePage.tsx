@@ -42,10 +42,10 @@ export function ComparePage() {
   const [busyVariantId, setBusyVariantId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Проект приходит адресом, а без него — из общего выбора: на «Сравнение» переходят и
-  // пунктом меню, когда проект уже открыт на соседнем экране.
-  const { selection, select } = useProjectSelection();
-  const projectId = params.get('project') ?? selection.projectId ?? '';
+  // Проект приходит запросом всегда: адрес «/comparison» без него до экрана не доходит —
+  // маршрут либо подставляет текущий проект, либо просит его выбрать.
+  const { select } = useProjectSelection();
+  const projectId = params.get('project') ?? '';
   const runsParam = params.get('runs') ?? '';
 
   const loadProject = useCallback(() => getProject(projectId), [projectId]);

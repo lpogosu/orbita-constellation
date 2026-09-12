@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { networkApi } from '@/api/network';
 import type { BackupPaths } from '@/api/types';
+import { OUTAGES_PATH } from '@/app/sections';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
 import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
@@ -225,7 +226,7 @@ export function NetworkPage() {
       {
         label: 'Показать критичность',
         onSelect: () => {
-          navigate(`/outages/${projectId}?satellite=${encodeURIComponent(satelliteId)}`);
+          navigate(`${OUTAGES_PATH}/${projectId}?satellite=${encodeURIComponent(satelliteId)}`);
         },
       },
     ],

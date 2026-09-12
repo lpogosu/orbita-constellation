@@ -7,7 +7,7 @@ import { getProjectBoard, variantExportPath } from '@/api/projects';
 import type { ProjectBoard } from '@/api/projects';
 import { createRun, runEvidencePackPath } from '@/api/runs';
 import type { Run, Variant } from '@/api/types';
-import { COMPARISON_PATH, NETWORK_PATH } from '@/app/sections';
+import { COMPARISON_PATH, NETWORK_PATH, RESULT_PATH, sectionHref } from '@/app/sections';
 import { useProjectSelection } from '@/app/project-selection';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
@@ -54,7 +54,7 @@ export function ProjectPage() {
       setRunningVariantId(variant.id);
       void createRun({ variant_id: variant.id, routing_policy: policy }).then(
         (run) => {
-          navigate(`/result/${run.id}`);
+          navigate(`${RESULT_PATH}/${run.id}`);
         },
         (error: unknown) => {
           setRunningVariantId(null);
@@ -179,7 +179,7 @@ export function ProjectPage() {
         }}
         onCompare={(row) => {
           if (row.latestRun !== null) {
-            navigate(`${COMPARISON_PATH}?runs=${row.latestRun.id}`);
+            navigate(`${sectionHref(COMPARISON_PATH, projectId)}&runs=${row.latestRun.id}`);
           }
         }}
         onExport={(row) => {
@@ -197,7 +197,7 @@ export function ProjectPage() {
         limit={RECENT_RUNS_LIMIT}
         repeatDisabled={runningVariantId !== null}
         onOpen={(row) => {
-          navigate(`/result/${row.run.id}`);
+          navigate(`${RESULT_PATH}/${row.run.id}`);
         }}
         onEvidencePack={(row) => {
           save(
@@ -206,7 +206,7 @@ export function ProjectPage() {
           );
         }}
         onCompare={(row) => {
-          navigate(`${COMPARISON_PATH}?runs=${row.run.id}`);
+          navigate(`${sectionHref(COMPARISON_PATH, projectId)}&runs=${row.run.id}`);
         }}
         onRepeat={(row) => {
           const variant = view.variantById.get(row.run.variant_id);

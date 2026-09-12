@@ -360,6 +360,39 @@ export function OutagesPage() {
 
   const mapWidth = view === 'side' ? LAYOUT.mapPair.width : LAYOUT.map.width;
 
+  // «До» и «Рядом» без базового расчёта показывать нечего — заглушка `MapSlot` про это
+  // уже говорит, а кнопки дополнительно объясняют, почему сравнение недоступно.
+  const baseMissingHint = 'Нет базового расчёта — выберите его в поле «База сравнения» слева';
+  const viewOptions: readonly {
+    value: MapView;
+    label: string;
+    hint: string;
+    disabled: boolean;
+    disabledHint: string;
+  }[] = [
+    {
+      value: 'before',
+      label: 'До',
+      hint: 'Сеть до применения отказа — базовый расчёт',
+      disabled: baseRunId === null,
+      disabledHint: baseMissingHint,
+    },
+    {
+      value: 'after',
+      label: 'После',
+      hint: 'Сеть с учётом заданных отказов',
+      disabled: false,
+      disabledHint: '',
+    },
+    {
+      value: 'side',
+      label: 'Рядом',
+      hint: 'Обе карты одновременно — для сравнения «до» и «после»',
+      disabled: baseRunId === null,
+      disabledHint: `${baseMissingHint} — сравнивать пока не с чем`,
+    },
+  ];
+
   return (
     <>
       <FailuresCard
@@ -441,30 +474,35 @@ export function OutagesPage() {
         Синхронный отсчёт
       </button>
 
+      {/* Заголовок группы и подсказки на кнопках — иначе «До/После/Рядом» ничего не
+          объясняют новому пользователю (`14_SCREENS.md` §3.2). */}
+      <p
+        className="absolute text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted"
+        style={{ left: 1050, top: LAYOUT.chips.y - 18 }}
+      >
+        Состояние сети
+      </p>
       <div
         className="absolute flex h-[52px] items-center gap-[1px] rounded-sm border border-line bg-surface-track p-[3px]"
         style={{ left: 1050, top: LAYOUT.chips.y }}
       >
-        {(
-          [
-            ['before', 'До'],
-            ['after', 'После'],
-            ['side', 'Рядом'],
-          ] as const
-        ).map(([value, label]) => (
+        {viewOptions.map((option) => (
           <button
-            key={value}
+            key={option.value}
             type="button"
-            aria-pressed={view === value}
-            onClick={() => { setView(value); }}
+            aria-pressed={view === option.value}
+            disabled={option.disabled}
+            title={option.disabled ? option.disabledHint : option.hint}
+            onClick={() => { setView(option.value); }}
             className={cx(
               'h-[46px] w-[111px] rounded-[12px] text-base font-semibold transition-colors duration-150',
-              view === value
+              view === option.value
                 ? 'bg-accent-violet text-ink-onAccent shadow-glow-violet'
                 : 'text-ink-secondary',
+              option.disabled && 'cursor-not-allowed text-ink-muted opacity-45',
             )}
           >
-            {label}
+            {option.label}
           </button>
         ))}
       </div>
@@ -489,6 +527,7 @@ export function OutagesPage() {
             planes={draft.design.planes}
             inclinationDeg={draft.environment.inclination_deg}
             altitudeKm={draft.environment.altitude_km}
+            earthAngle0Deg={draft.environment.earth_angle0_deg}
             orbit={orbit}
             onOrbitChange={setOrbit}
             onUnavailable={() => { setMapMode('2d'); }}
@@ -511,6 +550,7 @@ export function OutagesPage() {
             planes={draft.design.planes}
             inclinationDeg={draft.environment.inclination_deg}
             altitudeKm={draft.environment.altitude_km}
+            earthAngle0Deg={draft.environment.earth_angle0_deg}
             orbit={orbit}
             onOrbitChange={setOrbit}
             onUnavailable={() => { setMapMode('2d'); }}
@@ -539,6 +579,7 @@ export function OutagesPage() {
           planes={draft.design.planes}
           inclinationDeg={draft.environment.inclination_deg}
           altitudeKm={draft.environment.altitude_km}
+          earthAngle0Deg={draft.environment.earth_angle0_deg}
           onUnavailable={() => { setMapMode('2d'); }}
         />
       )}
@@ -646,6 +687,7 @@ function MapSlot({
   planes,
   inclinationDeg,
   altitudeKm,
+  earthAngle0Deg,
   orbit,
   onOrbitChange,
   onUnavailable,
@@ -667,6 +709,7 @@ function MapSlot({
   planes: readonly Plane[];
   inclinationDeg: number;
   altitudeKm: number;
+  earthAngle0Deg: number;
   orbit?: OrbitState | null;
   onOrbitChange?: (state: OrbitState) => void;
   onUnavailable: () => void;
@@ -704,6 +747,8 @@ function MapSlot({
             planes={planes}
             inclinationDeg={inclinationDeg}
             altitudeKm={altitudeKm}
+            earthAngle0Deg={earthAngle0Deg}
+            hemisphere={hemisphere}
             width={width}
             height={height}
             onSelectSite={onSelectSite}

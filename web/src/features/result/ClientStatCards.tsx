@@ -113,11 +113,13 @@ function ClientStatCard({
       className="relative"
       style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
     >
+      {/* Отступ от правого и нижнего края больше, чем кажется нужным на глаз: у самого
+          скругления карточки блик антенны читался как утечка света за её пределы. */}
       <img
         src="/assets/ground-station-dish.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute left-[252px] top-[163px] h-[140px] w-[152px] opacity-80"
+        className="pointer-events-none absolute left-[225px] top-[140px] h-[140px] w-[152px] opacity-80"
       />
 
       <div className="absolute left-[30px] top-[26px] flex w-[345px] items-center gap-[14px]">

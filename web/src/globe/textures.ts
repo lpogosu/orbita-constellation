@@ -7,6 +7,7 @@ const SOURCES = {
   night: '/assets/earth-night.webp',
   clouds: '/assets/clouds.webp',
   rough: '/assets/earth-rough.png',
+  satellite: '/assets/satellite-orbital-sprite.png',
 } as const;
 
 type TextureKey = keyof typeof SOURCES;
@@ -16,6 +17,8 @@ export interface GlobeTextures {
   readonly night: THREE.Texture | null;
   readonly clouds: THREE.Texture | null;
   readonly rough: THREE.Texture | null;
+  /** Визуальный спрайт аппарата; интерактивность остаётся на 3D hitbox. */
+  readonly satellite: THREE.Texture | null;
   /** Какие текстуры не загрузились: Земля рисуется и без них (см. `Earth.tsx`). */
   readonly failed: ReadonlySet<TextureKey>;
 }
@@ -34,6 +37,7 @@ export function useGlobeTextures(): { status: GlobeTextureStatus; textures: Glob
     night: null,
     clouds: null,
     rough: null,
+    satellite: null,
     failed: new Set<TextureKey>(),
   });
 
@@ -70,6 +74,7 @@ export function useGlobeTextures(): { status: GlobeTextureStatus; textures: Glob
         night: failed.has('night') ? null : (loaded.night ?? null),
         clouds: failed.has('clouds') ? null : (loaded.clouds ?? null),
         rough: failed.has('rough') ? null : (loaded.rough ?? null),
+        satellite: failed.has('satellite') ? null : (loaded.satellite ?? null),
         failed: new Set(failed),
       });
       setStatus('ready');

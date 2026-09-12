@@ -147,6 +147,7 @@ export function Scene({
           planeIds={model.planeIds}
           inclinationDeg={inclinationDeg}
           palette={palette}
+          spriteMap={textures.satellite}
           selectedRoute={model.selectedRoute}
           draftFailedSatellites={model.draftFailedSatellites}
           failureCandidates={model.failureCandidates}

@@ -2,14 +2,16 @@ import { useCallback, useState } from 'react';
 
 export type MapMode = '2d' | '3d';
 
-const STORAGE_KEY = 'orbita.mapMode';
+// Новая версия ключа намеренно не наследует старое значение «2d»: до появления
+// полноценного глобуса это было дефолтом, теперь первым открывается более понятный 3D.
+const STORAGE_KEY = 'orbita.mapMode.v2';
 
 function readStored(): MapMode {
   try {
-    return localStorage.getItem(STORAGE_KEY) === '3d' ? '3d' : '2d';
+    return localStorage.getItem(STORAGE_KEY) === '2d' ? '2d' : '3d';
   } catch {
-    // Приватный режим браузера — экран остаётся на 2D, а не падает.
-    return '2d';
+    // Приватный режим браузера — экран всё равно начинает с полезного 3D-вида.
+    return '3d';
   }
 }
 

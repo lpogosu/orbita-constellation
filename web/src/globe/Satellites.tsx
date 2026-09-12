@@ -36,6 +36,7 @@ interface SatellitesProps {
   readonly planeIds: readonly string[];
   readonly inclinationDeg: number;
   readonly palette: MapPalette;
+  readonly spriteMap: THREE.Texture | null;
   readonly selectedRoute: readonly string[];
   readonly draftFailedSatellites: readonly string[];
   readonly failureCandidates: readonly string[];
@@ -58,6 +59,7 @@ export function Satellites({
   planeIds,
   inclinationDeg,
   palette,
+  spriteMap,
   selectedRoute,
   draftFailedSatellites,
   failureCandidates,
@@ -115,37 +117,51 @@ export function Satellites({
 
         return (
           <group key={satellite.id} position={position} quaternion={quaternion} scale={1.35}>
-            <group>
-              <mesh geometry={SATELLITE_BODY_GEOMETRY} material={bodyMaterial} />
-              <mesh geometry={SATELLITE_COLLAR_GEOMETRY} material={collarMaterial} position={[0, -0.01, 0]} />
-              {[-1, 1].map((side) => (
-                <group key={side}>
-                  <mesh
-                    geometry={SATELLITE_PANEL_GEOMETRY}
-                    material={panelMaterial}
-                    position={[side * 0.0335, 0, 0]}
-                  />
-                  <mesh
-                    geometry={SATELLITE_ARM_GEOMETRY}
-                    material={bodyMaterial}
-                    position={[side * 0.0135, 0, 0]}
-                  />
-                </group>
-              ))}
-              <mesh
-                geometry={SATELLITE_DISH_GEOMETRY}
-                material={dishMaterial}
-                position={[0, -0.018, 0]}
-                rotation={[Math.PI, 0, 0]}
-              />
-            </group>
+            {spriteMap !== null ? (
+              <sprite scale={[0.108, 0.108, 1]}>
+                <spriteMaterial
+                  map={spriteMap}
+                  color={failed ? palette.failed : '#ffffff'}
+                  transparent
+                  alphaTest={0.025}
+                  opacity={muted ? 0.16 : satellite.active ? 1 : 0.42}
+                  depthWrite={false}
+                  toneMapped={false}
+                />
+              </sprite>
+            ) : (
+              <group>
+                <mesh geometry={SATELLITE_BODY_GEOMETRY} material={bodyMaterial} />
+                <mesh geometry={SATELLITE_COLLAR_GEOMETRY} material={collarMaterial} position={[0, -0.01, 0]} />
+                {[-1, 1].map((side) => (
+                  <group key={side}>
+                    <mesh
+                      geometry={SATELLITE_PANEL_GEOMETRY}
+                      material={panelMaterial}
+                      position={[side * 0.0335, 0, 0]}
+                    />
+                    <mesh
+                      geometry={SATELLITE_ARM_GEOMETRY}
+                      material={bodyMaterial}
+                      position={[side * 0.0135, 0, 0]}
+                    />
+                  </group>
+                ))}
+                <mesh
+                  geometry={SATELLITE_DISH_GEOMETRY}
+                  material={dishMaterial}
+                  position={[0, -0.018, 0]}
+                  rotation={[Math.PI, 0, 0]}
+                />
+              </group>
+            )}
 
-            <sprite scale={[0.075, 0.075, 1]}>
+            <sprite scale={[0.118, 0.118, 1]}>
               <spriteMaterial
                 map={glowTexture()}
                 color={failed ? palette.failed : color}
                 transparent
-                opacity={muted ? 0.1 : 0.5}
+                opacity={muted ? 0.08 : 0.68}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
               />

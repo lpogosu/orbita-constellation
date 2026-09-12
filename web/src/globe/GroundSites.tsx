@@ -93,12 +93,12 @@ export function GroundSites({
               </>
             )}
 
-            <sprite position={[0, 0, 0]} scale={[0.15, 0.15, 1]}>
+            <sprite position={[0, 0, 0]} scale={[0.19, 0.19, 1]}>
               <spriteMaterial
                 map={glowTexture()}
                 color={glowColor}
                 transparent
-                opacity={0.45}
+                opacity={0.66}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
               />

@@ -51,10 +51,10 @@ export function ContactLines({ edges, positions, layers, islColor, groundColor }
   return (
     <group>
       <lineSegments geometry={geometries.isl}>
-        <lineBasicMaterial color={islColor} transparent opacity={0.5} />
+        <lineBasicMaterial color={islColor} transparent opacity={0.9} depthWrite={false} />
       </lineSegments>
       <lineSegments geometry={geometries.ground}>
-        <lineBasicMaterial color={groundColor} transparent opacity={0.45} />
+        <lineBasicMaterial color={groundColor} transparent opacity={0.84} depthWrite={false} />
       </lineSegments>
     </group>
   );

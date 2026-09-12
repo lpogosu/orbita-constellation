@@ -5,7 +5,7 @@ from typing import Any, Final
 from fastapi import FastAPI
 
 from orbita_api import API_VERSION
-from orbita_api.adapters.registry import build_registry
+from orbita_api.adapters.registry import build_registry, build_storage_registry
 from orbita_api.db.session import build_engine, build_sessionmaker
 from orbita_api.error_handling import register_error_handlers
 from orbita_api.routers import (
@@ -36,13 +36,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     settings = get_settings()
     registry = build_registry(settings)
+    storage = build_storage_registry(settings)
     engine = build_engine(settings.postgres_dsn)
     app.state.probe_registry = registry
+    app.state.storage_registry = storage
     app.state.sessionmaker = build_sessionmaker(engine)
     try:
         yield
     finally:
         await registry.aclose()
+        await storage.aclose()
         await engine.dispose()
 
 

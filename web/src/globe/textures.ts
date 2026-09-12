@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 /** Пути готовых текстур (`web/public/assets/`, `docs/18_GLOBE_3D.md` §5). */
 const SOURCES = {
-  day: '/assets/earth-equirect.webp',
+  day: '/assets/earth-natural-equirect.png',
   night: '/assets/earth-night.webp',
   clouds: '/assets/clouds.webp',
   rough: '/assets/earth-rough.png',

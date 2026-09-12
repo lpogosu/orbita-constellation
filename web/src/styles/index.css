@@ -111,9 +111,9 @@
     border: 1px solid var(--border-default);
     box-shadow: var(--shadow-card);
     background-color: var(--bg-page);
-    /* Фоновая иллюстрация живёт на canvas, а не повторяется в каждой карточке. При
-       дробном zoom её разные background-position давали светлые швы на стыках панелей. */
-    background-image: linear-gradient(var(--surface-glass), var(--surface-glass));
+    background-image: linear-gradient(var(--surface-glass), var(--surface-glass)),
+      var(--scenery-page);
+    background-size: auto, 1920px 1080px;
     background-repeat: no-repeat;
     clip-path: inset(0 round var(--radius-2xl));
   }

@@ -4,7 +4,7 @@ import type { MapSprites } from './earth-layer';
 import type { MapLayers, MapModel } from './model';
 import { planeColor } from './palette';
 import type { MapPalette } from './palette';
-import { colatitude, geoFromEcef, project, radiusInEarthRadii } from './projection';
+import { EARTH_RADIUS_KM, colatitude, geoFromEcef, project, radiusInEarthRadii } from './projection';
 import type { MapView, Point } from './projection';
 
 // Canvas не разбирает CSS-переменные внутри `font`, поэтому семейства заданы строками —
@@ -67,7 +67,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   }
 
   if (layers.planes) {
-    drawPlanes(ctx, model, palette, positions);
+    drawPlanes(ctx, model, palette, view);
   }
 
   // Орбиты проходят за Землёй, как в макете: центральный диск сохраняет
@@ -185,7 +185,7 @@ function drawPlanes(
   ctx: CanvasRenderingContext2D,
   model: MapModel,
   palette: MapPalette,
-  positions: ReadonlyMap<string, Point>,
+  view: MapView,
 ): void {
   const byPlane = new Map<string, SnapshotSatellite[]>();
   for (const satellite of model.satellites) {
@@ -203,25 +203,22 @@ function drawPlanes(
     const ordered = [...satellites].sort(
       (a, b) => (model.slotBySatellite.get(a.id) ?? 0) - (model.slotBySatellite.get(b.id) ?? 0),
     );
-    const points = ordered
-      .map((satellite) => positions.get(satellite.id))
-      .filter((point): point is Point => point !== undefined);
-    if (points.length < 3) {
+    if (ordered.length < 3) {
       continue;
     }
 
     const color = planeColor(palette, model.planeIds, planeId);
     ctx.strokeStyle = color;
     ctx.beginPath();
-    const first = points[0];
-    if (first === undefined) {
-      continue;
+    let started = false;
+    for (let index = 0; index < ordered.length; index += 1) {
+      const from = ordered[index];
+      const to = ordered[(index + 1) % ordered.length];
+      if (from !== undefined && to !== undefined) {
+        traceOrbitArc(ctx, view, from, to, started);
+        started = true;
+      }
     }
-    ctx.moveTo(first.x, first.y);
-    for (const point of points.slice(1)) {
-      ctx.lineTo(point.x, point.y);
-    }
-    ctx.closePath();
     // Мягкая цветная дорожка отделяет плоскости от подложки, а тонкий пунктир сохраняет
     // визуальную плотность Figma и не перетягивает внимание у маршрута.
     ctx.lineCap = 'round';
@@ -237,6 +234,41 @@ function drawPlanes(
     ctx.stroke();
   }
   ctx.restore();
+}
+
+/** Орбита рисуется дугой на сфере, а не хордой между экранными точками. Прежняя
+ * хорда особенно заметно ломалась после переключения на центр «юг». */
+function traceOrbitArc(
+  ctx: CanvasRenderingContext2D,
+  view: MapView,
+  from: SnapshotSatellite,
+  to: SnapshotSatellite,
+  skipFirst: boolean,
+): void {
+  const fromLength = Math.hypot(from.x_km, from.y_km, from.z_km) || 1;
+  const toLength = Math.hypot(to.x_km, to.y_km, to.z_km) || 1;
+  const a = [from.x_km / fromLength, from.y_km / fromLength, from.z_km / fromLength] as const;
+  const b = [to.x_km / toLength, to.y_km / toLength, to.z_km / toLength] as const;
+  const angle = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+  const segments = Math.max(3, Math.ceil(angle / (Math.PI / 30)));
+  const sinAngle = Math.sin(angle);
+
+  for (let step = skipFirst ? 1 : 0; step <= segments; step += 1) {
+    const t = step / segments;
+    const left = sinAngle < 1e-5 ? 1 - t : Math.sin((1 - t) * angle) / sinAngle;
+    const right = sinAngle < 1e-5 ? t : Math.sin(t * angle) / sinAngle;
+    const x = a[0] * left + b[0] * right;
+    const y = a[1] * left + b[1] * right;
+    const z = a[2] * left + b[2] * right;
+    const length = Math.hypot(x, y, z) || 1;
+    const radius = fromLength + (toLength - fromLength) * t;
+    const point = project(view, geoFromEcef(x / length, y / length, z / length), radius / EARTH_RADIUS_KM - 1);
+    if (step === 0 && !skipFirst) {
+      ctx.moveTo(point.x, point.y);
+    } else {
+      ctx.lineTo(point.x, point.y);
+    }
+  }
 }
 
 function drawContacts(

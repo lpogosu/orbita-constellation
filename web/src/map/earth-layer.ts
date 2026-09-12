@@ -12,11 +12,7 @@
  * перерисовывается только при смене размера или плотности пикселей.
  */
 
-/** Доля радиуса диска Земли от ширины исходного полярного ассета. */
-const SURFACE_RATIO = 262.89 / 762;
-
-const GLOBE_SRC = '/assets/globe-polar.webp';
-const EQUIRECT_SRC = '/assets/earth-equirect.webp';
+const EQUIRECT_SRC = '/assets/earth-natural-equirect.png';
 // Use the production cut-outs with a real alpha channel. The older WebP files
 // (`map-satellite.webp`/`map-gateway.webp`) contain a baked navy rectangle, which
 // becomes visible whenever the sprite is drawn over the globe.
@@ -24,8 +20,7 @@ const SATELLITE_SRC = '/assets/orbita-satellite-mini-base.png';
 const GATEWAY_SRC = '/assets/orbita-gateway-dish.png';
 
 export interface MapSprites {
-  readonly globe: HTMLImageElement;
-  /** Реальная равнопрямоугольная текстура: из неё строится южный полярный диск. */
+  /** Реальная равнопрямоугольная дневная текстура: из неё строятся оба полярных диска. */
   readonly equirect: HTMLImageElement;
   readonly satellite: HTMLImageElement;
   readonly gateway: HTMLImageElement;
@@ -49,8 +44,8 @@ let spritesPromise: Promise<MapSprites> | null = null;
 
 /** Картинки карты загружаются один раз на вкладку и переиспользуются всеми экранами. */
 export function loadMapSprites(): Promise<MapSprites> {
-  spritesPromise ??= Promise.all([load(GLOBE_SRC), load(EQUIRECT_SRC), load(SATELLITE_SRC), load(GATEWAY_SRC)]).then(
-    ([globe, equirect, satellite, gateway]) => ({ globe, equirect, satellite, gateway }),
+  spritesPromise ??= Promise.all([load(EQUIRECT_SRC), load(SATELLITE_SRC), load(GATEWAY_SRC)]).then(
+    ([equirect, satellite, gateway]) => ({ equirect, satellite, gateway }),
   );
   return spritesPromise;
 }
@@ -93,26 +88,9 @@ export function renderEarth(
   ctx.scale(dpr, dpr);
 
   const center = side / 2;
-  const sourceSurface = sprites.globe.width * SURFACE_RATIO;
-  const baseScale = radiusEquator / sourceSurface;
-
-  // Сначала свечение атмосферы целиком: оно лежит вне диска, и перепроецировать его
-  // нечем — там нет поверхности, только ореол.
-  // Исходный полярный рендер слишком неоновый для основной карты. Приглушаем
-  // его в Canvas, сохраняя холодный оттенок и контраст маршрута.
-  ctx.filter = 'saturate(0.72) brightness(0.76)';
-  drawScaled(ctx, sprites.globe, center, baseScale);
-
-  ctx.filter = 'none';
-
-  // `globe-polar.webp` — красивый, но северный снимок. Для центра «юг» оставляем его
-  // атмосферное свечение, а сам диск строим из реальной глобальной текстуры в той же
-  // азимутальной сетке, что и точки/контакты карты. Зеркалировать северный снимок нельзя:
-  // это подменяет географию.
-  if (hemisphere === 'south') {
-    const south = renderSouthSurface(sprites.equirect, radiusEquator, dpr);
-    ctx.drawImage(south, center - radiusEquator, center - radiusEquator, radiusEquator * 2, radiusEquator * 2);
-  }
+  drawAtmosphere(ctx, center, radiusEquator);
+  const surface = renderPolarSurface(sprites.equirect, hemisphere, radiusEquator, dpr);
+  ctx.drawImage(surface, center - radiusEquator, center - radiusEquator, radiusEquator * 2, radiusEquator * 2);
 
   cached = { radiusEquator, dpr, hemisphere, canvas };
   return canvas;
@@ -120,8 +98,9 @@ export function renderEarth(
 
 let equirectPixels: { readonly image: HTMLImageElement; readonly pixels: ImageData } | null = null;
 
-function renderSouthSurface(
+function renderPolarSurface(
   equirect: HTMLImageElement,
+  hemisphere: 'north' | 'south',
   radiusEquator: number,
   dpr: number,
 ): HTMLCanvasElement {
@@ -147,8 +126,12 @@ function renderSouthSurface(
       if (distance > radius) {
         continue;
       }
-      const latitude = -90 + (distance / radius) * 90;
-      const longitude = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const latitude = hemisphere === 'north'
+        ? 90 - (distance / radius) * 90
+        : -90 + (distance / radius) * 90;
+      // Та же конвенция оси Y, что в `project()`: ни береговая линия, ни слои
+      // не зеркалятся при переключении центра карты на южный полюс.
+      const longitude = (Math.atan2(hemisphere === 'north' ? -dy : dy, dx) * 180) / Math.PI;
       const sourceX = Math.min(
         source.width - 1,
         Math.max(0, Math.round(((longitude + 180) / 360) * (source.width - 1))),
@@ -169,6 +152,17 @@ function renderSouthSurface(
   return surface;
 }
 
+function drawAtmosphere(ctx: CanvasRenderingContext2D, center: number, radius: number): void {
+  const glow = ctx.createRadialGradient(center, center, radius * 0.89, center, center, radius * 1.14);
+  glow.addColorStop(0, 'rgba(38, 143, 244, 0)');
+  glow.addColorStop(0.8, 'rgba(42, 162, 255, 0.08)');
+  glow.addColorStop(1, 'rgba(42, 162, 255, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(center, center, radius * 1.14, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function sourcePixels(image: HTMLImageElement): ImageData {
   if (equirectPixels?.image === image) {
     return equirectPixels.pixels;
@@ -184,15 +178,4 @@ function sourcePixels(image: HTMLImageElement): ImageData {
   const pixels = context.getImageData(0, 0, source.width, source.height);
   equirectPixels = { image, pixels };
   return pixels;
-}
-
-function drawScaled(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  center: number,
-  scale: number,
-): void {
-  const width = image.width * scale;
-  const height = image.height * scale;
-  ctx.drawImage(image, center - width / 2, center - height / 2, width, height);
 }

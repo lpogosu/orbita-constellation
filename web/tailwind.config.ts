@@ -17,11 +17,14 @@ const config: Config = {
           sunken: 'var(--surface-sunken)',
           glass: 'var(--surface-glass)',
           chip: 'var(--surface-chip)',
+          track: 'var(--surface-track)',
+          rowActive: 'var(--surface-row-active)',
         },
         line: {
           DEFAULT: 'var(--border-default)',
           strong: 'var(--border-strong)',
           divider: 'var(--border-divider)',
+          subtle: 'var(--border-subtle)',
         },
         ink: {
           primary: 'var(--text-primary)',

@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ComparePage } from '@/features/compare/ComparePage';
 import { ExperimentsPage } from '@/features/experiments/ExperimentsPage';
+import { NetworkPage } from '@/features/network/NetworkPage';
+import { OutagesPage } from '@/features/outages/OutagesPage';
 import { ProjectPage } from '@/features/project/ProjectPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
 import { ResultPage } from '@/features/result/ResultPage';
@@ -13,8 +15,8 @@ import {
   EXPERIMENTS_PATH,
   NAV_SECTIONS,
   NETWORK_PATH,
+  OUTAGES_PATH,
   PROJECTS_PATH,
-  sectionByPath,
 } from './sections';
 
 export function App() {
@@ -30,11 +32,8 @@ export function App() {
               element={sectionPage(section.path) ?? <SectionUnderConstruction section={section} />}
             />
           ))}
-          {/* Созданный проект открывается на «Сети»: маршрут уже есть, экран появится позже. */}
-          <Route
-            path={`${NETWORK_PATH}/:projectId`}
-            element={<SectionUnderConstruction section={sectionByPath(NETWORK_PATH)} />}
-          />
+          <Route path={`${NETWORK_PATH}/:projectId`} element={<NetworkPage />} />
+          <Route path={`${OUTAGES_PATH}/:projectId`} element={<OutagesPage />} />
           <Route path={`${PROJECTS_PATH}/:projectId`} element={<ProjectPage />} />
           <Route path="/result/:runId" element={<ResultPage />} />
           <Route path={`${EXPERIMENTS_PATH}/:projectId`} element={<ExperimentsPage />} />

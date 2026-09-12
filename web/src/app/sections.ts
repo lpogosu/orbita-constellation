@@ -9,6 +9,7 @@ export interface Section {
 export const PROJECTS_PATH = '/projects';
 export const NETWORK_PATH = '/network';
 export const EXPERIMENTS_PATH = '/experiments';
+export const OUTAGES_PATH = '/outages';
 export const COMPARISON_PATH = '/comparison';
 
 export const NAV_SECTIONS: readonly Section[] = [
@@ -24,7 +25,7 @@ export const NAV_SECTIONS: readonly Section[] = [
       'Конфигурация варианта, карта группировки на выбранном отсчёте, маршруты клиентов и таймлайн суток.',
   },
   {
-    path: '/outages',
+    path: OUTAGES_PATH,
     title: 'Отказы',
     purpose:
       'Расследование отказа аппарата: сравнение сети до и после, затронутые клиенты и причины разрывов.',

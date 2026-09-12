@@ -27,12 +27,25 @@ export type RoutingPolicy = Schemas['RoutingPolicy'];
 export type RunStatus = Schemas['RunStatus'];
 export type Snapshot = Schemas['Snapshot'];
 export type ClientRoute = Schemas['ClientRoute'];
+export type SnapshotSatellite = Schemas['SnapshotSatellite'];
+export type SnapshotEdge = Schemas['SnapshotEdge'];
+export type BackupPaths = Schemas['BackupPaths'];
+export type VariantCreateRequest = Schemas['VariantCreateRequest'];
+export type Environment = Schemas['Environment'];
+export type Satellite = Schemas['Satellite'];
+export type SatelliteFailure = Schemas['SatelliteFailure'];
+export type GatewayOutage = Schemas['GatewayOutage'];
+export type RunStage = Schemas['RunStage'];
+export type RunProgressEvent = Schemas['RunProgressEvent'];
+export type OutageChange = Schemas['OutageChange'];
 
 export type ComparisonResult = Schemas['ComparisonResult'];
 export type ComparisonEntry = Schemas['ComparisonEntry'];
 export type ClientComparison = Schemas['ClientComparison'];
 export type ConfigMetrics = Schemas['ConfigMetrics'];
 export type Recommendation = Schemas['Recommendation'];
+export type CriticalityReport = Schemas['CriticalityReport'];
+export type SatelliteCriticality = Schemas['SatelliteCriticality'];
 
 export type Experiment = Schemas['Experiment'];
 export type ExperimentAxis = Schemas['ExperimentAxis'];

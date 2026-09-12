@@ -1,0 +1,454 @@
+import type { GroundSite, SnapshotSatellite } from '@/api/types';
+import { renderEarth } from './earth-layer';
+import type { MapSprites } from './earth-layer';
+import type { MapLayers, MapModel } from './model';
+import { planeColor } from './palette';
+import type { MapPalette } from './palette';
+import { geoFromEcef, project, radiusInEarthRadii } from './projection';
+import type { MapView, Point } from './projection';
+
+// Canvas не разбирает CSS-переменные внутри `font`, поэтому семейства заданы строками —
+// теми же, что стоят в токенах.
+const SANS = "'Inter Variable', Inter, system-ui, sans-serif";
+const DISPLAY = "Montserrat, 'Inter Variable', system-ui, sans-serif";
+
+/** Размер спрайта аппарата в пикселях полотна; подписи и маркеры отказа считаются от него. */
+const SATELLITE_WIDTH = 30;
+const SITE_RING = 8;
+const SITE_CORE = 4.6;
+
+export interface DrawResult {
+  /** Экранные координаты узлов: ими же делается попадание курсора. */
+  readonly positions: ReadonlyMap<string, Point>;
+  readonly satelliteIds: readonly string[];
+  readonly siteIds: readonly string[];
+}
+
+export interface DrawInput {
+  readonly model: MapModel;
+  readonly view: MapView;
+  readonly layers: MapLayers;
+  readonly palette: MapPalette;
+  readonly sprites: MapSprites | null;
+  readonly hoveredId: string | null;
+  readonly width: number;
+  readonly height: number;
+  readonly dpr: number;
+}
+
+export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): DrawResult {
+  const { model, view, layers, palette, sprites } = input;
+
+  ctx.save();
+  ctx.setTransform(input.dpr, 0, 0, input.dpr, 0, 0);
+  ctx.clearRect(0, 0, input.width, input.height);
+
+  if (sprites !== null) {
+    const earth = renderEarth(sprites.globe, view.radiusEquator, input.dpr);
+    const side = earth.width / input.dpr;
+    ctx.drawImage(earth, view.centerX - side / 2, view.centerY - side / 2, side, side);
+  }
+
+  drawGraticule(ctx, view, palette);
+
+  const positions = new Map<string, Point>();
+
+  for (const satellite of model.satellites) {
+    const geo = geoFromEcef(satellite.x_km, satellite.y_km, satellite.z_km);
+    const lift = radiusInEarthRadii(satellite.x_km, satellite.y_km, satellite.z_km) - 1;
+    positions.set(satellite.id, project(view, geo, lift));
+  }
+  for (const site of model.sites) {
+    positions.set(site.id, project(view, { latDeg: site.lat_deg, lonDeg: site.lon_deg }));
+  }
+
+  if (layers.planes) {
+    drawPlanes(ctx, model, palette, positions);
+  }
+  if (layers.allContacts) {
+    drawContacts(ctx, model, layers, palette, positions);
+  }
+  if (model.components !== null) {
+    drawComponents(ctx, model.components, palette, positions);
+  }
+  if (layers.backup && model.backupRoute.length > 1) {
+    drawPath(ctx, model.backupRoute, positions, palette.backup, 2.5, [7, 6]);
+  }
+  if (model.selectedRoute.length > 1) {
+    drawPath(ctx, model.selectedRoute, positions, palette.route, 3, []);
+  }
+
+  if (layers.satellites) {
+    for (const satellite of model.satellites) {
+      const point = positions.get(satellite.id);
+      if (point === undefined) {
+        continue;
+      }
+      drawSatellite(ctx, input, satellite, point);
+    }
+  }
+
+  for (const site of model.sites) {
+    const point = positions.get(site.id);
+    if (point === undefined) {
+      continue;
+    }
+    drawSite(ctx, input, site, point);
+  }
+
+  ctx.restore();
+
+  return {
+    positions,
+    satelliteIds: model.satellites.map((satellite) => satellite.id),
+    siteIds: model.sites.map((site) => site.id),
+  };
+}
+
+/** Сетка кошироты: окружности через 30° и меридианы через 30° с подписью четырёх главных. */
+function drawGraticule(ctx: CanvasRenderingContext2D, view: MapView, palette: MapPalette): void {
+  ctx.save();
+  ctx.strokeStyle = palette.grid;
+  ctx.lineWidth = 1;
+
+  for (let colat = 30; colat <= 180; colat += 30) {
+    const radius = (colat / 90) * view.radiusEquator;
+    ctx.beginPath();
+    ctx.setLineDash(colat === 90 ? [] : [3, 5]);
+    ctx.arc(view.centerX, view.centerY, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([3, 5]);
+  const outer = 2 * view.radiusEquator;
+  for (let lon = 0; lon < 360; lon += 30) {
+    const end = project(view, { latDeg: -90, lonDeg: lon });
+    ctx.beginPath();
+    ctx.moveTo(view.centerX, view.centerY);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+  ctx.fillStyle = palette.labelMuted;
+  ctx.font = `500 11px ${SANS}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const [lon, label] of [
+    [0, '0°'],
+    [90, '90°в'],
+    [180, '180°'],
+    [270, '90°з'],
+  ] as const) {
+    const at = project(view, { latDeg: -90, lonDeg: lon });
+    const dx = at.x - view.centerX;
+    const dy = at.y - view.centerY;
+    const length = Math.hypot(dx, dy) || 1;
+    ctx.fillText(label, view.centerX + (dx / length) * (outer + 12), view.centerY + (dy / length) * (outer + 12));
+  }
+  ctx.restore();
+}
+
+/** Плоскость — замкнутая ломаная через свои аппараты в порядке `slot_deg` сценария. */
+function drawPlanes(
+  ctx: CanvasRenderingContext2D,
+  model: MapModel,
+  palette: MapPalette,
+  positions: ReadonlyMap<string, Point>,
+): void {
+  const byPlane = new Map<string, SnapshotSatellite[]>();
+  for (const satellite of model.satellites) {
+    const list = byPlane.get(satellite.plane_id);
+    if (list === undefined) {
+      byPlane.set(satellite.plane_id, [satellite]);
+    } else {
+      list.push(satellite);
+    }
+  }
+
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 6]);
+  ctx.globalAlpha = 0.55;
+
+  for (const [planeId, satellites] of byPlane) {
+    const ordered = [...satellites].sort(
+      (a, b) => (model.slotBySatellite.get(a.id) ?? 0) - (model.slotBySatellite.get(b.id) ?? 0),
+    );
+    const points = ordered
+      .map((satellite) => positions.get(satellite.id))
+      .filter((point): point is Point => point !== undefined);
+    if (points.length < 3) {
+      continue;
+    }
+
+    ctx.strokeStyle = planeColor(palette, model.planeIds, planeId);
+    ctx.beginPath();
+    const first = points[0];
+    if (first === undefined) {
+      continue;
+    }
+    ctx.moveTo(first.x, first.y);
+    for (const point of points.slice(1)) {
+      ctx.lineTo(point.x, point.y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawContacts(
+  ctx: CanvasRenderingContext2D,
+  model: MapModel,
+  layers: MapLayers,
+  palette: MapPalette,
+  positions: ReadonlyMap<string, Point>,
+): void {
+  ctx.save();
+  ctx.lineWidth = 1;
+  for (const edge of model.edges) {
+    if (edge.kind === 'ground' && !layers.ground) {
+      continue;
+    }
+    const a = positions.get(edge.a);
+    const b = positions.get(edge.b);
+    if (a === undefined || b === undefined) {
+      continue;
+    }
+    ctx.strokeStyle = edge.kind === 'isl' ? palette.isl : palette.groundLink;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPath(
+  ctx: CanvasRenderingContext2D,
+  path: readonly string[],
+  positions: ReadonlyMap<string, Point>,
+  color: string,
+  width: number,
+  dash: readonly number[],
+): void {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.setLineDash([...dash]);
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  let started = false;
+  for (const id of path) {
+    const point = positions.get(id);
+    if (point === undefined) {
+      continue;
+    }
+    if (started) {
+      ctx.lineTo(point.x, point.y);
+    } else {
+      ctx.moveTo(point.x, point.y);
+      started = true;
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Две изолированные группы аппаратов. Различаются формой обводки, а не только цветом:
+ * по цвету одному читателю из двенадцати их не различить.
+ */
+function drawComponents(
+  ctx: CanvasRenderingContext2D,
+  components: { readonly clientSide: readonly string[]; readonly gatewaySide: readonly string[] },
+  palette: MapPalette,
+  positions: ReadonlyMap<string, Point>,
+): void {
+  ctx.save();
+  ctx.lineWidth = 2;
+
+  ctx.strokeStyle = palette.route;
+  for (const id of components.clientSide) {
+    const point = positions.get(id);
+    if (point === undefined) {
+      continue;
+    }
+    ctx.strokeRect(point.x - 13, point.y - 13, 26, 26);
+  }
+
+  ctx.strokeStyle = palette.backup;
+  for (const id of components.gatewaySide) {
+    const point = positions.get(id);
+    if (point === undefined) {
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y - 15);
+    ctx.lineTo(point.x + 15, point.y);
+    ctx.lineTo(point.x, point.y + 15);
+    ctx.lineTo(point.x - 15, point.y);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSatellite(
+  ctx: CanvasRenderingContext2D,
+  input: DrawInput,
+  satellite: SnapshotSatellite,
+  point: Point,
+): void {
+  const { model, palette, layers, sprites } = input;
+  const failed = satellite.failed || model.draftFailedSatellites.includes(satellite.id);
+  const inRoute = model.selectedRoute.includes(satellite.id);
+  const candidate = model.failureCandidates.includes(satellite.id);
+  const hovered = input.hoveredId === satellite.id;
+
+  ctx.save();
+
+  if (candidate) {
+    ctx.strokeStyle = palette.clientSelected;
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SATELLITE_WIDTH * 0.62, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (sprites !== null) {
+    const width = SATELLITE_WIDTH;
+    const height = (sprites.satellite.height / sprites.satellite.width) * width;
+    ctx.globalAlpha = satellite.active ? 1 : 0.32;
+    ctx.drawImage(sprites.satellite, point.x - width / 2, point.y - height / 2, width, height);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = planeColor(palette, model.planeIds, satellite.plane_id);
+    ctx.globalAlpha = satellite.active ? 1 : 0.32;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  if (failed) {
+    // Маркер отказа из макета (узел 41:1024): круг с крестом, а не другой цвет спрайта.
+    const radius = SATELLITE_WIDTH * 0.45;
+    ctx.fillStyle = 'rgba(26, 10, 24, 0.75)';
+    ctx.strokeStyle = palette.failed;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    const arm = radius * 0.48;
+    ctx.moveTo(point.x - arm, point.y - arm);
+    ctx.lineTo(point.x + arm, point.y + arm);
+    ctx.moveTo(point.x + arm, point.y - arm);
+    ctx.lineTo(point.x - arm, point.y + arm);
+    ctx.stroke();
+  } else if (inRoute) {
+    ctx.strokeStyle = palette.route;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SATELLITE_WIDTH * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (layers.labels || hovered || inRoute || failed) {
+    ctx.fillStyle = hovered ? palette.label : palette.labelMuted;
+    ctx.font = `600 11px ${SANS}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(satellite.id, point.x, point.y - SATELLITE_WIDTH * 0.55);
+  }
+
+  ctx.restore();
+}
+
+function drawSite(
+  ctx: CanvasRenderingContext2D,
+  input: DrawInput,
+  site: GroundSite,
+  point: Point,
+): void {
+  const { model, palette, sprites, view } = input;
+  const selected = site.id === model.selectedClientId;
+  const hovered = input.hoveredId === site.id;
+
+  ctx.save();
+
+  if (site.role === 'gateway' && sprites !== null) {
+    const width = 46;
+    const height = (sprites.gateway.height / sprites.gateway.width) * width;
+    ctx.drawImage(sprites.gateway, point.x - width / 2, point.y - height, width, height);
+  } else {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.3;
+    ctx.shadowColor = selected ? palette.clientSelected : palette.client;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SITE_RING, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = selected ? palette.clientSelected : palette.client;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, SITE_CORE, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = palette.label;
+  ctx.font = `700 ${hovered || selected ? 17 : 15}px ${DISPLAY}`;
+  ctx.textBaseline = 'bottom';
+  // Подпись уводится от центра карты, чтобы не легла на Землю поверх маршрута.
+  const away = point.x >= view.centerX ? 1 : -1;
+  ctx.textAlign = away > 0 ? 'left' : 'right';
+  ctx.fillText(site.id, point.x + away * (SITE_RING + 8), point.y - SITE_RING);
+
+  ctx.restore();
+}
+
+/** Ближайший узел к точке: аппараты имеют приоритет, у них меньше площадь. */
+export function hitTest(
+  result: DrawResult,
+  point: Point,
+  radius = 18,
+): { kind: 'satellite' | 'site'; id: string } | null {
+  interface Candidate {
+    kind: 'satellite' | 'site';
+    id: string;
+    distance: number;
+  }
+
+  const candidates: Candidate[] = [];
+
+  const consider = (kind: 'satellite' | 'site', id: string): void => {
+    const at = result.positions.get(id);
+    if (at === undefined) {
+      return;
+    }
+    const distance = Math.hypot(at.x - point.x, at.y - point.y);
+    if (distance <= radius) {
+      candidates.push({ kind, id, distance });
+    }
+  };
+
+  for (const id of result.siteIds) {
+    consider('site', id);
+  }
+  for (const id of result.satelliteIds) {
+    consider('satellite', id);
+  }
+
+  candidates.sort((a, b) => a.distance - b.distance);
+  const best = candidates[0];
+  return best === undefined ? null : { kind: best.kind, id: best.id };
+}

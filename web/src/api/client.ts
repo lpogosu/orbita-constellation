@@ -82,10 +82,14 @@ export function apiPost<T>(path: string, payload: unknown): Promise<T> {
   return apiRequest<T>(path, jsonBody(payload));
 }
 
-function jsonBody(payload: unknown): RequestInit {
+/**
+ * Заголовки нужны единственному запросу — постановке расчёта с `Idempotency-Key`
+ * (`05_API.md` §4), поэтому здесь они необязательны, а `apiPost` о них не знает.
+ */
+export function jsonBody(payload: unknown, headers: Record<string, string> = {}): RequestInit {
   return {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(payload),
   };
 }

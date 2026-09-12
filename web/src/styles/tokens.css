@@ -20,11 +20,13 @@
   --surface-row-active: rgba(108, 92, 231, 0.18);
   --surface-row-stripe: rgba(242, 245, 255, 0.04);
   --surface-accent-soft: rgba(108, 92, 231, 0.24);
+  --surface-track: #16234f;
 
   --border-default: rgba(102, 142, 255, 0.38);
   --border-strong: rgba(102, 142, 255, 0.62);
   --border-divider: rgba(92, 122, 224, 0.22);
   --border-accent: rgba(145, 132, 255, 0.6);
+  --border-subtle: rgba(102, 142, 255, 0.18);
 
   --text-primary: #f2f5ff;
   --text-secondary: #a9b4de;
@@ -56,6 +58,17 @@
   --accent-cyan: #45e3c4;
   --shadow-glow-cyan: 0 0 24px rgba(69, 227, 196, 0.45);
 
+  /* Карта: узлы «Node Markers» и легенда макета. Цвета причин карта не заводит — они
+     общие со шкалой и живут в `--chart-*`. */
+  --map-client: #3fe9b0;
+  --map-client-selected: #ff3d9a;
+  --map-gateway: #8a3cd2;
+  --map-route: #ff3d9a;
+  --map-backup: #45e3c4;
+  --map-failed: #ff3b4e;
+  --map-isl: rgba(69, 227, 196, 0.5);
+  --map-ground-link: rgba(145, 132, 255, 0.45);
+
   --gradient-violet: linear-gradient(90deg, #8265ff 0%, #6a4fee 100%);
   --gradient-magenta: linear-gradient(90deg, #a23ff2 0%, #c654e2 100%);
 
@@ -86,11 +99,13 @@
   --surface-row-active: rgba(106, 79, 238, 0.12);
   --surface-row-stripe: rgba(20, 32, 80, 0.04);
   --surface-accent-soft: rgba(106, 79, 238, 0.12);
+  --surface-track: #e2e8fb;
 
   --border-default: rgba(52, 84, 170, 0.28);
   --border-strong: rgba(52, 84, 170, 0.5);
   --border-divider: rgba(52, 84, 170, 0.16);
   --border-accent: rgba(106, 79, 238, 0.55);
+  --border-subtle: rgba(52, 84, 170, 0.14);
 
   --text-primary: #0f1a3d;
   --text-secondary: #3c4a78;
@@ -118,6 +133,15 @@
 
   --accent-cyan: #0a6f62;
   --shadow-glow-cyan: none;
+
+  --map-client: #0b7a58;
+  --map-client-selected: #c2186e;
+  --map-gateway: #6b2aa8;
+  --map-route: #c2186e;
+  --map-backup: #0a6f62;
+  --map-failed: #c22645;
+  --map-isl: rgba(10, 111, 98, 0.45);
+  --map-ground-link: rgba(91, 63, 221, 0.4);
 
   --shadow-card: 0 12px 30px rgba(23, 40, 96, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   --shadow-glow-violet: 0 8px 14px rgba(106, 79, 238, 0.28);

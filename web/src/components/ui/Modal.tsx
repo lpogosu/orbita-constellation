@@ -2,6 +2,8 @@ import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 
+import { cx } from '@/lib/cx';
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -10,6 +12,12 @@ interface ModalProps {
   subtitle?: ReactNode;
   /** Иллюстрация над заголовком: в макете она выступает за верхний край окна. */
   hero?: ReactNode;
+  /**
+   * Выравнивание шапки и ряда действий. По центру — окно ошибок сценария (узел `65:646`),
+   * по левому краю — окна работы с параметрами (узел `133:1628`).
+   */
+  align?: 'center' | 'start';
+  width?: number;
   onClose: () => void;
   footer: ReactNode;
   children: ReactNode;
@@ -20,7 +28,16 @@ interface ModalProps {
  * внизу. Фокус не уходит за пределы окна — иначе клавиатурный пользователь продолжает
  * табом по экрану, который для него закрыт.
  */
-export function Modal({ title, subtitle, hero, onClose, footer, children }: ModalProps) {
+export function Modal({
+  title,
+  subtitle,
+  hero,
+  align = 'center',
+  width = 880,
+  onClose,
+  footer,
+  children,
+}: ModalProps) {
   const dialog = useRef<HTMLDivElement>(null);
 
   const trapFocus = useCallback((event: KeyboardEvent) => {
@@ -78,7 +95,8 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card-glass relative w-full max-w-[880px] border-line-strong px-8 pb-8 pt-6"
+        className="card-glass relative w-full border-line-strong px-8 pb-8 pt-6"
+        style={{ maxWidth: width }}
       >
         <button
           type="button"
@@ -91,14 +109,30 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
 
         {hero !== undefined && <div className="-mt-24 flex justify-center">{hero}</div>}
 
-        <h2 className="text-center text-heading-m font-bold text-ink-primary">{title}</h2>
+        <h2
+          className={cx(
+            'text-heading-m font-bold text-ink-primary',
+            align === 'center' && 'text-center',
+          )}
+        >
+          {title}
+        </h2>
         {subtitle !== undefined && (
-          <p className="mt-2 text-center text-base text-ink-secondary">{subtitle}</p>
+          <p className={cx('mt-2 text-base text-ink-secondary', align === 'center' && 'text-center')}>
+            {subtitle}
+          </p>
         )}
 
         <div className="scroll-area mt-6 max-h-[420px] pr-2">{children}</div>
 
-        <div className="mt-7 flex flex-wrap justify-center gap-4">{footer}</div>
+        <div
+          className={cx(
+            'mt-7 flex flex-wrap gap-4',
+            align === 'center' ? 'justify-center' : 'justify-between',
+          )}
+        >
+          {footer}
+        </div>
       </div>
     </div>
   );

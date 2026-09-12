@@ -66,7 +66,7 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(4,8,26,0.72)] px-6 py-16"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(4,8,26,0.72)] px-6 py-16"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -78,7 +78,7 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card-scenery relative w-full max-w-[880px] rounded-2xl border border-line-strong px-8 pb-8 pt-6 shadow-card"
+        className="card-glass relative w-full max-w-[880px] border-line-strong px-8 pb-8 pt-6"
       >
         <button
           type="button"
@@ -96,7 +96,7 @@ export function Modal({ title, subtitle, hero, onClose, footer, children }: Moda
           <p className="mt-2 text-center text-base text-ink-secondary">{subtitle}</p>
         )}
 
-        <div className="mt-6 max-h-[46vh] overflow-y-auto">{children}</div>
+        <div className="scroll-area mt-6 max-h-[420px] pr-2">{children}</div>
 
         <div className="mt-7 flex flex-wrap justify-center gap-4">{footer}</div>
       </div>

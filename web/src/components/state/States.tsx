@@ -38,7 +38,7 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center">
       <span className="text-ink-muted">{icon}</span>
       <p className="text-title-m font-semibold text-ink-primary">{title}</p>
       <p className="max-w-[46ch] text-small text-ink-secondary">{hint}</p>
@@ -58,7 +58,7 @@ export function ErrorBlock({
   retryLabel?: string;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center">
       <AlertTriangle aria-hidden="true" className="size-6 text-status-danger" />
       <p className="text-title-m font-semibold text-ink-primary">{title}</p>
       <p className="max-w-[46ch] text-small text-ink-secondary">{message}</p>
@@ -76,7 +76,7 @@ export function ErrorBlock({
 /** Блок затемнён и объясняет, чего не хватает; кнопок здесь нет намеренно. */
 export function UnavailableBlock({ title, hint }: { title: string; hint: string }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center opacity-70">
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-4 text-center opacity-70">
       <Lock aria-hidden="true" className="size-6 text-ink-muted" />
       <p className="text-title-m font-semibold text-ink-primary">{title}</p>
       <p className="max-w-[52ch] text-small text-ink-secondary">{hint}</p>

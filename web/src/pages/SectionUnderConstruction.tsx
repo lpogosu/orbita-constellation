@@ -8,9 +8,9 @@ import type { Section } from '@/app/sections';
  */
 export function SectionUnderConstruction({ section }: { section: Section }) {
   return (
-    <div className="mx-auto max-w-[1920px] px-[26px] py-10">
+    <div className="absolute inset-x-[26px] top-[124px]">
       <h1 className="text-heading-m font-bold text-ink-primary">{section.title}</h1>
-      <Card className="mt-6">
+      <Card sceneX={26} sceneY={200} className="mt-6 h-[420px]">
         <UnavailableBlock title="Раздел в разработке" hint={section.purpose} />
       </Card>
     </div>

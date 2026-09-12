@@ -46,11 +46,11 @@
   --shadow-glow-magenta: 0 8px 14px rgba(199, 91, 232, 0.5);
   --shadow-glow-blue: 0 0 16px rgba(46, 139, 251, 0.55);
 
-  /* Сцены-иллюстрации из макета: полярная панорама в шапке и общий фон страницы. */
-  --scenery-page: url('/assets/scenery-master.png');
+  /* Сцены-иллюстрации из макета: общий фон полотна (узел «Background / Master Scene»,
+     выгружен ровно в 1920×1080) и полярная панорама в шапке. */
+  --scenery-page: url('/assets/scenery-master.jpg');
   --scenery-panorama: url('/assets/scenery-panorama.png');
-  --scenery-card: url('/assets/scenery-panorama.png');
-  --scrim-page: rgba(6, 12, 36, 0.62);
+  --scrim-page: rgba(8, 24, 71, 0.86);
   --scrim-panorama: rgba(10, 23, 64, 0.4);
 }
 
@@ -94,7 +94,6 @@
   /* Ночные фотосцены на светлом фоне дают нечитаемый текст, поэтому здесь их нет. */
   --scenery-page: none;
   --scenery-panorama: none;
-  --scenery-card: none;
   --scrim-page: transparent;
   --scrim-panorama: transparent;
 }

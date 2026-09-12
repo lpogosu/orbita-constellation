@@ -11,12 +11,15 @@
 
 @layer base {
   html {
-    min-height: 100%;
+    height: 100%;
   }
 
   body {
-    min-height: 100vh;
+    height: 100%;
     margin: 0;
+    /* Экран целиком живёт на полотне фиксированного размера, поэтому страница не
+       прокручивается ни при какой ширине и высоте окна. */
+    overflow: hidden;
     background-color: var(--bg-page);
     color: var(--text-primary);
     font-family: var(--font-sans);
@@ -48,19 +51,94 @@
 }
 
 @layer components {
-  /* Фон страницы: ночная сцена макета под затемняющим слоем. В светлой теме обе
-     переменные пусты, и остаётся ровная заливка. */
-  .app-scenery {
-    background-image: linear-gradient(var(--scrim-page), var(--scrim-page)), var(--scenery-page);
-    background-size: cover;
-    background-position: center top;
-    background-attachment: fixed;
+  /* Окно целиком. Полотно уже или ниже окна, когда пропорции не совпадают: по краям
+     остаётся размытое продолжение той же сцены, чтобы граница полотна не читалась
+     как рамка вокруг интерфейса. */
+  .app-frame {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background-color: var(--bg-page);
   }
 
-  .card-scenery {
-    background-image: linear-gradient(var(--surface-glass), var(--surface-glass)),
-      var(--scenery-card);
-    background-size: cover;
+  .app-frame::before {
+    content: '';
+    position: absolute;
+    /* Размытие съедает края, поэтому подложка заведомо крупнее окна. */
+    inset: -8%;
+    /* Тот же слой, что и на полотне: сцена под тем же скримом. Иначе поля по краям
+       светлее интерфейса и граница полотна читается рамкой. */
+    background-image: linear-gradient(var(--scrim-page), var(--scrim-page)), var(--scenery-page);
+    background-size: auto, cover;
     background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(48px) saturate(0.75) brightness(0.85);
+  }
+
+  /* Полотно макета: 1920×1080 CSS-пикселей, координаты блоков внутри совпадают с Figma.
+     `zoom` меняет и раскладку, поэтому полотно остаётся центрированным сеткой и не
+     выходит за окно. Где `zoom` не поддерживается, тот же результат даёт `transform`:
+     размер в раскладке остаётся макетным, а центрирование сеткой уводит переполнение
+     симметрично в обе стороны, и `overflow: hidden` его срезает. */
+  .app-canvas {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    zoom: var(--canvas-scale, 1);
+    background-color: var(--bg-page);
+    background-image: linear-gradient(var(--scrim-page), var(--scrim-page)), var(--scenery-page);
+    background-size: 1920px 1080px;
+    background-repeat: no-repeat;
+  }
+
+  @supports not (zoom: 1) {
+    .app-canvas {
+      zoom: 1;
+      transform: scale(var(--canvas-scale, 1));
+      transform-origin: center center;
+    }
+  }
+
+  /* Стеклянная карточка макета: сцена под стеклом — тот же фон полотна, сдвинутый на
+     позицию карточки, поэтому карточка показывает ровно то, что за ней. Сдвиг задаёт
+     `background-position` в разметке. */
+  .card-glass {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-card);
+    background-color: var(--bg-page);
+    background-image: linear-gradient(var(--surface-glass), var(--surface-glass)),
+      var(--scenery-page);
+    background-size: auto, 1920px 1080px;
+    background-repeat: no-repeat;
+  }
+
+  /* Единственная прокрутка на экране — внутри блока. Полоса тонкая и по токенам границ. */
+  .scroll-area {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) transparent;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-area::-webkit-scrollbar-thumb {
+    background-color: var(--border-default);
+    border-radius: var(--radius-pill);
+  }
+
+  .scroll-area::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-strong);
   }
 }

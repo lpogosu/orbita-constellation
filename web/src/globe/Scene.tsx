@@ -6,7 +6,7 @@ import type { MapLayers, MapModel } from '@/map/model';
 import type { MapPalette } from '@/map/palette';
 import { ContactLines } from './ContactLines';
 import { Earth } from './Earth';
-import { ecefToScenePosition, LIGHT_DIRECTION, siteScenePosition } from './geo';
+import { earthRotationAngleRad, ecefToScenePosition, LIGHT_DIRECTION, siteScenePosition } from './geo';
 import { GroundSites } from './GroundSites';
 import { OrbitPlanes } from './OrbitPlanes';
 import { BackupRouteLine, RouteTube } from './RouteTube';
@@ -20,6 +20,9 @@ export interface SceneModelInput {
   readonly planes: readonly Plane[];
   readonly inclinationDeg: number;
   readonly altitudeKm: number;
+  /** Угол поворота Земли на старте расчёта — нужен, чтобы развернуть кольца орбит из
+   * инерциальной системы в ту же вращающуюся, в которой снимок отдаёт аппараты. */
+  readonly earthAngle0Deg: number;
   readonly palette: MapPalette;
   readonly textures: GlobeTextures;
   readonly hoveredId: string | null;
@@ -35,6 +38,7 @@ export function Scene({
   planes,
   inclinationDeg,
   altitudeKm,
+  earthAngle0Deg,
   palette,
   textures,
   hoveredId,
@@ -42,6 +46,11 @@ export function Scene({
   onSelectSatellite,
   onSelectSite,
 }: SceneModelInput) {
+  // Спутники приходят уже повёрнутыми на этот угол (`ecefToScenePosition` из `x_km/y_km/z_km`
+  // снимка), а кольца плоскостей ниже строятся аналитически из RAAN — обратный поворот
+  // сводит их в одну систему на текущем отсчёте (`docs/18_GLOBE_3D.md`).
+  const earthRotation = earthRotationAngleRad(earthAngle0Deg, model.tS);
+
   const positions = useMemo(() => {
     const map = new Map<string, THREE.Vector3>();
     for (const satellite of model.satellites) {
@@ -88,13 +97,17 @@ export function Scene({
       />
 
       {layers.planes && (
-        <OrbitPlanes
-          planes={planes}
-          planeIds={model.planeIds}
-          inclinationDeg={inclinationDeg}
-          altitudeKm={altitudeKm}
-          palette={palette}
-        />
+        // Поворот вокруг полярной оси сцены (Y) на −θ(t): кольца строятся в инерциальной
+        // системе, а поворот приводит их к той же вращающейся системе, что и аппараты.
+        <group rotation={[0, -earthRotation, 0]}>
+          <OrbitPlanes
+            planes={planes}
+            planeIds={model.planeIds}
+            inclinationDeg={inclinationDeg}
+            altitudeKm={altitudeKm}
+            palette={palette}
+          />
+        </group>
       )}
 
       <ContactLines

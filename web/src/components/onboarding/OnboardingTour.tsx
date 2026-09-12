@@ -1,5 +1,6 @@
 import { CircleHelp, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useProjectSelection } from '@/app/project-selection';
@@ -14,6 +15,7 @@ import {
 
 type Area = Readonly<{ x: number; y: number; width: number; height: number }>;
 type Section = 'projects' | 'network' | 'outages' | 'comparison' | 'result';
+const COMPLETED_STORAGE_KEY = 'orbita.onboarding.completed.v1';
 
 interface TourStep {
   readonly title: string;
@@ -124,6 +126,38 @@ export function OnboardingTour() {
   const nextButton = useRef<HTMLButtonElement>(null);
   const step = STEPS[stepIndex];
 
+  const complete = useCallback((): void => {
+    try {
+      localStorage.setItem(COMPLETED_STORAGE_KEY, '1');
+    } catch {
+      // Приватный режим не должен мешать закрыть тур.
+    }
+    setIsOpen(false);
+  }, []);
+
+  const start = useCallback((): void => {
+    setStepIndex(0);
+    navigate(PROJECTS_PATH);
+    // Даём ProjectsPage занять полотно перед показом первого spotlight.
+    requestAnimationFrame(() => {
+      setIsOpen(true);
+    });
+  }, [navigate]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(COMPLETED_STORAGE_KEY) === '1') {
+        return;
+      }
+    } catch {
+      // При запрете localStorage тур всё равно запускается как для первого входа.
+    }
+    const frame = requestAnimationFrame(start);
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [start]);
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -132,19 +166,17 @@ export function OnboardingTour() {
     nextButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        setIsOpen(false);
+        complete();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [isOpen, stepIndex]);
+  }, [complete, isOpen, stepIndex]);
 
   const open = (): void => {
-    setStepIndex(0);
-    navigate(PROJECTS_PATH);
-    setIsOpen(true);
+    start();
   };
 
   const moveTo = (nextIndex: number): void => {
@@ -180,12 +212,12 @@ export function OnboardingTour() {
           <div
             aria-hidden="true"
             className="pointer-events-none absolute rounded-[20px] border-2 border-[#7c5cff] shadow-[0_0_14px_rgba(124,92,255,0.45)]"
-            style={step.highlight}
+            style={toCssArea(step.highlight)}
           />
 
           <section
             className="absolute h-[238px] w-[400px] rounded-[20px] border border-[#29437d] bg-[#172653] px-[24px] pb-[20px] pt-[20px] shadow-[0_18px_48px_rgba(0,11,34,0.48)]"
-            style={step.tooltip}
+            style={toCssPosition(step.tooltip)}
             aria-describedby="onboarding-description"
           >
             <div className="flex items-start justify-between text-[13px] font-medium leading-[18px] text-[#b6c1e6]">
@@ -193,7 +225,7 @@ export function OnboardingTour() {
               <button
                 type="button"
                 onClick={() => {
-                  setIsOpen(false);
+                  complete();
                 }}
                 className="-mr-[6px] -mt-[4px] inline-flex items-center gap-[3px] rounded px-[6px] py-[4px] transition-colors hover:bg-white/10 hover:text-white"
               >
@@ -225,7 +257,7 @@ export function OnboardingTour() {
                 type="button"
                 onClick={() => {
                   if (stepIndex === STEPS.length - 1) {
-                    setIsOpen(false);
+                    complete();
                     return;
                   }
                   moveTo(stepIndex + 1);
@@ -256,8 +288,22 @@ function Scrim({ area }: { area: Area }) {
   return (
     <>
       {panels.map((panel, index) => (
-        <div key={index} aria-hidden="true" className="absolute" style={{ ...panel, backgroundColor: color }} />
+        <div
+          key={index}
+          aria-hidden="true"
+          className="absolute"
+          style={{ ...toCssArea(panel), backgroundColor: color }}
+        />
       ))}
     </>
   );
+}
+
+/** Макет задаёт Figma-координаты x/y, а inline CSS ожидает left/top. */
+function toCssArea(area: Area): CSSProperties {
+  return { left: area.x, top: area.y, width: area.width, height: area.height };
+}
+
+function toCssPosition(position: Pick<Area, 'x' | 'y'>): CSSProperties {
+  return { left: position.x, top: position.y };
 }

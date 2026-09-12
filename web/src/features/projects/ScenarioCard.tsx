@@ -45,8 +45,8 @@ export function ScenarioCard({
   onShowProblems,
 }: ScenarioCardProps) {
   return (
-    <Card className="min-h-[600px]">
-      <div className="flex h-full flex-col p-[19px]">
+    <Card className="flex min-h-[320px] flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col p-[19px]">
         {review.kind === 'idle' && (
           <EmptyState
             icon={<FileText aria-hidden="true" className="size-6" />}
@@ -161,7 +161,9 @@ function AcceptedState({
   const { environment, design, ground_sites: groundSites } = scenario;
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    // Шапка файла и кнопки закреплены, а прокручивается только середина карточки:
+    // «Открыть проект» обязан быть виден без прокрутки страницы.
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <FileHeader
         name={name}
         origin={origin}
@@ -174,6 +176,7 @@ function AcceptedState({
 
       <Divider />
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <section className="px-2">
         <h3 className="text-[18px] font-semibold text-ink-primary">Параметры сценария</h3>
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-[18px] 2xl:grid-cols-4">
@@ -215,17 +218,21 @@ function AcceptedState({
         </p>
       </section>
 
+      <GroundSiteChips sites={groundSites} />
+
       <Divider />
 
-      <Collapsible title="Плоскости" count={design.planes.length} defaultOpen>
+      {/* Обе секции свёрнуты: кнопка «Открыть проект» должна быть видна сразу. */}
+      <Collapsible title="Плоскости" count={design.planes.length}>
         <PlanesTable planes={design.planes} />
       </Collapsible>
 
       <Collapsible title="Наземные станции" count={groundSites.length}>
         <GroundSitesTable sites={groundSites} />
       </Collapsible>
+      </div>
 
-      <div className="mt-auto pt-4">
+      <div className="shrink-0 pt-2">
         {createError !== null && (
           <p role="alert" className="mb-3 flex items-start gap-2 text-small text-status-danger">
             <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -233,9 +240,9 @@ function AcceptedState({
           </p>
         )}
         <Divider />
-        <div className="mt-4 flex flex-wrap gap-5">
+        <div className="mt-4 flex flex-wrap gap-3 2xl:gap-5">
           <Button
-            className="min-w-[240px] flex-1 2xl:max-w-[385px]"
+            className="min-w-[196px] flex-1 2xl:max-w-[385px]"
             disabled={creating}
             onClick={onOpenProject}
             iconAfter={<ChevronRight aria-hidden="true" className="size-[22px]" />}
@@ -244,7 +251,7 @@ function AcceptedState({
           </Button>
           <Button
             variant="secondary"
-            className="min-w-[220px] flex-1 2xl:max-w-[260px]"
+            className="min-w-[196px] flex-1 2xl:max-w-[260px]"
             disabled
             title="Доступно, когда открыт проект: файл станет его новым вариантом"
           >
@@ -253,6 +260,44 @@ function AcceptedState({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Наземные объекты сценария: идентификатор и роль каждого пункта. Роль показана и
+ * цветом, и иконкой, и словом в подсказке — цвета одного мало.
+ */
+function GroundSiteChips({ sites }: { sites: readonly GroundSite[] }) {
+  return (
+    <section className="px-2">
+      <h3 className="text-[16px] font-semibold text-ink-primary">Наземные объекты</h3>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {sites.map((site) => {
+          const gateway = site.role === 'gateway';
+          return (
+            <li key={site.id}>
+              <span
+                title={`${site.name} · ${gateway ? 'шлюз' : 'клиент'}`}
+                className={cx(
+                  'inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-small font-semibold',
+                  gateway
+                    ? 'border-status-success bg-[var(--status-success-soft)] text-status-success'
+                    : 'border-accent-violet-light bg-[rgba(108,92,231,0.18)] text-accent-violet-light',
+                )}
+              >
+                {gateway ? (
+                  <Radio aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <Users aria-hidden="true" className="size-3.5" />
+                )}
+                {site.id}
+                <span className="sr-only">{gateway ? 'шлюз' : 'клиент'}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -328,15 +373,13 @@ function Divider() {
 function Collapsible({
   title,
   count,
-  defaultOpen = false,
   children,
 }: {
   title: string;
   count: number;
-  defaultOpen?: boolean;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   const bodyId = useId();
 
   return (

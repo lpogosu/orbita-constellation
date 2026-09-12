@@ -27,9 +27,11 @@ export function RecentProjectsCard({
   onOpen,
 }: RecentProjectsCardProps) {
   return (
-    <Card className="min-h-[290px]">
-      <div className="p-[19px]">
-        <h2 className="px-2 pb-3 pt-1 text-title-m font-semibold text-ink-primary">
+    // Карточка не растёт вместе со списком: она отдаёт высоту карточке сценария, а
+    // список прокручивается внутри.
+    <Card className="max-h-[176px] shrink-0 overflow-hidden 2xl:max-h-[290px]">
+      <div className="flex h-full flex-col p-[19px]">
+        <h2 className="shrink-0 px-2 pb-3 pt-1 text-title-m font-semibold text-ink-primary">
           Недавние проекты
         </h2>
 
@@ -58,7 +60,7 @@ export function RecentProjectsCard({
         )}
 
         {error === null && projects !== null && projects.length > 0 && (
-          <ul>
+          <ul className="min-h-0 flex-1 overflow-y-auto">
             {projects.slice(0, RECENT_LIMIT).map((project) => (
               <li key={project.id}>
                 <button

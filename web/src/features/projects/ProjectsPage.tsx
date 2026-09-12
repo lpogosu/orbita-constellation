@@ -146,7 +146,10 @@ export function ProjectsPage() {
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-5">
+        {/* Правая колонка не уезжает вместе с примерами: она ограничена высотой окна,
+            липнет к верху и прокручивается внутри себя, поэтому «Открыть проект» виден
+            без прокрутки страницы. */}
+        <div className="flex min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-124px)] xl:self-start">
           <RecentProjectsCard
             projects={projects.data}
             error={projects.error}

@@ -74,7 +74,7 @@ export function MapLayersBar({
         onClick={() => {
           onHemisphere(hemisphere === 'north' ? 'south' : 'north');
         }}
-        title="Центр проекции: полюс, вокруг которого строится карта"
+        title="Полюс вида: в 2D — центр проекции карты, в 3D — точка обзора камеры"
         className="ml-auto h-[25px] shrink-0 whitespace-nowrap rounded-[8px] bg-surface-chip px-[10px] text-caption font-semibold text-ink-primary transition-colors duration-150 hover:bg-surface-rowActive"
       >
         {hemisphere === 'north' ? 'Центр: север' : 'Центр: юг'}

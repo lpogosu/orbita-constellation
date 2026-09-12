@@ -37,6 +37,22 @@ export function siteScenePosition(latDeg: number, lonDeg: number): THREE.Vector3
 
 export { EARTH_RADIUS_KM };
 
+/** Период оборота Земли вокруг оси, секунды (звёздные сутки, `core/orbita_core/geometry.py`). */
+export const EARTH_ROTATION_PERIOD_S = 86164.09054;
+
+/**
+ * Угол поворота Земли на отсчёте `tS` (радианы, `docs/18_GLOBE_3D.md`). Тем же углом
+ * сервер поворачивает инерциальные координаты в земные при сборке снимка
+ * (`core/orbita_core/geometry.py`): `x_km/y_km/z_km` аппаратов в ответе API уже в этой,
+ * вращающейся системе. Кольца орбитальных плоскостей строятся из `raan_deg` аналитически —
+ * то есть в инерциальной системе, — и без обратного поворота на этот угол расходятся с
+ * положением аппаратов на любом отсчёте, кроме нулевого.
+ */
+export function earthRotationAngleRad(earthAngle0Deg: number, tS: number): number {
+  const rate = (2 * Math.PI) / EARTH_ROTATION_PERIOD_S;
+  return earthAngle0Deg * (Math.PI / 180) + rate * tS;
+}
+
 /**
  * Направление на «солнце»: фиксировано в мировых координатах, а не привязано к камере —
  * иначе при повороте глобуса пользователем терминатор день/ночь скакал бы вместе с видом.

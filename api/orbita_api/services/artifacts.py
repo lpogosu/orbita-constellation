@@ -234,3 +234,32 @@ def run_artifact_sink(
         return StoredArtifacts(trace_uri=report.trace_uri, degraded_mode=report.degraded_mode)
 
     return sink
+
+
+async def store_evidence_pack(
+    session: AsyncSession,
+    run_id: UUID,
+    archive: bytes,
+    storage: StorageRegistry,
+) -> str:
+    """Кладёт Evidence Pack рядом с трассой и выгрузкой запуска.
+
+    Срок хранения — до удаления проекта: архив собирают, чтобы приложить к отчёту, и
+    исчезнуть через сутки он не может (`06_STORAGE.md` §6). Повторная сборка перезаписывает
+    объект по тому же ключу, поэтому прежняя запись реестра сначала убирается.
+    """
+    bundle = await storage.resolve()
+    key = artifact_key(run_id, ArtifactKind.EVIDENCE_PACK)
+    uri, _ = await _put_or_fallback(
+        bundle,
+        storage.local_artifacts,
+        key,
+        archive,
+        ArtifactKind.EVIDENCE_PACK,
+        Retention.PROJECT,
+    )
+    repository = ArtifactRepository(session)
+    await repository.delete_kind(run_id, str(ArtifactKind.EVIDENCE_PACK))
+    _register(repository, run_id, ArtifactKind.EVIDENCE_PACK, uri, len(archive), Retention.PROJECT)
+    await session.commit()
+    return uri

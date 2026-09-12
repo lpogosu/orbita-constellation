@@ -124,6 +124,9 @@ class ComparisonEntry(BaseModel):
     deltas: dict[str, float] = Field(
         description="Отличия метрик конфигурации от базового запуска; у базового пусто",
     )
+    per_client: list[ClientDelta] = Field(
+        description="Отличия по каждому клиентскому пункту; у базового пусто",
+    )
 
 
 class ComparisonResult(BaseModel):

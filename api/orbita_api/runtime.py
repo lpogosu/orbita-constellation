@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 from uuid import UUID
 
 from arq.connections import ArqRedis
@@ -33,6 +33,11 @@ from orbita_api.services.artifacts import run_artifact_sink
 from orbita_api.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+# `05_API.md` §4: результат предварительного просмотра живёт в Redis час. Час выбран
+# документом: дольше хранить снимок черновика незачем, а короче — кэш перестаёт помогать
+# при переборе значений одного параметра.
+PREVIEW_TTL_S: Final[int] = 60 * 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +132,22 @@ class RunRuntime:
         except RedisError as error:
             logger.warning("Ключ идемпотентности %s не сохранён: %s", key, error)
 
+    async def read_preview(self, config_hash: str, t_s: int) -> str | None:
+        """Готовый снимок черновика. `None` — его нет или Redis недоступен."""
+        try:
+            stored = await self._redis.get(_preview_key(config_hash, t_s))
+        except RedisError as error:
+            logger.warning("Кэш предварительного просмотра недоступен: %s", error)
+            return None
+        return None if stored is None else str(stored.decode("utf-8"))
+
+    async def remember_preview(self, config_hash: str, t_s: int, snapshot: str) -> None:
+        """Запоминает снимок черновика на час; без Redis просмотр работает без кэша."""
+        try:
+            await self._redis.set(_preview_key(config_hash, t_s), snapshot, ex=PREVIEW_TTL_S)
+        except RedisError as error:
+            logger.warning("Снимок предварительного просмотра не сохранён: %s", error)
+
     async def publish(self, event: RunProgressEvent) -> None:
         """Рассылает состояние подписчикам потока событий.
 
@@ -175,6 +196,15 @@ class RunRuntime:
         error = task.exception()
         if error is not None:
             logger.error("Расчёт в процессе api завершился ошибкой: %s", error)
+
+
+def _preview_key(config_hash: str, t_s: int) -> str:
+    """Ключ кэша предварительного просмотра (`05_API.md` §4).
+
+    Конфигурация и отсчёт задают снимок однозначно, а `config_hash` уже включает политику
+    маршрутизации, поэтому третьего слагаемого в ключе не нужно.
+    """
+    return f"preview:{config_hash}:{t_s}"
 
 
 def build_runtime(

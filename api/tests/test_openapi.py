@@ -63,6 +63,16 @@ IMPLEMENTED_ENDPOINTS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("get", "/api/runs/{run_id}"),
         ("get", "/api/runs/{run_id}/events"),
         ("post", "/api/runs/{run_id}/cancel"),
+        ("post", "/api/preview"),
+        ("get", "/api/runs/{run_id}/snapshot"),
+        ("get", "/api/runs/{run_id}/timeline"),
+        ("get", "/api/runs/{run_id}/metrics"),
+        ("get", "/api/runs/{run_id}/outages"),
+        ("get", "/api/runs/{run_id}/backup-paths"),
+        ("get", "/api/runs/{run_id}/export"),
+        ("get", "/api/runs/{run_id}/evidence-pack"),
+        ("post", "/api/comparisons"),
+        ("get", "/api/runs/{run_id}/recommendation"),
     },
 )
 

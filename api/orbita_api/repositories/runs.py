@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from orbita_api.db import models
+from orbita_api.schemas.common import RoutingPolicy, RunStatus
 
 
 class RunRepository:
@@ -63,6 +64,36 @@ class RunRepository:
             .where(models.Variant.project_id == project_id)
             .order_by(models.Run.created_at.desc())
             .limit(limit)
+        )
+        result = await self._session.scalars(statement)
+        return result.all()
+
+    async def list_succeeded_siblings(
+        self,
+        run_id: UUID,
+        routing_policy: RoutingPolicy,
+    ) -> Sequence[models.Run]:
+        """Успешные запуски того же проекта с той же политикой, включая сам `run_id`.
+
+        Это множество кандидатов рекомендации (ADR-006): сравнивать между собой можно
+        только расчёты одной задачи, а политика маршрутизации входит в постановку, а не
+        в конфигурацию.
+        """
+        project = (
+            select(models.Variant.project_id)
+            .join(models.Run, models.Run.variant_id == models.Variant.id)
+            .where(models.Run.id == run_id)
+            .scalar_subquery()
+        )
+        statement = (
+            select(models.Run)
+            .join(models.Variant, models.Variant.id == models.Run.variant_id)
+            .where(
+                models.Variant.project_id == project,
+                models.Run.routing_policy == routing_policy,
+                models.Run.status == RunStatus.SUCCEEDED,
+            )
+            .order_by(models.Run.created_at, models.Run.id)
         )
         result = await self._session.scalars(statement)
         return result.all()

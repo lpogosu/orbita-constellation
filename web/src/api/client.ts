@@ -36,25 +36,31 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
-  let response: Response;
-  try {
-    response = await fetch(path, { ...init, headers });
-  } catch (cause) {
-    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
-  }
-
+  const response = await send(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const details = toErrorDetails(body);
-    throw new ApiError(
-      response.status,
-      details,
-      details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${response.status})`,
-    );
+    throw failure(response.status, body);
   }
 
   return body as T;
+}
+
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch (cause) {
+    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
+  }
+}
+
+function failure(status: number, body: unknown): ApiError {
+  const details = toErrorDetails(body);
+  return new ApiError(
+    status,
+    details,
+    details[0]?.message ?? `${UNKNOWN_ERROR_MESSAGE} (HTTP ${status})`,
+  );
 }
 
 function toErrorDetails(body: unknown): readonly ErrorDetail[] {

@@ -1,0 +1,46 @@
+import { ApiError, apiPost, apiRequest } from './client';
+import type { Experiment, ExperimentCreateRequest, ExperimentPoint, Variant } from './types';
+
+/**
+ * Запросы экрана «07 · Исследования» (`05_API.md` §2).
+ *
+ * Все четыре endpoint объявлены в OpenAPI, но сейчас отвечают 501 `NOT_IMPLEMENTED`:
+ * расчёт перебора появится позже. Экран вызывает их по-настоящему и показывает ответ
+ * сервиса, а не подставляет данные вместо него.
+ */
+
+/** `POST /api/experiments` — поставить перебор по одной или двум осям. */
+export function createExperiment(payload: ExperimentCreateRequest): Promise<Experiment> {
+  return apiPost<Experiment>('/api/experiments', payload);
+}
+
+/** `GET /api/experiments/{id}` — статус, прогресс и лучшие точки. */
+export function getExperiment(experimentId: string): Promise<Experiment> {
+  return apiRequest<Experiment>(`/api/experiments/${experimentId}`);
+}
+
+/** `GET /api/experiments/{id}/points` — точки тепловой карты с метриками. */
+export function getExperimentPoints(experimentId: string): Promise<ExperimentPoint[]> {
+  return apiRequest<ExperimentPoint[]>(`/api/experiments/${experimentId}/points`);
+}
+
+/** `POST /api/experiments/{id}/points/{point_id}/materialize` — из точки в Variant. */
+export function materializePoint(
+  experimentId: string,
+  pointId: string,
+  title: string,
+): Promise<Variant> {
+  return apiPost<Variant>(
+    `/api/experiments/${experimentId}/points/${pointId}/materialize`,
+    { title },
+  );
+}
+
+/**
+ * Отличает «сервис ещё не умеет» от «сервис сломался»: 501 — это объявленный, но не
+ * реализованный endpoint, и блок результата обязан сказать об этом прямо, а не показать
+ * общую ошибку.
+ */
+export function isNotImplemented(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 501;
+}

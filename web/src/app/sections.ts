@@ -8,6 +8,7 @@ export interface Section {
 
 export const PROJECTS_PATH = '/projects';
 export const NETWORK_PATH = '/network';
+export const EXPERIMENTS_PATH = '/experiments';
 export const COMPARISON_PATH = '/comparison';
 
 export const NAV_SECTIONS: readonly Section[] = [
@@ -29,7 +30,7 @@ export const NAV_SECTIONS: readonly Section[] = [
       'Расследование отказа аппарата: сравнение сети до и после, затронутые клиенты и причины разрывов.',
   },
   {
-    path: '/experiments',
+    path: EXPERIMENTS_PATH,
     title: 'Исследования',
     purpose:
       'Перебор параметров с бюджетом, тепловая карта доступности худшего клиента и выбор точки как варианта.',

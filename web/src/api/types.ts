@@ -27,3 +27,15 @@ export type RoutingPolicy = Schemas['RoutingPolicy'];
 export type RunStatus = Schemas['RunStatus'];
 export type Snapshot = Schemas['Snapshot'];
 export type ClientRoute = Schemas['ClientRoute'];
+
+export type ComparisonResult = Schemas['ComparisonResult'];
+export type ComparisonEntry = Schemas['ComparisonEntry'];
+export type ClientComparison = Schemas['ClientComparison'];
+export type ConfigMetrics = Schemas['ConfigMetrics'];
+export type Recommendation = Schemas['Recommendation'];
+
+export type Experiment = Schemas['Experiment'];
+export type ExperimentAxis = Schemas['ExperimentAxis'];
+export type ExperimentBudget = Schemas['ExperimentBudget'];
+export type ExperimentCreateRequest = Schemas['ExperimentCreateRequest'];
+export type ExperimentPoint = Schemas['ExperimentPoint'];

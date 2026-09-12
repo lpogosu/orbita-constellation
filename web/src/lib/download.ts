@@ -60,3 +60,20 @@ export function exportFileName(parts: readonly string[], extension: string): str
 function safePart(part: string): string {
   return part.trim().replace(/[\s/\\:*?"<>|]+/g, '-');
 }
+
+/** Метка порядка байтов: без неё Excel читает кириллицу в CSV как вопросительные знаки. */
+const BYTE_ORDER_MARK = '\u{FEFF}';
+
+/** Сохранение текста, собранного на экране: таблица сравнения в CSV (`14_SCREENS.md` §6). */
+export function saveText(text: string, fileName: string, mimeType: string): void {
+  const url = URL.createObjectURL(
+    new Blob([BYTE_ORDER_MARK, text], { type: `${mimeType};charset=utf-8` }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

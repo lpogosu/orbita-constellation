@@ -1,21 +1,29 @@
 import { Clock, Link2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
-import type { ComparisonEntry, Run, Scenario } from '@/api/types';
+import type { ComparisonEntry, Plane, Run, Scenario } from '@/api/types';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
+import type { OrbitState } from '@/globe/Globe3D';
 import { cx } from '@/lib/cx';
 import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
+import { MapModeToggle } from '@/map/MapModeToggle';
 import { splitComponents } from '@/map/components';
+import { useMapMode } from '@/map/map-mode';
+import type { MapMode } from '@/map/map-mode';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
+
+// Тот же ленивый импорт, что на «Сети»: экран «Отказы» тоже не должен тяжелеть из-за
+// three.js, пока пользователь не выбрал 3D явно.
+const Globe3D = lazy(() => import('@/globe/Globe3D'));
 import { Timeline } from '@/timeline/Timeline';
 import type { TimelineTrack } from '@/timeline/Timeline';
 import { formatTick } from '@/lib/run-format';
@@ -55,6 +63,10 @@ export function OutagesPage() {
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
+  const [mapMode, setMapMode] = useMapMode();
+  // Общая камера двух глобусов в режиме «Рядом»: без неё «до» и «после» пришлось бы
+  // вращать по отдельности, и сравнивать маршруты на глаз стало бы неудобно.
+  const [orbit, setOrbit] = useState<OrbitState | null>(null);
   const [view, setView] = useState<MapView>('after');
   const [synced, setSynced] = useState(true);
   const [frozenTS, setFrozenTS] = useState(0);
@@ -470,6 +482,14 @@ export function OutagesPage() {
             satelliteActions={satelliteActions}
             missing={baseRunId === null}
             planeColors={palette.planes}
+            mode={mapMode}
+            onModeChange={setMapMode}
+            planes={draft.design.planes}
+            inclinationDeg={draft.environment.inclination_deg}
+            altitudeKm={draft.environment.altitude_km}
+            orbit={orbit}
+            onOrbitChange={setOrbit}
+            onUnavailable={() => { setMapMode('2d'); }}
           />
           <MapSlot
             x={LAYOUT.mapPair.x + LAYOUT.mapPair.width + LAYOUT.mapPair.gap}
@@ -484,6 +504,14 @@ export function OutagesPage() {
             satelliteActions={satelliteActions}
             missing={false}
             planeColors={palette.planes}
+            mode={mapMode}
+            onModeChange={setMapMode}
+            planes={draft.design.planes}
+            inclinationDeg={draft.environment.inclination_deg}
+            altitudeKm={draft.environment.altitude_km}
+            orbit={orbit}
+            onOrbitChange={setOrbit}
+            onUnavailable={() => { setMapMode('2d'); }}
           />
         </>
       ) : (
@@ -504,6 +532,12 @@ export function OutagesPage() {
           satelliteActions={satelliteActions}
           missing={view === 'before' && baseRunId === null}
           planeColors={palette.planes}
+          mode={mapMode}
+          onModeChange={setMapMode}
+          planes={draft.design.planes}
+          inclinationDeg={draft.environment.inclination_deg}
+          altitudeKm={draft.environment.altitude_km}
+          onUnavailable={() => { setMapMode('2d'); }}
         />
       )}
 
@@ -605,6 +639,14 @@ function MapSlot({
   satelliteActions,
   missing,
   planeColors,
+  mode,
+  onModeChange,
+  planes,
+  inclinationDeg,
+  altitudeKm,
+  orbit,
+  onOrbitChange,
+  onUnavailable,
 }: {
   x: number;
   y: number;
@@ -618,6 +660,14 @@ function MapSlot({
   satelliteActions: (satelliteId: string) => SatelliteAction[];
   missing: boolean;
   planeColors: readonly string[];
+  mode: MapMode;
+  onModeChange: (mode: MapMode) => void;
+  planes: readonly Plane[];
+  inclinationDeg: number;
+  altitudeKm: number;
+  orbit?: OrbitState | null;
+  onOrbitChange?: (state: OrbitState) => void;
+  onUnavailable: () => void;
 }) {
   return (
     <div className="absolute" style={{ left: x, top: y }}>
@@ -631,7 +681,7 @@ function MapSlot({
             hint="Выберите завершённый расчёт в поле «База сравнения» — на этой половине появится сеть до отказа."
           />
         </div>
-      ) : (
+      ) : mode === '2d' ? (
         <MapCanvas
           model={model}
           layers={layers}
@@ -644,6 +694,26 @@ function MapSlot({
             <p className="text-small font-semibold text-ink-primary">{hit.id}</p>
           )}
         />
+      ) : (
+        <Suspense fallback={<Skeleton className="rounded-sm" style={{ width, height }} />}>
+          <Globe3D
+            model={model}
+            layers={layers}
+            planes={planes}
+            inclinationDeg={inclinationDeg}
+            altitudeKm={altitudeKm}
+            width={width}
+            height={height}
+            onSelectSite={onSelectSite}
+            satelliteActions={satelliteActions}
+            renderTooltip={(hit) => (
+              <p className="text-small font-semibold text-ink-primary">{hit.id}</p>
+            )}
+            orbit={orbit}
+            onOrbitChange={onOrbitChange}
+            onUnavailable={onUnavailable}
+          />
+        </Suspense>
       )}
       {!missing && <MapLegend planeIds={model.planeIds} planeColors={planeColors} />}
       <p
@@ -652,6 +722,9 @@ function MapSlot({
       >
         {caption}
       </p>
+      <div className="pointer-events-none absolute right-[14px] top-[10px]">
+        <MapModeToggle mode={mode} onChange={onModeChange} />
+      </div>
     </div>
   );
 }

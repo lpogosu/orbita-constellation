@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { networkApi } from '@/api/network';
@@ -10,12 +10,18 @@ import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import { MapLayersBar } from '@/map/MapLayersBar';
 import { MapLegend } from '@/map/MapLegend';
+import { MapModeToggle } from '@/map/MapModeToggle';
 import { splitComponents } from '@/map/components';
+import { useMapMode } from '@/map/map-mode';
 import { DEFAULT_LAYERS } from '@/map/model';
 import type { MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere } from '@/map/projection';
+
+// Тяжёлый three.js-модуль грузится только при первом переключении в 3D — экран «Сеть»
+// не должен тяжелеть ради режима, которым не обязательно воспользуются.
+const Globe3D = lazy(() => import('@/globe/Globe3D'));
 import { Timeline } from '@/timeline/Timeline';
 import type { TimelineTrack } from '@/timeline/Timeline';
 import { formatTick } from '@/lib/run-format';
@@ -48,6 +54,7 @@ export function NetworkPage() {
 
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [hemisphere, setHemisphere] = useState<Hemisphere>('north');
+  const [mapMode, setMapMode] = useMapMode();
   const [componentsShown, setComponentsShown] = useState(false);
   const [failureModal, setFailureModal] = useState<{ satelliteId: string | null } | null>(null);
   const [saveModal, setSaveModal] = useState(false);
@@ -326,16 +333,36 @@ export function NetworkPage() {
       />
 
       <div className="absolute" style={{ left: LAYOUT.map.x, top: LAYOUT.map.y }}>
-        <MapCanvas
-          model={model}
-          layers={layers}
-          hemisphere={hemisphere}
-          width={LAYOUT.map.width}
-          height={LAYOUT.map.height}
-          onSelectSite={selectClient}
-          satelliteActions={satelliteActions}
-          renderTooltip={(hit) => <MapTooltip hit={hit} model={model} tS={tS} />}
-        />
+        {mapMode === '2d' ? (
+          <MapCanvas
+            model={model}
+            layers={layers}
+            hemisphere={hemisphere}
+            width={LAYOUT.map.width}
+            height={LAYOUT.map.height}
+            onSelectSite={selectClient}
+            satelliteActions={satelliteActions}
+            renderTooltip={(hit) => <MapTooltip hit={hit} model={model} tS={tS} />}
+          />
+        ) : (
+          <Suspense
+            fallback={<Skeleton className="rounded-sm" style={{ width: LAYOUT.map.width, height: LAYOUT.map.height }} />}
+          >
+            <Globe3D
+              model={model}
+              layers={layers}
+              planes={draft.design.planes}
+              inclinationDeg={draft.environment.inclination_deg}
+              altitudeKm={draft.environment.altitude_km}
+              width={LAYOUT.map.width}
+              height={LAYOUT.map.height}
+              onSelectSite={selectClient}
+              satelliteActions={satelliteActions}
+              renderTooltip={(hit) => <MapTooltip hit={hit} model={model} tS={tS} />}
+              onUnavailable={() => { setMapMode('2d'); }}
+            />
+          </Suspense>
+        )}
 
         <p
           className="pointer-events-none absolute left-[14px] top-[10px] rounded-pill border border-line bg-surface-raised px-[14px] py-[6px] text-caption font-semibold text-ink-primary"
@@ -345,9 +372,13 @@ export function NetworkPage() {
           {scene.snapshotSource === 'preview' && ' · предпросмотр черновика'}
         </p>
 
+        <div className="pointer-events-none absolute right-[14px] top-[10px]">
+          <MapModeToggle mode={mapMode} onChange={setMapMode} />
+        </div>
+
         <MapLegend planeIds={model.planeIds} planeColors={palette.planes} />
 
-        {scene.snapshot === null && scene.snapshotError === null && (
+        {mapMode === '2d' && scene.snapshot === null && scene.snapshotError === null && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <Skeleton className="size-[320px] rounded-pill" />
           </div>

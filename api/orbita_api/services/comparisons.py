@@ -197,6 +197,27 @@ async def compare(session: AsyncSession, run_ids: Sequence[UUID]) -> ComparisonR
     )
 
 
+def candidate_pool(
+    base: RunSummary,
+    requested: RunSummary,
+    others: Sequence[RunSummary],
+) -> list[RunSummary]:
+    """Набор, среди которого ищется лучшая конфигурация; первым идёт базовый запуск.
+
+    Запуск на других условиях расчёта в набор не попадает: его метрики получены для
+    другой задачи, и ранжировать их рядом значило бы сравнивать несравнимое
+    (`01_SPEC.md` §7).
+    """
+    pool = [base] if requested.run.id == base.run.id else [base, requested]
+    seen = {item.run.id for item in pool}
+    for item in others:
+        if item.run.id in seen or item.conditions != base.conditions:
+            continue
+        seen.add(item.run.id)
+        pool.append(item)
+    return pool
+
+
 def _core_client_metrics(row: models.ClientMetrics) -> CoreClientMetrics:
     return CoreClientMetrics(
         client_id=row.client_id,
@@ -284,18 +305,10 @@ async def recommend(
         run_id,
         requested.run.routing_policy,
     )
-    known = {base.run.id: base, requested.run.id: requested}
-    pool = [base, requested]
-    for run in siblings:
-        if run.id in known:
-            continue
-        item = await summary(session, run.id)
-        if item.conditions != base.conditions:
-            continue
-        known[run.id] = item
-        pool.append(item)
+    known = {base.run.id, requested.run.id}
+    others = [await summary(session, run.id) for run in siblings if run.id not in known]
 
-    candidates = [_candidate(base, item) for item in pool]
+    candidates = [_candidate(base, item) for item in candidate_pool(base, requested, others)]
     recommendation = _to_recommendation(ranking.recommend(candidates[0], candidates[1:]))
 
     payload: dict[str, Any] = recommendation.model_dump(mode="json", by_alias=True)

@@ -10,7 +10,7 @@ services:
       context: ..
       dockerfile: web/Dockerfile
       target: runtime
-    image: orbita-web:local
+    image: orbita-web:${ORBITA_IMAGE_TAG:-local}
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-3000}:80"
@@ -30,7 +30,7 @@ services:
       context: ..
       dockerfile: api/Dockerfile
       target: runtime
-    image: orbita-backend:local
+    image: orbita-backend:${ORBITA_IMAGE_TAG:-local}
     restart: unless-stopped
     # Схема базы приводится к текущей ревизии до первого запроса: отдельная цель make
     # забывается, а `make up` обязан давать работающий сервис одной командой.
@@ -76,7 +76,7 @@ services:
     # Тот же Dockerfile и та же стадия, что у api: код и версия ядра совпадают
     # побайтово. Отдельный тег нужен лишь потому, что два сервиса не могут писать
     # результат сборки в один и тот же тег одновременно.
-    image: orbita-worker:local
+    image: orbita-worker:${ORBITA_IMAGE_TAG:-local}
     restart: unless-stopped
     command: ["arq", "orbita_worker.settings.WorkerSettings"]
     environment: *backend_environment

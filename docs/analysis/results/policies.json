@@ -1,0 +1,175 @@
+{
+  "description": "Три политики маршрутизации на сценарии 01, сетка 86400 с / 120 с",
+  "reference_policy": "bfs_shortest",
+  "ticks": 720,
+  "policies": {
+    "bfs_shortest": {
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.9666666666666667,
+          "max_gap_s": 480,
+          "mean_hops": 2.2873563218390807,
+          "max_hops": 5,
+          "route_switches": 354,
+          "ticks_same_as_bfs": 696,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.9875,
+          "max_gap_s": 120,
+          "mean_hops": 2.6554149085794654,
+          "max_hops": 4,
+          "route_switches": 486,
+          "ticks_same_as_bfs": 711,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.9888888888888889,
+          "max_gap_s": 120,
+          "mean_hops": 3.1530898876404496,
+          "max_hops": 4,
+          "route_switches": 599,
+          "ticks_same_as_bfs": 712,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "max_hops": 5,
+        "route_switches_total": 1439,
+        "backup_path_count_min": 1,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 12,
+          "NO_GATEWAY_COVERAGE": 24
+        }
+      },
+      "duration_ms": 267
+    },
+    "persistent": {
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.9666666666666667,
+          "max_gap_s": 480,
+          "mean_hops": 2.324712643678161,
+          "max_hops": 5,
+          "route_switches": 339,
+          "ticks_same_as_bfs": 655,
+          "ticks_with_more_hops": 25,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.9875,
+          "max_gap_s": 120,
+          "mean_hops": 2.749648382559775,
+          "max_hops": 4,
+          "route_switches": 427,
+          "ticks_same_as_bfs": 623,
+          "ticks_with_more_hops": 64,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.9888888888888889,
+          "max_gap_s": 120,
+          "mean_hops": 3.3469101123595504,
+          "max_hops": 4,
+          "route_switches": 450,
+          "ticks_same_as_bfs": 525,
+          "ticks_with_more_hops": 135,
+          "ticks_with_fewer_hops": 0
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.8070903795324953,
+        "max_hops": 5,
+        "route_switches_total": 1216,
+        "backup_path_count_min": 1,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 12,
+          "NO_GATEWAY_COVERAGE": 24
+        }
+      },
+      "duration_ms": 264
+    },
+    "dijkstra_distance": {
+      "clients": [
+        {
+          "client_id": "C65",
+          "availability": 0.9666666666666667,
+          "max_gap_s": 480,
+          "mean_hops": 2.2873563218390807,
+          "max_hops": 5,
+          "route_switches": 348,
+          "ticks_same_as_bfs": 676,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C70",
+          "availability": 0.9875,
+          "max_gap_s": 120,
+          "mean_hops": 2.6554149085794654,
+          "max_hops": 4,
+          "route_switches": 472,
+          "ticks_same_as_bfs": 663,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        },
+        {
+          "client_id": "C72",
+          "availability": 0.9888888888888889,
+          "max_gap_s": 120,
+          "mean_hops": 3.1530898876404496,
+          "max_hops": 4,
+          "route_switches": 547,
+          "ticks_same_as_bfs": 444,
+          "ticks_with_more_hops": 0,
+          "ticks_with_fewer_hops": 0
+        }
+      ],
+      "config": {
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "max_hops": 5,
+        "route_switches_total": 1367,
+        "backup_path_count_min": 1,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "outage_count_by_cause": {
+          "NO_CLIENT_COVERAGE": 12,
+          "NO_GATEWAY_COVERAGE": 24
+        }
+      },
+      "duration_ms": 300
+    }
+  }
+}

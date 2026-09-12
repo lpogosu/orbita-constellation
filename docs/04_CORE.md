@@ -25,9 +25,25 @@ orbita_core/
   diagnosis.py    причины разрыва и доказательства
   metrics.py      агрегаты по клиенту и конфигурации, интервалы перерывов
   ranking.py      лексикографическое ранжирование и рекомендация
-  export.py       cosmo-A-result-1.0
-  engine.py       оркестрация одного Run, версия ядра
+  export.py       cosmo-A-result-1.0, детерминированная запись и повторная загрузка
+  engine.py       оркестрация одного Run, стадии и прогресс, версия ядра
+  cli.py          команды run, golden, crosscheck, validate (`python -m orbita_core`)
+  __main__.py     точка входа CLI
 ```
+
+## 1.1 Командная строка
+
+```text
+python -m orbita_core run <scenario.json> [--policy bfs_shortest|persistent|dijkstra_distance] [--out <file>]
+python -m orbita_core golden <dir> [--fixtures docs/10_FIXTURES.md]
+python -m orbita_core crosscheck <scenario.json> --ticks 0,120,43200,86280 [--reference <geometry.py>]
+python -m orbita_core validate <scenario.json>
+```
+
+`golden` читает ожидания из таблицы `10_FIXTURES.md` §1, а не из копии чисел в коде:
+единственный источник golden-значений — документ. `run` печатает метрики и пишет экспорт
+по `01_SPEC.md` §8; `crosscheck` сверяет ядро с официальным модулем; код возврата 1 при
+любом расхождении или ошибке валидации.
 
 ## 2. Pipeline одного Run
 

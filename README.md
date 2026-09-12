@@ -16,7 +16,7 @@ api/        FastAPI: валидация, проекты, запуски, экс�
 worker/     arq-задачи: суточные расчёты, sweep, criticality, Evidence Pack
 web/        nginx: статика и reverse proxy на api; интерфейс подключается позже
 deploy/     docker-compose, профиль degraded, nginx.conf, Makefile
-scenarios/  четыре сценария кейса в формате cosmo-A-1.0
+scenarios/  четыре сценария кейса и скрытый тестовый сценарий в формате cosmo-A-1.0
 docs/       документы продукта
 ```
 
@@ -24,6 +24,27 @@ docs/       документы продукта
 (ADR-001). Сервис `web` пока отдаёт одну статическую страницу со ссылками на служебные
 endpoint: интерфейс из `docs/07_UI.md` подключается отдельным срезом и будет ходить в то
 же API через тот же reverse proxy.
+
+## Ядро из командной строки
+
+Расчёт доступен без стека, из пакета `core/`:
+
+```bash
+cd core && python -m venv .venv && source .venv/Scripts/activate && pip install -e ".[dev]"
+python -m orbita_core validate ../scenarios/01_full_constellation.json
+python -m orbita_core run ../scenarios/01_full_constellation.json --policy bfs_shortest --out result.json
+python -m orbita_core golden ../scenarios
+python -m orbita_core crosscheck ../scenarios/01_full_constellation.json --ticks 0,120,43200,86280
+```
+
+| Команда | Что делает |
+|---|---|
+| `validate` | все ошибки сценария списком с кодом и JSON path; код возврата 1 при ошибках |
+| `run` | сутки расчёта, таблица метрик по клиентам и конфигурации, экспорт `cosmo-A-result-1.0` |
+| `golden` | сверка четырёх сценариев с таблицей `docs/10_FIXTURES.md` §1; числа берутся из документа |
+| `crosscheck` | сверка позиций и рёбер с официальным `Расчетный модуль/geometry.py` на выбранных отсчётах |
+
+Повторный `run` одной конфигурации даёт байт-в-байт тот же файл экспорта.
 
 ## Запуск
 

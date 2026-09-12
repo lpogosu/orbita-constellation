@@ -1,0 +1,225 @@
+{
+  "description": "Рекомендованная конфигурация: сверка с базой в трёх условиях и жадный поиск худшего набора отказов",
+  "params": {
+    "design.planes[P1].phase_deg": 15.0,
+    "design.planes[P3].phase_deg": 18.75
+  },
+  "target_availability": 0.9,
+  "greedy_depth": 6,
+  "by_conditions": {
+    "01_full_constellation": {
+      "conditions": "штатные условия",
+      "base": {
+        "label": "исходные фазы, штатные условия",
+        "gateway_blind_ticks": {
+          "G_MUR": 8
+        },
+        "min_client_availability": 0.9666666666666667,
+        "mean_client_availability": 0.9810185185185185,
+        "worst_max_gap_s": 480,
+        "mean_hops": 2.6986203726863316,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9666666666666667,
+          "C70": 0.9875,
+          "C72": 0.9888888888888889
+        },
+        "max_gap_s": {
+          "C65": 480,
+          "C70": 120,
+          "C72": 120
+        }
+      },
+      "proposed": {
+        "label": "рекомендованные фазы, штатные условия",
+        "gateway_blind_ticks": {
+          "G_MUR": 0
+        },
+        "min_client_availability": 0.9833333333333333,
+        "mean_client_availability": 0.9944444444444445,
+        "worst_max_gap_s": 240,
+        "mean_hops": 2.711989956057753,
+        "target_met_clients": [
+          "C65",
+          "C70",
+          "C72"
+        ],
+        "availability": {
+          "C65": 0.9833333333333333,
+          "C70": 1.0,
+          "C72": 1.0
+        },
+        "max_gap_s": {
+          "C65": 240,
+          "C70": 0,
+          "C72": 0
+        }
+      }
+    },
+    "03_satellite_outages": {
+      "conditions": "отказ десяти аппаратов с шестого часа",
+      "base": {
+        "label": "исходные фазы, отказ десяти аппаратов с шестого часа",
+        "gateway_blind_ticks": {
+          "G_MUR": 78
+        },
+        "min_client_availability": 0.7930555555555555,
+        "mean_client_availability": 0.8087962962962963,
+        "worst_max_gap_s": 1440,
+        "mean_hops": 2.79927767513302,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.7930555555555555,
+          "C70": 0.8083333333333333,
+          "C72": 0.825
+        },
+        "max_gap_s": {
+          "C65": 1440,
+          "C70": 1440,
+          "C72": 1200
+        }
+      },
+      "proposed": {
+        "label": "рекомендованные фазы, отказ десяти аппаратов с шестого часа",
+        "gateway_blind_ticks": {
+          "G_MUR": 70
+        },
+        "min_client_availability": 0.8041666666666667,
+        "mean_client_availability": 0.8180555555555555,
+        "worst_max_gap_s": 1200,
+        "mean_hops": 2.8423249642255137,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.8041666666666667,
+          "C70": 0.8180555555555555,
+          "C72": 0.8319444444444445
+        },
+        "max_gap_s": {
+          "C65": 1200,
+          "C70": 1200,
+          "C72": 1200
+        }
+      }
+    },
+    "04_link_range": {
+      "conditions": "дальность ISL 2000 км",
+      "base": {
+        "label": "исходные фазы, дальность ISL 2000 км",
+        "gateway_blind_ticks": {
+          "G_MUR": 8
+        },
+        "min_client_availability": 0.6222222222222222,
+        "mean_client_availability": 0.6828703703703703,
+        "worst_max_gap_s": 10680,
+        "mean_hops": 2.6035259888473656,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.775,
+          "C70": 0.6222222222222222,
+          "C72": 0.6513888888888889
+        },
+        "max_gap_s": {
+          "C65": 5640,
+          "C70": 10680,
+          "C72": 240
+        }
+      },
+      "proposed": {
+        "label": "рекомендованные фазы, дальность ISL 2000 км",
+        "gateway_blind_ticks": {
+          "G_MUR": 0
+        },
+        "min_client_availability": 0.4527777777777778,
+        "mean_client_availability": 0.6046296296296296,
+        "worst_max_gap_s": 8880,
+        "mean_hops": 2.703280376821444,
+        "target_met_clients": [],
+        "availability": {
+          "C65": 0.7875,
+          "C70": 0.5736111111111111,
+          "C72": 0.4527777777777778
+        },
+        "max_gap_s": {
+          "C65": 5400,
+          "C70": 5520,
+          "C72": 8880
+        }
+      }
+    }
+  },
+  "greedy_worst_case": [
+    {
+      "failed_count": 1,
+      "failed": [
+        "S19"
+      ],
+      "added": "S19",
+      "min_client_availability": 0.9583333333333334,
+      "target_met": true
+    },
+    {
+      "failed_count": 2,
+      "failed": [
+        "S19",
+        "S30"
+      ],
+      "added": "S30",
+      "min_client_availability": 0.9291666666666667,
+      "target_met": true
+    },
+    {
+      "failed_count": 3,
+      "failed": [
+        "S19",
+        "S30",
+        "S23"
+      ],
+      "added": "S23",
+      "min_client_availability": 0.9,
+      "target_met": true
+    },
+    {
+      "failed_count": 4,
+      "failed": [
+        "S19",
+        "S30",
+        "S23",
+        "S20"
+      ],
+      "added": "S20",
+      "min_client_availability": 0.8722222222222222,
+      "target_met": false
+    },
+    {
+      "failed_count": 5,
+      "failed": [
+        "S19",
+        "S30",
+        "S23",
+        "S20",
+        "S17"
+      ],
+      "added": "S17",
+      "min_client_availability": 0.8472222222222222,
+      "target_met": false
+    },
+    {
+      "failed_count": 6,
+      "failed": [
+        "S19",
+        "S30",
+        "S23",
+        "S20",
+        "S17",
+        "S21"
+      ],
+      "added": "S21",
+      "min_client_availability": 0.8222222222222222,
+      "target_met": false
+    }
+  ]
+}

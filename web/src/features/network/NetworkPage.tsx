@@ -369,6 +369,8 @@ export function NetworkPage() {
               planes={draft.design.planes}
               inclinationDeg={draft.environment.inclination_deg}
               altitudeKm={draft.environment.altitude_km}
+              earthAngle0Deg={draft.environment.earth_angle0_deg}
+              hemisphere={hemisphere}
               width={LAYOUT.map.width}
               height={LAYOUT.map.height}
               onSelectSite={selectClient}

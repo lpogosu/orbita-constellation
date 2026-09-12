@@ -4,7 +4,7 @@ import type { MapSprites } from './earth-layer';
 import type { MapLayers, MapModel } from './model';
 import { planeColor } from './palette';
 import type { MapPalette } from './palette';
-import { geoFromEcef, project, radiusInEarthRadii } from './projection';
+import { colatitude, geoFromEcef, project, radiusInEarthRadii } from './projection';
 import type { MapView, Point } from './projection';
 
 // Canvas не разбирает CSS-переменные внутри `font`, поэтому семейства заданы строками —
@@ -46,14 +46,24 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
   ctx.clearRect(0, 0, input.width, input.height);
 
   const positions = new Map<string, Point>();
+  // Узлы за экватором обратной от центра проекции стороны: полюс сменить можно, но узел
+  // сценария остаётся тем же самым, и на карте северного полушария южный клиент должен
+  // читаться как «на обратной стороне», а не как обычная точка у самого края.
+  const farSide = new Set<string>();
 
   for (const satellite of model.satellites) {
     const geo = geoFromEcef(satellite.x_km, satellite.y_km, satellite.z_km);
     const lift = radiusInEarthRadii(satellite.x_km, satellite.y_km, satellite.z_km) - 1;
     positions.set(satellite.id, project(view, geo, lift));
+    if (colatitude(geo.latDeg, view.hemisphere) > 90) {
+      farSide.add(satellite.id);
+    }
   }
   for (const site of model.sites) {
     positions.set(site.id, project(view, { latDeg: site.lat_deg, lonDeg: site.lon_deg }));
+    if (colatitude(site.lat_deg, view.hemisphere) > 90) {
+      farSide.add(site.id);
+    }
   }
 
   if (layers.planes) {
@@ -87,7 +97,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
       if (point === undefined) {
         continue;
       }
-      drawSatellite(ctx, input, satellite, point, muted.has(satellite.id));
+      drawSatellite(ctx, input, satellite, point, muted.has(satellite.id) || farSide.has(satellite.id));
     }
   }
 
@@ -101,7 +111,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): Draw
     if (point === undefined) {
       continue;
     }
-    drawSite(ctx, input, site, point);
+    drawSite(ctx, input, site, point, farSide.has(site.id));
   }
 
   ctx.restore();
@@ -434,6 +444,7 @@ function drawSite(
   input: DrawInput,
   site: GroundSite,
   point: Point,
+  farSide: boolean,
 ): void {
   const { model, palette, sprites, view } = input;
   const selected = site.id === model.selectedClientId;
@@ -444,6 +455,11 @@ function drawSite(
     (components.clientSiteId === site.id || components.gatewaySiteIds.includes(site.id));
 
   ctx.save();
+  // Обратная сторона текущего полюса приглушается, а не прячется: пункт остаётся
+  // кликабельным и виден у края диска, но явно второстепенен рядом с центром проекции.
+  if (farSide) {
+    ctx.globalAlpha = 0.4;
+  }
 
   if (outlined) {
     ctx.strokeStyle = components.clientSiteId === site.id ? palette.route : palette.backup;

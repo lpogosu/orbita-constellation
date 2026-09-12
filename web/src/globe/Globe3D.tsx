@@ -1,6 +1,6 @@
 import { OrbitControls } from '@react-three/drei';
-import { Canvas, useThree } from '@react-three/fiber';
-import { Compass, RotateCcw } from 'lucide-react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { RotateCcw } from 'lucide-react';
 import type { ComponentRef, ReactNode } from 'react';
 import {
   forwardRef,
@@ -19,6 +19,7 @@ import type { SatelliteAction } from '@/map/MapCanvas';
 import type { MapHit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
+import type { Hemisphere } from '@/map/projection';
 import { ContextMenu } from './ContextMenu';
 import { Scene } from './Scene';
 import { useGlobeTextures } from './textures';
@@ -37,7 +38,10 @@ const DEFAULT_ORBIT: OrbitState = {
   polar: THREE.MathUtils.degToRad(55),
   distance: 2.8,
 };
+/** Полярный угол камеры почти над полюсом: 0 — строго над ним, чуть отступаем, чтобы
+ * не терять ориентацию при `enableDamping`. Южный — зеркальное значение от другого полюса. */
 const NORTH_POLAR = THREE.MathUtils.degToRad(8);
+const SOUTH_POLAR = THREE.MathUtils.degToRad(180 - 8);
 const MIN_DISTANCE = 1.25;
 const MAX_DISTANCE = 6;
 
@@ -48,6 +52,10 @@ export interface Globe3DProps {
   readonly planes: readonly Plane[];
   readonly inclinationDeg: number;
   readonly altitudeKm: number;
+  readonly earthAngle0Deg: number;
+  /** Общий с 2D-картой выбор полюса (`MapLayersBar`): в 3D это точка обзора камеры, а не
+   * перестроение сцены — сам глобус и аппараты остаются на месте. */
+  readonly hemisphere: Hemisphere;
   readonly width: number;
   readonly height: number;
   readonly onSelectSite: (siteId: string) => void;
@@ -71,6 +79,8 @@ export function Globe3D({
   planes,
   inclinationDeg,
   altitudeKm,
+  earthAngle0Deg,
+  hemisphere,
   width,
   height,
   onSelectSite,
@@ -150,13 +160,14 @@ export function Globe3D({
           setMenu(null);
         }}
       >
-        <CameraRig ref={rigRef} orbit={orbit} onOrbitChange={onOrbitChange} />
+        <CameraRig ref={rigRef} hemisphere={hemisphere} orbit={orbit} onOrbitChange={onOrbitChange} />
         <Scene
           model={model}
           layers={layers}
           planes={planes}
           inclinationDeg={inclinationDeg}
           altitudeKm={altitudeKm}
+          earthAngle0Deg={earthAngle0Deg}
           palette={palette}
           textures={textures}
           hoveredId={hover?.id ?? null}
@@ -169,18 +180,12 @@ export function Globe3D({
         />
       </Canvas>
 
-      <div className="pointer-events-none absolute right-[14px] top-[10px] flex flex-col items-end gap-[6px]">
+      {/* Ниже переключателя «2D/3D» (тот же угол, `right-14 top-10`, `MapModeToggle`
+          в родительском экране): иначе плашки перекрываются (`docs/18_GLOBE_3D.md`).
+          Точку обзора «Север/Юг» задаёт общий с 2D-картой переключатель полушария —
+          здесь остаётся только сброс камеры к дефолтному ракурсу. */}
+      <div className="pointer-events-none absolute right-[14px] top-[58px] flex flex-col items-end gap-[6px]">
         <div className="pointer-events-auto flex gap-[6px]">
-          <button
-            type="button"
-            title="Камера над северным полюсом"
-            onClick={() => {
-              rigRef.current?.north();
-            }}
-            className="flex size-[30px] items-center justify-center rounded-sm border border-line bg-surface-raised text-ink-secondary transition-colors duration-150 hover:text-ink-primary"
-          >
-            <Compass aria-hidden="true" className="size-[16px]" />
-          </button>
           <button
             type="button"
             title="Сбросить камеру"
@@ -226,11 +231,11 @@ export function Globe3D({
 }
 
 interface CameraRigHandle {
-  readonly north: () => void;
   readonly reset: () => void;
 }
 
 interface CameraRigProps {
+  readonly hemisphere: Hemisphere;
   readonly orbit?: OrbitState | null | undefined;
   readonly onOrbitChange?: ((state: OrbitState) => void) | undefined;
 }
@@ -251,14 +256,23 @@ function readSpherical(controls: OrbitControlsInstance): OrbitState {
 
 /**
  * `OrbitControls` живёт внутри `<Canvas>` (нужен доступ к камере и к `invalidate` для
- * `frameloop="demand"`), а кнопки «Север»/«Сброс» — снаружи, в обычном DOM. Мост между ними —
- * императивный `ref` с двумя методами, а не пропы: нажатие кнопки не должно быть состоянием
- * React, дергающим лишний рендер сцены.
+ * `frameloop="demand"`), а кнопка «Сброс» — снаружи, в обычном DOM. Мост между ними —
+ * императивный `ref`, а не проп: нажатие кнопки не должно быть состоянием React, дергающим
+ * лишний рендер сцены. Смену полюса, в отличие от сброса, вызывает не кнопка здесь, а проп
+ * `hemisphere` — им управляет тот же переключатель, что и 2D-картой.
  */
-const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig({ orbit, onOrbitChange }, ref) {
+const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig(
+  { hemisphere, orbit, onOrbitChange },
+  ref,
+) {
   const controlsRef = useRef<OrbitControlsInstance | null>(null);
   const lastSynced = useRef<OrbitState>(DEFAULT_ORBIT);
   const { invalidate } = useThree();
+  // Полюс, к которому сейчас едет камера, или `null`, если переход уже завершён (или ещё
+  // не начинался). Первое значение полушария не анимируем — стартовый вид задаёт
+  // `orbit`/`DEFAULT_ORBIT`, а не молчаливый прыжок к полюсу при открытии 3D.
+  const polarTarget = useRef<number | null>(null);
+  const mountedHemisphere = useRef(hemisphere);
 
   useLayoutEffect(() => {
     const controls = controlsRef.current;
@@ -291,24 +305,45 @@ const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig
     invalidate();
   }, [orbit, invalidate]);
 
+  // Смена полюса — точка обзора камеры, а не перестроение сцены: геометрия и позиции
+  // аппаратов остаются как есть, меняется только откуда на них смотрят (`14_SCREENS.md`).
+  useEffect(() => {
+    if (mountedHemisphere.current === hemisphere) {
+      return;
+    }
+    mountedHemisphere.current = hemisphere;
+    polarTarget.current = hemisphere === 'north' ? NORTH_POLAR : SOUTH_POLAR;
+    invalidate();
+  }, [hemisphere, invalidate]);
+
+  // Плавный переход к цели: доля разницы за кадр даёт мягкое затухающее движение вместо
+  // мгновенного прыжка, и не требует отдельной библиотеки анимации ради одного угла.
+  useFrame(() => {
+    const target = polarTarget.current;
+    const controls = controlsRef.current;
+    if (target === null || controls === null) {
+      return;
+    }
+    const current = readSpherical(controls);
+    const diff = target - current.polar;
+    if (Math.abs(diff) < 0.001) {
+      polarTarget.current = null;
+      return;
+    }
+    const next: OrbitState = { ...current, polar: current.polar + diff * 0.12 };
+    applySpherical(controls, next);
+    lastSynced.current = next;
+    onOrbitChange?.(next);
+    invalidate();
+  });
+
   useImperativeHandle(ref, () => ({
-    north: () => {
-      const controls = controlsRef.current;
-      if (controls === null) {
-        return;
-      }
-      const current = readSpherical(controls);
-      const next: OrbitState = { ...current, polar: NORTH_POLAR };
-      applySpherical(controls, next);
-      lastSynced.current = next;
-      onOrbitChange?.(next);
-      invalidate();
-    },
     reset: () => {
       const controls = controlsRef.current;
       if (controls === null) {
         return;
       }
+      polarTarget.current = null;
       applySpherical(controls, DEFAULT_ORBIT);
       lastSynced.current = DEFAULT_ORBIT;
       onOrbitChange?.(DEFAULT_ORBIT);

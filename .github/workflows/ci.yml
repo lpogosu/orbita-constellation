@@ -15,8 +15,8 @@ jobs:
         package: [core, api, worker]
 
     # Интеграционные тесты идут на живых хранилищах: локально их поднимает
-    # testcontainers, здесь - сервисы workflow. Без них тесты помечают себя skip, и
-    # зелёный CI ничего не доказывал бы.
+    # testcontainers, здесь - сервисы workflow и шаг с контейнерами. Без них тесты
+    # помечают себя skip, и зелёный CI ничего не доказывал бы.
     services:
       postgres:
         image: postgres:16.15-alpine
@@ -61,11 +61,64 @@ jobs:
         working-directory: ${{ matrix.package }}
         run: mypy
 
+      # MinIO и Memgraph запускаются шагом, а не сервисом workflow: сервису нельзя
+      # задать команду запуска, а обоим образам она нужна.
+      - name: Поднять MinIO и Memgraph
+        if: matrix.package == 'api'
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=orbita -e MINIO_ROOT_PASSWORD=orbita-secret \
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          docker run -d --name memgraph -p 7687:7687 \
+            memgraph/memgraph-mage:3.13.0 --log-level=WARNING --telemetry-enabled=false
+
+      # Открытый порт ещё не означает готовности: Memgraph принимает соединение раньше,
+      # чем начинает отвечать на Bolt. Ждём ответа теми же клиентами, что и адаптеры.
+      - name: Дождаться готовности MinIO и Memgraph
+        if: matrix.package == 'api'
+        run: |
+          python - <<'PY'
+          import time
+
+          import boto3
+          from neo4j import GraphDatabase
+
+          DEADLINE = time.monotonic() + 120
+
+
+          def wait(name, check):
+              while True:
+                  try:
+                      check()
+                      return
+                  except Exception as error:
+                      if time.monotonic() > DEADLINE:
+                          raise SystemExit(f"{name} не поднялся: {error}") from error
+                      time.sleep(2)
+
+
+          s3 = boto3.client(
+              "s3",
+              endpoint_url="http://localhost:9000",
+              aws_access_key_id="orbita",
+              aws_secret_access_key="orbita-secret",
+              region_name="us-east-1",
+          )
+          wait("MinIO", s3.list_buckets)
+          driver = GraphDatabase.driver("bolt://localhost:7687", auth=None)
+          wait("Memgraph", driver.verify_connectivity)
+          driver.close()
+          PY
+
       - name: pytest
         working-directory: ${{ matrix.package }}
         env:
           ORBITA_TEST_DATABASE_URL: postgresql://orbita:orbita@localhost:5432/orbita
           ORBITA_TEST_REDIS_URL: redis://localhost:6379/0
+          ORBITA_TEST_MINIO_ENDPOINT: http://localhost:9000
+          ORBITA_TEST_MINIO_ACCESS_KEY: orbita
+          ORBITA_TEST_MINIO_SECRET_KEY: orbita-secret
+          ORBITA_TEST_MEMGRAPH_URI: bolt://localhost:7687
         run: pytest -q
 
   compose:

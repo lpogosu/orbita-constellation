@@ -46,6 +46,11 @@ services:
       ORBITA_MINIO_ENDPOINT: http://minio:9000
       ORBITA_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-orbita}
       ORBITA_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-orbita-secret}
+      # Запасной каталог артефактов на случай недоступного MinIO (06_STORAGE.md §7).
+      # Том, а не каталог контейнера: трасса не должна исчезать вместе с контейнером.
+      ORBITA_ARTIFACTS_DIR: /var/lib/orbita/artifacts
+    volumes:
+      - artifacts_data:/var/lib/orbita/artifacts
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -75,6 +80,9 @@ services:
     restart: unless-stopped
     command: ["arq", "orbita_worker.settings.WorkerSettings"]
     environment: *backend_environment
+    # Тот же том, что у api: артефакт, записанный воркером локально, обязан читаться api.
+    volumes:
+      - artifacts_data:/var/lib/orbita/artifacts
     depends_on:
       redis:
         condition: service_healthy
@@ -155,6 +163,7 @@ services:
       start_period: 10s
 
 volumes:
+  artifacts_data:
   postgres_data:
   redis_data:
   memgraph_data:

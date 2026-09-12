@@ -103,6 +103,8 @@
 | `INTERNAL_INCONSISTENCY` | расхождение BFS и Union-Find или причина не определена |
 | `STORAGE_UNAVAILABLE` | внешнее хранилище недоступно и degraded mode не разрешён |
 | `NOT_FOUND` | сущность с таким идентификатором отсутствует (HTTP 404) |
+| `IDEMPOTENCY_KEY_CONFLICT` | тот же `Idempotency-Key` с другим телом запроса (HTTP 409) |
+| `RUN_NOT_CANCELLABLE` | отмена Run в терминальном статусе (HTTP 409) |
 
 ### 3.7 Флаги интервала перерыва
 

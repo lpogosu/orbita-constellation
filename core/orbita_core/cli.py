@@ -3,15 +3,20 @@
 Только стандартная библиотека: ядро остаётся зависимым лишь от NumPy (`08_PLAN.md` §3),
 а CLI — тонкой обёрткой над `engine`, `export` и `scenario`.
 
-Таблицы печатаются в ASCII, а заголовки колонок совпадают с именами полей `05_API.md` §1.
-Консоль Windows работает в cp866 или cp1251, и рамка из псевдографики Unicode в ней
-рассыпалась бы; имена полей и так на английском (ADR-016).
+Весь текст, который читает человек — подписи, заголовки колонок, статусы, справка
+argparse, — на русском (ADR-016). Английскими остаются идентификаторы: имена команд и
+флагов, значения `--policy` и имена полей формата `cosmo-A-result-1.0`, когда они
+печатаются как данные — по ним вывод команды сопоставляется с файлом экспорта.
+
+Рамки таблиц — ASCII: консоль Windows работает в cp866 или cp1251, и псевдографика
+Unicode в ней рассыпалась бы.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib.util
+import io
 import json
 import re
 import sys
@@ -44,6 +49,13 @@ CROSSCHECK_TOLERANCE_KM: Final[float] = 1e-6
 
 _TABLE_ROW = re.compile(r"^\|(?P<cells>.*)\|\s*$")
 _SEPARATOR_ROW = re.compile(r"^[\s|:-]+$")
+
+# Статусы сверок: заглавные буквы у расхождения, чтобы строку было видно в длинной таблице.
+_OK: Final[str] = "ок"
+_FAIL: Final[str] = "РАСХОЖДЕНИЕ"
+
+# Ширина колонки подписей в блоке «поле — значение» под таблицами.
+_LABEL_WIDTH: Final[int] = 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,10 +157,15 @@ def _client_rows(clients: Iterable[ClientMetrics]) -> list[list[str]]:
             _optional(item.mean_hops, 2),
             _optional(item.max_hops, 0),
             str(item.route_switches),
-            "yes" if item.target_met else "no",
+            "да" if item.target_met else "нет",
         ]
         for item in clients
     ]
+
+
+def _print_field(label: str, value: object) -> None:
+    """Подпись и значение в две колонки."""
+    print(f"{label + ':':<{_LABEL_WIDTH}}{value}")
 
 
 def _print_run_summary(result: RunResult) -> None:
@@ -156,22 +173,24 @@ def _print_run_summary(result: RunResult) -> None:
     print(
         _render_table(
             [
-                "client_id",
-                "availability",
-                "visibility",
-                "max_gap_s",
-                "mean_hops",
-                "max_hops",
-                "route_switches",
-                "target_met",
+                "клиент",
+                "доступность",
+                "видимость",
+                "макс. перерыв, с",
+                "ср. переходов",
+                "макс. переходов",
+                "переключений",
+                "цель достигнута",
             ],
             _client_rows(result.aggregate.clients),
         )
     )
     print()
+    # В колонке показателей — имена полей агрегата как есть: сводку читают рядом с
+    # экспортом, и перевод подписи пришлось бы каждый раз сопоставлять с ключом JSON.
     print(
         _render_table(
-            ["metric", "value"],
+            ["показатель", "значение"],
             [
                 ["min_client_availability", _fraction(config.min_client_availability)],
                 ["mean_client_availability", _fraction(config.mean_client_availability)],
@@ -189,16 +208,16 @@ def _print_run_summary(result: RunResult) -> None:
         )
     )
     print()
-    print(f"engine_version: {result.engine_version}")
-    print(f"routing_policy: {result.routing_policy}")
-    print(f"config_hash:    {result.config_hash}")
-    print(f"duration_ms:    {result.duration_ms}")
+    _print_field("версия ядра", result.engine_version)
+    _print_field("политика", result.routing_policy)
+    _print_field("хеш конфигурации", result.config_hash)
+    _print_field("расчёт, мс", result.duration_ms)
 
 
 def _print_issues(error: ScenarioError) -> None:
     print(
         _render_table(
-            ["code", "path", "message"],
+            ["код", "поле", "сообщение"],
             [[str(issue.code), issue.path or "-", issue.message] for issue in error.errors],
         )
     )
@@ -217,7 +236,7 @@ def command_run(arguments: argparse.Namespace) -> int:
     _print_run_summary(result)
     if arguments.out is not None:
         export.dump_export(export.build_export(result), arguments.out)
-        print(f"export:         {arguments.out}")
+        _print_field("экспорт", arguments.out)
     return 0
 
 
@@ -240,7 +259,7 @@ def command_golden(arguments: argparse.Namespace) -> int:
     for row in table:
         scenario_path = directory / f"{row.scenario_stem}.json"
         if not scenario_path.is_file():
-            rows.append([row.scenario_stem, row.client_id, "-", "file not found", "FAIL"])
+            rows.append([row.scenario_stem, row.client_id, "-", "файла нет", _FAIL])
             failures += 1
             continue
         if row.scenario_stem not in results:
@@ -251,7 +270,7 @@ def command_golden(arguments: argparse.Namespace) -> int:
         found = {item.client_id: item for item in result.aggregate.clients}
         actual = found.get(row.client_id)
         if actual is None:
-            rows.append([row.scenario_stem, row.client_id, "-", "client not found", "FAIL"])
+            rows.append([row.scenario_stem, row.client_id, "-", "клиента нет", _FAIL])
             failures += 1
             continue
         checks: list[tuple[str, str, str, bool]] = [
@@ -288,13 +307,14 @@ def command_golden(arguments: argparse.Namespace) -> int:
                     row.client_id,
                     metric,
                     f"{expected_text} / {actual_text}",
-                    "ok" if passed else "FAIL",
+                    _OK if passed else _FAIL,
                 ]
             )
             failures += 0 if passed else 1
-    print(_render_table(["scenario", "client_id", "metric", "expected / actual", "status"], rows))
+    # Имена сверяемых величин — ключи golden-таблицы документа, поэтому остаются как есть.
+    print(_render_table(["сценарий", "клиент", "величина", "ожидание / расчёт", "статус"], rows))
     print()
-    print(f"checks: {len(rows)}, failed: {failures}")
+    print(f"проверок: {len(rows)}, расхождений: {failures}")
     return 1 if failures else 0
 
 
@@ -349,7 +369,7 @@ def command_crosscheck(arguments: argparse.Namespace) -> int:
     failures = 0
     for t_s in arguments.ticks:
         if t_s % step_s or not 0 <= t_s < scenario.environment.horizon_s:
-            rows.append([str(t_s), "-", "-", "FAIL"])
+            rows.append([str(t_s), "-", "-", "вне сетки отсчётов"])
             failures += 1
             continue
         position_error = _position_error_km(reference, raw, scenario, t_s)
@@ -357,9 +377,9 @@ def command_crosscheck(arguments: argparse.Namespace) -> int:
         passed = position_error < CROSSCHECK_TOLERANCE_KM and not difference
         failures += 0 if passed else 1
         rows.append(
-            [str(t_s), f"{position_error:.3e}", str(len(difference)), "ok" if passed else "FAIL"]
+            [str(t_s), f"{position_error:.3e}", str(len(difference)), _OK if passed else _FAIL]
         )
-    headers = ["t_s", "max_position_error_km", "edge_symmetric_difference", "status"]
+    headers = ["время, с", "макс. ошибка позиции, км", "расхождение рёбер", "статус"]
     print(_render_table(headers, rows))
     return 1 if failures else 0
 
@@ -372,8 +392,8 @@ def command_validate(arguments: argparse.Namespace) -> int:
         _print_issues(error)
         return 1
     print(
-        f"ok: satellites {len(scenario.satellites)}, "
-        f"ground sites {len(scenario.ground_sites)}, ticks {scenario.ticks}"
+        f"ошибок нет: аппаратов {len(scenario.satellites)}, "
+        f"наземных пунктов {len(scenario.ground_sites)}, отсчётов {scenario.ticks}"
     )
     return 0
 
@@ -382,57 +402,88 @@ def _ticks(value: str) -> list[int]:
     return [int(part) for part in value.split(",") if part]
 
 
+_SCENARIO_HELP: Final[str] = "путь к сценарию формата cosmo-A-1.0"
+
+
+def _russian_help(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """Своя `-h`: собственный текст argparse английский, а справка продукта русская."""
+    parser.add_argument("-h", "--help", action="help", help="показать справку и выйти")
+    return parser
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="orbita_core", description="Calculation core of ORBITA")
+    parser = _russian_help(
+        argparse.ArgumentParser(
+            prog="orbita_core",
+            description="Расчётное ядро ОРБИТЫ: расчёт сценария, сверки и валидация",
+            add_help=False,
+        )
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
-    run_parser = commands.add_parser("run", help="calculate one scenario")
-    run_parser.add_argument("scenario", help="path to a cosmo-A-1.0 scenario")
+    run_parser = _russian_help(
+        commands.add_parser("run", help="рассчитать один сценарий", add_help=False)
+    )
+    run_parser.add_argument("scenario", help=_SCENARIO_HELP)
     run_parser.add_argument(
         "--policy",
         choices=[str(policy) for policy in RoutingPolicy],
         default=str(RoutingPolicy.BFS_SHORTEST),
+        help="политика маршрутизации",
     )
-    run_parser.add_argument("--out", help="path of the cosmo-A-result-1.0 export")
+    run_parser.add_argument("--out", help="куда записать экспорт формата cosmo-A-result-1.0")
     run_parser.add_argument(
         "--no-backup-paths",
         dest="backup_paths",
         action="store_false",
-        help="skip backup_path_count_min",
+        help="не считать backup_path_count_min",
     )
     run_parser.set_defaults(handler=command_run, backup_paths=True)
 
-    golden_parser = commands.add_parser("golden", help="compare with the documented values")
-    golden_parser.add_argument("directory", help="directory with scenario files")
+    golden_parser = _russian_help(
+        commands.add_parser("golden", help="сверить расчёт с таблицей документа", add_help=False)
+    )
+    golden_parser.add_argument("directory", help="каталог со сценариями")
     golden_parser.add_argument(
-        "--fixtures", type=Path, default=DEFAULT_FIXTURES_PATH, help="path to 10_FIXTURES.md"
+        "--fixtures", type=Path, default=DEFAULT_FIXTURES_PATH, help="путь к 10_FIXTURES.md"
     )
     golden_parser.set_defaults(handler=command_golden)
 
-    crosscheck_parser = commands.add_parser("crosscheck", help="compare with the official module")
-    crosscheck_parser.add_argument("scenario", help="path to a cosmo-A-1.0 scenario")
-    crosscheck_parser.add_argument("--ticks", type=_ticks, required=True, help="times in seconds")
+    crosscheck_parser = _russian_help(
+        commands.add_parser(
+            "crosscheck", help="сверить расчёт с официальным модулем", add_help=False
+        )
+    )
+    crosscheck_parser.add_argument("scenario", help=_SCENARIO_HELP)
     crosscheck_parser.add_argument(
-        "--reference", type=Path, default=DEFAULT_REFERENCE_PATH, help="path to geometry.py"
+        "--ticks", type=_ticks, required=True, help="моменты времени в секундах через запятую"
+    )
+    crosscheck_parser.add_argument(
+        "--reference", type=Path, default=DEFAULT_REFERENCE_PATH, help="путь к geometry.py"
     )
     crosscheck_parser.set_defaults(handler=command_crosscheck)
 
-    validate_parser = commands.add_parser("validate", help="validate a scenario file")
-    validate_parser.add_argument("scenario", help="path to a cosmo-A-1.0 scenario")
+    validate_parser = _russian_help(
+        commands.add_parser("validate", help="проверить файл сценария", add_help=False)
+    )
+    validate_parser.add_argument("scenario", help=_SCENARIO_HELP)
     validate_parser.set_defaults(handler=command_validate)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Точка входа `python -m orbita_core`."""
-    # Сообщения валидации на русском, а кодовая страница консоли Windows покрывает не весь
-    # Unicode: подстановка вместо исключения не даёт команде упасть на печати отчёта.
+    # Весь вывод русский. В консоли Windows Python и так пишет Unicode напрямую, но стоит
+    # перенаправить вывод в файл или конвейер — и кодировкой становится однобайтовая
+    # кодовая страница системы (cp1251), а вывод команды читают в Git Bash, в логах CI и в
+    # отчётах. Поэтому поток явно переводится в utf-8; подстановка вместо исключения
+    # страхует терминалы, где даже это не проходит.
     for stream in (sys.stdout, sys.stderr):
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(errors="replace")
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     arguments = build_parser().parse_args(argv)
     started = time.perf_counter()
     handler: Callable[[argparse.Namespace], int] = arguments.handler
     code = handler(arguments)
-    print(f"elapsed_ms:     {round((time.perf_counter() - started) * 1000)}")
+    _print_field("всего, мс", round((time.perf_counter() - started) * 1000))
     return code

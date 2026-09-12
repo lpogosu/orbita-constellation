@@ -101,10 +101,10 @@
 | Метод | Путь | Назначение |
 |---|---|---|
 | `POST` | `/api/preview` | snapshot одного отсчёта для несохранённого draft, без Run |
-| `POST` | `/api/runs` | запустить сутки: `{variant_id, routing_policy}`; заголовок `Idempotency-Key` |
+| `POST` | `/api/runs` | запустить сутки: `{variant_id, routing_policy}`; заголовок `Idempotency-Key`. 202 — новый Run; 200 — переиспользован по `config_hash + engine_version` (ADR-011) или возвращён по ключу; 409 — тот же ключ с другим телом |
 | `GET` | `/api/runs/{id}` | статус, стадия, прогресс |
 | `GET` | `/api/runs/{id}/events` | SSE: `stage`, `completed_ticks`, `progress`, `status` |
-| `POST` | `/api/runs/{id}/cancel` | отмена |
+| `POST` | `/api/runs/{id}/cancel` | отмена; 409 `RUN_NOT_CANCELLABLE` для завершённого Run |
 | `GET` | `/api/runs/{id}/snapshot?t_s=` | состояние сети на отсчёте |
 | `GET` | `/api/runs/{id}/timeline` | по клиентам: bitset доступности и причины по отсчётам |
 | `GET` | `/api/runs/{id}/metrics` | ClientMetrics[] + ConfigMetrics |
@@ -145,7 +145,7 @@
 (`t_s`, `client_id`, `Idempotency-Key`) — тот же `INVALID_SCENARIO_FIELD` с `path` = имя
 параметра: отдельного кода в глоссарии нет намеренно.
 Коды — `03_GLOSSARY.md` §3.6. HTTP: 400 для ошибок входа, 404 для отсутствующих сущностей,
-409 для конфликта idempotency, 422 для `EXPERIMENT_BUDGET_EXCEEDED`, 503 для
+409 для `IDEMPOTENCY_KEY_CONFLICT` и `RUN_NOT_CANCELLABLE`, 422 для `EXPERIMENT_BUDGET_EXCEEDED`, 503 для
 `STORAGE_UNAVAILABLE`.
 
 ## 4. Прогресс и idempotency
@@ -153,6 +153,10 @@
 - Worker публикует прогресс в Redis-канал `run:{id}`; API транслирует его в SSE
   `/api/runs/{id}/events`. Polling `GET /api/runs/{id}` остаётся запасным путём.
 - `Idempotency-Key` хранится в Redis с TTL 24 ч; повторный POST возвращает тот же Run.
+  Под ключом хранится и отпечаток тела: тот же ключ с другой политикой или вариантом —
+  409 `IDEMPOTENCY_KEY_CONFLICT`.
+- Если Redis недоступен, расчёт выполняется в процессе api (degraded mode), ответ несёт
+  заголовок `X-Degraded-Mode: true`; в сущность Run признак не входит.
 - Готовый Run переиспользуется при совпадении `config_hash` и `engine_version` (ADR-011).
 - Preview не создаёт Variant и Run; результат кэшируется в Redis на 1 ч по `config_hash + t_s`.
 

@@ -20,7 +20,8 @@ help:
 	@echo "make down      - остановить стек, тома сохранить"
 	@echo "make test      - линтеры, типы и тесты: core, api, worker"
 	@echo "make demo      - поднять стек, показать /api/health и проверить очередь"
-	@echo "make degraded  - профиль без redis, memgraph и minio (degraded mode)"
+	@echo "make degraded  - профиль без redis, memgraph и minio (degraded mode);"
+	@echo "                 сначала останавливает стек, поднимается тем же make up,"
 	@echo "                 останавливается тем же make down"
 	@echo "make logs      - логи всех сервисов"
 	@echo "make ps        - состояние контейнеров"
@@ -49,7 +50,10 @@ demo: up
 	$(COMPOSE) exec -T worker python -m orbita_worker.queue_check
 	@echo "Интерфейс: http://localhost:3000"
 
-degraded:
+# Сначала `down`: сервис, попавший в неактивный профиль, compose не останавливает, а
+# просто перестаёт замечать. Без остановки redis, memgraph и minio, поднятые прошлым
+# `make up`, продолжали бы работать, и degraded оставался бы объявленным, а не настоящим.
+degraded: down
 	$(COMPOSE_DEGRADED) up -d --build --wait --wait-timeout $(WAIT_TIMEOUT)
 
 logs:

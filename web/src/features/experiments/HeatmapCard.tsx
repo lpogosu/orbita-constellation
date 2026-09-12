@@ -72,7 +72,10 @@ export function HeatmapCard({
     [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color],
   );
 
-  const ordered = useMemo(() => orderedPoints(points, xPath, yPath), [points, xPath, yPath]);
+  const ordered = useMemo(
+    () => orderedPoints(points, xPath, yPath, descriptor),
+    [points, xPath, yPath, descriptor],
+  );
 
   return (
     <Card
@@ -126,17 +129,21 @@ export function HeatmapCard({
   );
 }
 
-/** Порядок точек в ряду ECharts: по нему клик по ячейке находит свою точку. */
+/**
+ * Порядок точек в ряду ECharts: по нему клик по ячейке находит свою точку, поэтому он
+ * обязан повторять порядок и пропуски данных ряда. У линии значения выровнены по оси и
+ * пропусков нет — там место без точки остаётся пустым; на тепловой карте ячейки без
+ * значения в ряд не попадают, и здесь они тоже пропускаются.
+ */
 function orderedPoints(
   points: readonly ExperimentPoint[],
   xPath: string,
   yPath: string | null,
-): ExperimentPoint[] {
+  descriptor: MetricDescriptor,
+): (ExperimentPoint | undefined)[] {
   const xValues = axisValues(points, xPath);
   if (yPath === null) {
-    return xValues
-      .map((x) => points.find((point) => point.params[xPath] === x))
-      .filter((point): point is ExperimentPoint => point !== undefined);
+    return xValues.map((x) => points.find((point) => point.params[xPath] === x));
   }
 
   const yValues = axisValues(points, yPath);
@@ -146,7 +153,7 @@ function orderedPoints(
       const point = points.find(
         (item) => item.params[xPath] === x && item.params[yPath] === y,
       );
-      if (point !== undefined) {
+      if (point !== undefined && descriptor.read(point) !== null) {
         ordered.push(point);
       }
     }

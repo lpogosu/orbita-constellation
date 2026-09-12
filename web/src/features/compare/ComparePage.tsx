@@ -228,7 +228,7 @@ export function ComparePage() {
       {notice !== null && (
         <p
           role="status"
-          className="absolute left-[26px] top-[128px] max-w-[1000px] text-small text-ink-secondary"
+          className="absolute left-[420px] top-[120px] w-[640px] text-small text-ink-secondary"
         >
           {notice}
         </p>

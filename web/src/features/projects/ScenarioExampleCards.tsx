@@ -25,16 +25,24 @@ interface ScenarioExampleCardsProps {
   selectedName: string | null;
 }
 
+/** Ряд из четырёх карточек 262×227 на y = 800 с шагом 281, как в макете. */
 export const ScenarioExampleCards = forwardRef<HTMLElement, ScenarioExampleCardsProps>(
   function ScenarioExampleCards({ examples, error, onRetry, onPick, selectedName }, ref) {
     return (
-      <section ref={ref} aria-labelledby="examples-title" className="mt-[30px]">
-        <h2 id="examples-title" className="text-title-l font-semibold text-ink-primary">
+      <section
+        ref={ref}
+        aria-labelledby="examples-title"
+        className="absolute left-[26px] top-[800px] h-[227px] w-[1115px]"
+      >
+        <h2
+          id="examples-title"
+          className="absolute left-[18px] top-[-43px] text-title-l font-semibold leading-[31px] text-ink-primary"
+        >
           Примеры сценариев
         </h2>
 
         {error !== null ? (
-          <Card className="mt-4">
+          <Card sceneX={26} sceneY={800} className="h-full w-full">
             <ErrorBlock
               title="Примеры не загрузились"
               message={error}
@@ -43,11 +51,11 @@ export const ScenarioExampleCards = forwardRef<HTMLElement, ScenarioExampleCards
             />
           </Card>
         ) : (
-          <ul className="mt-4 grid grid-cols-4 gap-[19px]">
+          <ul className="flex h-full gap-[19px]">
             {examples === null
               ? COVERS.map((cover) => (
                   <li key={cover}>
-                    <Skeleton className="h-[227px] w-full" />
+                    <Skeleton className="h-[227px] w-[262px] rounded-xl" />
                   </li>
                 ))
               : examples.map((example, index) => (
@@ -86,19 +94,19 @@ function ExampleCard({
         onPick(example);
       }}
       className={cx(
-        'flex h-[227px] w-full flex-col overflow-hidden rounded-xl border-2 bg-surface-sunken text-left transition-[border-color,box-shadow] duration-150',
-        selected
-          ? 'border-line-strong shadow-glow-blue'
-          : 'border-transparent hover:border-line',
+        'flex h-[227px] w-[262px] flex-col overflow-hidden rounded-xl border-2 bg-surface-sunken text-left transition-[border-color,box-shadow] duration-150',
+        selected ? 'border-line-strong shadow-glow-blue' : 'border-line hover:border-line-strong',
       )}
     >
       <img src={cover} alt="" className="min-h-0 w-full flex-1 object-cover" />
-      <span className="flex min-h-[66px] w-full shrink-0 flex-col justify-center gap-0.5 overflow-hidden bg-surface-raised px-3 py-2 text-center">
-        {/* Название длиннее карточки переносится на две строки, а не режется посередине. */}
-        <span className="line-clamp-2 text-[17px] font-semibold leading-[1.2] text-ink-primary">
+      <span className="flex h-[66px] w-full shrink-0 flex-col items-center justify-center gap-[2px] overflow-hidden bg-surface-raised px-[10px]">
+        {/* Название длиннее карточки занимает две строки; подпись файла остаётся видна. */}
+        <span className="line-clamp-2 text-center text-title-m font-semibold leading-[1.15] text-ink-primary">
           {example.title === '' ? example.name : example.title}
         </span>
-        <span className="truncate font-mono text-[10px] text-ink-muted">{example.name}</span>
+        <span className="w-full truncate text-center font-mono text-[10px] text-ink-muted">
+          {example.name}
+        </span>
       </span>
     </button>
   );

@@ -6,11 +6,13 @@ import { Card } from '@/components/ui/Card';
 import { formatMoment } from '@/lib/format';
 
 /**
- * Сколько строк показывает карточка. `GET /api/projects` отдаёт весь список без
- * пагинации и без параметра `limit`, поэтому ограничение живёт на экране, а число
- * скрытых проектов названо честно.
+ * Мест в макете ровно четыре: четыре строки по 50 px с шагом 54 внутри 290-пиксельной
+ * карточки. Остальные проекты не прячутся — список прокручивается внутри карточки.
  */
-const RECENT_LIMIT = 6;
+const VISIBLE_ROWS = 4;
+const ROW_HEIGHT = 50;
+const ROW_GAP = 4;
+const LIST_HEIGHT = VISIBLE_ROWS * ROW_HEIGHT + (VISIBLE_ROWS - 1) * ROW_GAP;
 
 interface RecentProjectsCardProps {
   projects: readonly Project[] | null;
@@ -19,32 +21,43 @@ interface RecentProjectsCardProps {
   onOpen: (project: Project) => void;
 }
 
-/** Card / Недавние проекты: список `GET /api/projects`, свежие сверху. */
-export function RecentProjectsCard({
-  projects,
-  error,
-  onRetry,
-  onOpen,
-}: RecentProjectsCardProps) {
+/** Card / Недавние проекты: 721×290 на (1170, 142), список из `GET /api/projects`. */
+export function RecentProjectsCard({ projects, error, onRetry, onOpen }: RecentProjectsCardProps) {
   return (
-    // Карточка не растёт вместе со списком: она отдаёт высоту карточке сценария, а
-    // список прокручивается внутри.
-    <Card className="max-h-[176px] shrink-0 overflow-hidden 2xl:max-h-[290px]">
-      <div className="flex h-full flex-col p-[19px]">
-        <h2 className="shrink-0 px-2 pb-3 pt-1 text-title-m font-semibold text-ink-primary">
-          Недавние проекты
-        </h2>
+    <Card
+      sceneX={1170}
+      sceneY={142}
+      className="absolute left-[1170px] top-[142px] h-[290px] w-[721px]"
+    >
+      <h2 className="absolute left-[27px] top-[23px] text-title-m font-semibold leading-[26px] text-ink-primary">
+        Недавние проекты
+      </h2>
 
+      {/*
+        В макете здесь ссылка «Все проекты ›». Отдельного экрана со списком проектов в
+        `14_SCREENS.md` не объявлено, а список внутри карточки и так содержит все
+        проекты и прокручивается, поэтому слот занят тем, что ссылка обещала, — счётом.
+      */}
+      {projects !== null && projects.length > 0 && (
+        <p
+          className="absolute left-[589px] top-[28px] text-small font-semibold leading-[18px] text-ink-secondary"
+          data-numeric
+        >
+          Всего: {projects.length}
+        </p>
+      )}
+
+      <div className="absolute left-[19px] top-[65px] w-[687px]" style={{ height: LIST_HEIGHT }}>
         {error !== null && (
           <ErrorBlock title="Список не загрузился" message={error} onRetry={onRetry} />
         )}
 
         {error === null && projects === null && (
           <LoadingBlock label="Загружаем список проектов">
-            <ul className="space-y-1">
-              {Array.from({ length: 4 }, (_, index) => (
+            <ul className="space-y-[4px]">
+              {Array.from({ length: VISIBLE_ROWS }, (_, index) => (
                 <li key={index}>
-                  <Skeleton className="h-[50px] w-full rounded-sm" />
+                  <Skeleton className="h-[50px] w-[681px] rounded-[14px]" />
                 </li>
               ))}
             </ul>
@@ -53,44 +66,64 @@ export function RecentProjectsCard({
 
         {error === null && projects !== null && projects.length === 0 && (
           <EmptyState
-            icon={<FolderClosed aria-hidden="true" className="size-6" />}
+            icon={<FolderClosed aria-hidden="true" className="size-[22px]" />}
             title="Проектов пока нет"
             hint="Загрузите сценарий или выберите пример — созданный проект появится здесь."
           />
         )}
 
         {error === null && projects !== null && projects.length > 0 && (
-          <ul className="min-h-0 flex-1 overflow-y-auto">
-            {projects.slice(0, RECENT_LIMIT).map((project) => (
+          <ul className="scroll-area h-full space-y-[4px]">
+            {projects.map((project) => (
               <li key={project.id}>
-                <button
-                  type="button"
-                  onClick={() => {
+                <ProjectRow
+                  project={project}
+                  onOpen={() => {
                     onOpen(project);
                   }}
-                  className="flex w-full items-center gap-3 rounded-sm px-3.5 py-2 text-left transition-colors duration-150 hover:bg-[var(--surface-row-active)]"
-                >
-                  <FolderClosed aria-hidden="true" className="size-[18px] text-ink-muted" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-ink-primary">
-                      {project.title}
-                    </span>
-                    <span className="block truncate text-caption text-ink-muted">
-                      создан {formatMoment(project.created_at)}
-                    </span>
-                  </span>
-                  <ChevronRight aria-hidden="true" className="size-4 text-ink-muted" />
-                </button>
+                />
               </li>
             ))}
-            {projects.length > RECENT_LIMIT && (
-              <li className="px-3.5 pt-2 text-caption text-ink-muted" data-numeric>
-                Показаны {RECENT_LIMIT} последних из {projects.length}
-              </li>
-            )}
           </ul>
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Строка макета: папка, название, серая строка «N вариантов · …», статус, худшая
+ * доступность и шеврон. `GET /api/projects` отдаёт только `id`, `title`, `created_at` и
+ * `active_variant_id`, поэтому число вариантов и доступность стоят прочерком — как строка
+ * «Тест ISL 2000» в макете, — а иконка статуса не рисуется, пока статуса нет.
+ */
+function ProjectRow({ project, onOpen }: { project: Project; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="relative block h-[50px] w-[681px] rounded-[14px] text-left transition-colors duration-150 hover:bg-[var(--surface-row-active)]"
+    >
+      <FolderClosed
+        aria-hidden="true"
+        className="absolute left-[14px] top-[16px] size-[18px] text-ink-muted"
+      />
+      <span className="absolute left-[44px] top-[7px] block w-[473px] truncate text-[15px] font-semibold leading-[20px] text-ink-primary">
+        {project.title}
+      </span>
+      <span className="absolute left-[44px] top-[28px] block w-[473px] truncate text-caption leading-[16px] text-ink-muted">
+        — вариантов · создан {formatMoment(project.created_at)}
+      </span>
+      <span
+        className="absolute left-[547px] top-[14px] block w-[90px] text-right text-[15px] font-semibold leading-[20px] text-ink-muted"
+        title="Худшая доступность клиента появится, когда список проектов начнёт отдавать метрики расчёта"
+      >
+        —
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="absolute left-[651px] top-[17px] size-[16px] text-ink-muted"
+      />
+    </button>
   );
 }

@@ -7,9 +7,12 @@
 
 import importlib.util
 import json
+from functools import cache
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 HIDDEN_SCENARIO_PATH = REPO_ROOT / "scenarios" / "hidden_like.json"
@@ -24,21 +27,38 @@ EXPECTED_CLIENTS = 4
 PROBE_TICKS_S = (0.0, 43200.0)
 
 
+REFERENCE_MODULE_PATH = REPO_ROOT / "case" / "geometry" / "geometry.py"
+REFERENCE_MISSING_REASON = (
+    f"эталонный модуль кейсодержателя не найден: {REFERENCE_MODULE_PATH}. "
+    "Это материал организаторов, он не входит в репозиторий."
+)
+
+
+@cache
 def _load_reference_geometry() -> ModuleType:
     """Эталонный модуль кейсодержателя лежит вне пакета и загружается по пути.
 
-    Тип — `ModuleType`, то есть его атрибуты для mypy остаются `Any`: у
-    `case/geometry/geometry.py` нет ни аннотаций, ни stub-файла, а описывать протокол
-    ради трёх вызовов в одном тесте дороже, чем потерять здесь статическую типизацию.
-    Проверять надо именно этот модуль, а не его копию в ядре.
+    Загрузка ленивая: модуль нужен двум тестам из семи, а в репозиторий он не входит —
+    это чужая интеллектуальная собственность. Остальные пять проверок формата от него
+    не зависят и должны идти всегда.
+
+    Тип — `ModuleType`, то есть его атрибуты для mypy остаются `Any`: у эталона нет ни
+    аннотаций, ни stub-файла, а описывать протокол ради трёх вызовов в одном тесте
+    дороже, чем потерять здесь статическую типизацию.
     """
-    module_path = REPO_ROOT / "case" / "geometry" / "geometry.py"
-    spec = importlib.util.spec_from_file_location("case_reference_geometry", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "case_reference_geometry", REFERENCE_MODULE_PATH
+    )
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"Не удалось загрузить эталонный модуль: {module_path}")
+        raise RuntimeError(f"Не удалось загрузить эталонный модуль: {REFERENCE_MODULE_PATH}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+requires_reference = pytest.mark.skipif(
+    not REFERENCE_MODULE_PATH.is_file(), reason=REFERENCE_MISSING_REASON
+)
 
 
 def _read_scenario(path: Path) -> dict[str, Any]:
@@ -61,7 +81,6 @@ def _site_points(scenario: dict[str, Any]) -> set[tuple[float, float]]:
     return {(float(site["lat_deg"]), float(site["lon_deg"])) for site in scenario["ground_sites"]}
 
 
-GEOMETRY = _load_reference_geometry()
 HIDDEN: dict[str, Any] = _read_scenario(HIDDEN_SCENARIO_PATH)
 
 
@@ -70,9 +89,10 @@ def test_case_scenarios_are_present() -> None:
     assert len(CASE_SCENARIO_PATHS) == 4
 
 
+@requires_reference
 def test_hidden_scenario_passes_reference_validation() -> None:
     """`validate` кейсодержателя — единственный обязательный критерий формата."""
-    GEOMETRY.validate(HIDDEN)
+    _load_reference_geometry().validate(HIDDEN)
 
 
 def test_hidden_scenario_has_expected_shape() -> None:
@@ -106,11 +126,12 @@ def test_hidden_scenario_sites_have_own_coordinates() -> None:
     assert _site_points(HIDDEN) & case_points == set()
 
 
+@requires_reference
 def test_hidden_scenario_network_is_not_degenerate() -> None:
     """Без наземных и межспутниковых рёбер фикстура прошла бы валидацию, но ничего не проверяла."""
     satellite_ids = {str(satellite["id"]) for satellite in HIDDEN["design"]["satellites"]}
     for tick_s in PROBE_TICKS_S:
-        edges = GEOMETRY.snapshot(HIDDEN, tick_s)["edges"]
+        edges = _load_reference_geometry().snapshot(HIDDEN, tick_s)["edges"]
         ground_edges = [edge for edge in edges if edge[0] not in satellite_ids]
         isl_edges = [edge for edge in edges if edge[0] in satellite_ids]
         assert ground_edges, f"нет наземных рёбер на отсчёте {tick_s}"

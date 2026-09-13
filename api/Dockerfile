@@ -36,10 +36,9 @@ FROM runtime AS dev
 # нужны в образе проверок.
 COPY docs/05_API.md docs/05_API.md
 COPY docs/10_FIXTURES.md docs/10_FIXTURES.md
-# Сверка ядра с эталонным модулем и интеграционные тесты api читают файлы сценариев и
-# сам эталон, поэтому обе папки нужны в стадии проверок.
+# Интеграционные тесты читают файлы сценариев. Эталонный модуль кейсодержателя в
+# репозиторий не входит, поэтому сверка с ним внутри образа пропускается.
 COPY scenarios scenarios
-COPY case/geometry case/geometry
 COPY core/tests core/tests
 COPY api/tests api/tests
 COPY worker/tests worker/tests

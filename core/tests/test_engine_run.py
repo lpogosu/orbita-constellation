@@ -12,7 +12,14 @@ from orbita_core.engine import RunStage
 from orbita_core.export import load_export
 from orbita_core.routing import InternalInconsistencyError, RoutingPolicy
 from orbita_core.scenario import config_hash, load
-from tests.support import CROSSCHECK_TIMES_S, FIXTURES_DIR, SCENARIO_PATHS, synthetic_scenario
+from tests.support import (
+    CROSSCHECK_TIMES_S,
+    FIXTURES_DIR,
+    REFERENCE_MISSING_REASON,
+    SCENARIO_PATHS,
+    reference_geometry_available,
+    synthetic_scenario,
+)
 
 
 def test_run_reports_stages_in_the_documented_order() -> None:
@@ -95,7 +102,17 @@ def test_cli_validate_separates_good_and_bad_scenarios() -> None:
     assert main(["validate", str(FIXTURES_DIR / "multi_errors.json")]) == 1
 
 
+@pytest.mark.skipif(not reference_geometry_available(), reason=REFERENCE_MISSING_REASON)
 def test_cli_crosscheck_matches_the_official_module() -> None:
     """Сверка с `case/geometry/geometry.py` на контрольных отсчётах проходит."""
     ticks = ",".join(str(t_s) for t_s in CROSSCHECK_TIMES_S)
     assert main(["crosscheck", str(SCENARIO_PATHS[0]), "--ticks", ticks]) == 0
+
+
+def test_cli_crosscheck_without_reference_explains_instead_of_crashing(tmp_path: Path) -> None:
+    """Без эталона команда сообщает, где его взять, и возвращает 2, а не падает."""
+    missing = tmp_path / "geometry.py"
+    code = main(
+        ["crosscheck", str(SCENARIO_PATHS[0]), "--ticks", "0", "--reference", str(missing)]
+    )
+    assert code == 2

@@ -319,7 +319,18 @@ def command_golden(arguments: argparse.Namespace) -> int:
 
 
 def _load_reference(path: Path) -> ModuleType:
-    """Официальный `geometry.py` как модуль: он лежит вне пакета и вне `sys.path`."""
+    """Официальный `geometry.py` как модуль: он лежит вне пакета и вне `sys.path`.
+
+    Сам файл в репозиторий не входит — это материал кейсодержателя. Сверка от этого
+    не перестаёт быть воспроизводимой: путь задаётся `--reference`, и достаточно
+    положить выданный организаторами модуль куда угодно.
+    """
+    if not path.is_file():
+        raise ValueError(
+            f"эталонный модуль не найден: {path}\n"
+            "Это материал организаторов, он не входит в репозиторий. Положите "
+            "выданный geometry.py по этому пути или укажите свой через --reference."
+        )
     spec = importlib.util.spec_from_file_location("orbita_reference_geometry", path)
     if spec is None or spec.loader is None:
         raise ValueError(f"не удалось загрузить эталонный модуль: {path}")
@@ -362,7 +373,13 @@ def command_crosscheck(arguments: argparse.Namespace) -> int:
         _print_issues(error)
         return 1
     raw: dict[str, object] = json.loads(scenario_path.read_text(encoding="utf-8"))
-    reference = _load_reference(Path(arguments.reference))
+    try:
+        reference = _load_reference(Path(arguments.reference))
+    except ValueError as error:
+        # Отсутствие эталона — ожидаемая ситуация для публичной копии, а не сбой ядра:
+        # объяснение вместо трассировки и отдельный код возврата.
+        print(error, file=sys.stderr)
+        return 2
     plan = contacts.build(scenario)
     step_s = scenario.environment.step_s
     rows: list[list[str]] = []

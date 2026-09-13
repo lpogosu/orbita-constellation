@@ -15,10 +15,20 @@ import pytest
 
 from orbita_core import contacts, geometry
 from orbita_core.scenario import load
-from tests.support import CROSSCHECK_TIMES_S, SCENARIO_PATHS, load_reference_geometry, read_json
+from tests.support import (
+    CROSSCHECK_TIMES_S,
+    REFERENCE_MISSING_REASON,
+    SCENARIO_PATHS,
+    load_reference_geometry,
+    read_json,
+    reference_geometry_available,
+)
 
 # Допуск из карточки M1-A: 1e-6 км, то есть один миллиметр на 7000 км орбиты.
 TOLERANCE_KM: Final[float] = 1e-6
+
+# Весь файл сверяет ядро с чужим модулем: без него проверять нечего.
+pytestmark = pytest.mark.skipif(not reference_geometry_available(), reason=REFERENCE_MISSING_REASON)
 
 
 @pytest.fixture(scope="module")

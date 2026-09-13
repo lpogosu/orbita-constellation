@@ -27,12 +27,32 @@ SCENARIO_PATHS: Final[tuple[Path, ...]] = tuple(sorted(SCENARIOS_DIR.glob("*.jso
 CROSSCHECK_TIMES_S: Final[tuple[int, ...]] = (0, 120, 43200, 86280)
 
 
+REFERENCE_MISSING_REASON: Final[str] = (
+    f"эталонный модуль кейсодержателя не найден: {REFERENCE_MODULE_PATH}. "
+    "Это материал организаторов, он не входит в репозиторий; положите файл по "
+    "этому пути, чтобы прогнать сверку."
+)
+
+
+def reference_geometry_available() -> bool:
+    """Лежит ли на диске эталонный расчётный модуль кейсодержателя.
+
+    В репозиторий он не входит — это чужая интеллектуальная собственность, а не наш
+    код. Сверка остаётся воспроизводимой: достаточно положить файл по указанному
+    пути. Без него зависящие тесты пропускаются, а не падают, иначе CI ронял бы
+    сборку из-за отсутствия файла, которого здесь и не должно быть.
+    """
+    return REFERENCE_MODULE_PATH.is_file()
+
+
 def load_reference_geometry() -> ModuleType:
     """Официальный `case/geometry/geometry.py` как модуль.
 
     Он лежит вне пакета и вне `sys.path`, поэтому загружается по абсолютному пути.
     Ядро на него не ссылается: модуль нужен только как эталон формул в тестах.
     """
+    if not reference_geometry_available():
+        raise FileNotFoundError(REFERENCE_MISSING_REASON)
     spec = importlib.util.spec_from_file_location("reference_geometry", REFERENCE_MODULE_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"не удалось загрузить эталонный модуль: {REFERENCE_MODULE_PATH}")

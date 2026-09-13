@@ -38,22 +38,15 @@ async def test_experiment_is_failed_when_all_points_finish_with_a_failure(
         created_at=datetime.now(UTC),
     )
 
-    def point(status: RunStatus) -> SimpleNamespace:
-        row = SimpleNamespace(
-            run_id=uuid4(),
-            _run_status=status,
-            min_client_availability=None,
-            worst_max_gap_s=None,
-            mean_client_availability=None,
-        )
-        row._schema = ExperimentPoint(
+    def point(status: RunStatus) -> experiments.PointState:
+        schema = ExperimentPoint(
             id=uuid4(),
             experiment_id=experiment_id,
             params={},
             config_hash="a" * 64,
-            run_id=row.run_id,
+            run_id=uuid4(),
         )
-        return row
+        return experiments.PointState(schema, status)
 
     points = [point(RunStatus.SUCCEEDED), point(RunStatus.FAILED)]
 
@@ -66,7 +59,7 @@ async def test_experiment_is_failed_when_all_points_finish_with_a_failure(
 
     monkeypatch.setattr(experiments, "ExperimentRepository", Repository)
 
-    async def fake_points(session: object, value: object) -> list[SimpleNamespace]:
+    async def fake_points(session: object, value: object) -> list[experiments.PointState]:
         return points
 
     monkeypatch.setattr(experiments, "_points", fake_points)

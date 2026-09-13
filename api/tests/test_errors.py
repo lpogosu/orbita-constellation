@@ -9,10 +9,15 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from contract_data import MINIMAL_SCENARIO, SAMPLE_UUID
-from orbita_api.error_handling import json_path
+from orbita_api.error_handling import (
+    EndpointNotImplementedError,
+    json_path,
+    register_error_handlers,
+)
 from orbita_api.main import create_app
 
 
@@ -73,11 +78,21 @@ def test_query_parameter_error_names_the_parameter(client: TestClient) -> None:
     assert response.json()["errors"][0]["path"] == "t_s"
 
 
-def test_not_implemented_envelope_has_no_field_path(client: TestClient) -> None:
-    """Заглушка сообщает о самом endpoint, поэтому поля с ошибкой у неё нет."""
-    endpoint = f"/api/experiments/{SAMPLE_UUID}"
+def test_not_implemented_envelope_has_no_field_path() -> None:
+    """Заглушка сообщает о самом endpoint, поэтому поля с ошибкой у неё нет.
 
-    response = client.get(endpoint)
+    Все объявленные endpoint уже реализованы, а 501 остаётся в контракте, поэтому
+    заглушка ставится на отдельное приложение с теми же обработчиками ошибок.
+    """
+    endpoint = f"/api/stub/{SAMPLE_UUID}"
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/api/stub/{item_id}")
+    async def stub(item_id: str) -> None:
+        raise EndpointNotImplementedError
+
+    response = TestClient(app).get(endpoint)
 
     assert response.status_code == 501
     error = response.json()["error"]

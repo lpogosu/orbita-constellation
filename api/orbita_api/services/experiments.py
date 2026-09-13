@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from orbita_core import ENGINE_VERSION
@@ -36,6 +37,23 @@ from orbita_api.schemas.projects import Variant as VariantSchema
 from orbita_api.services import diff, scenarios, serialization
 
 EXPERIMENT_ENTITY = "Эксперимент"
+TERMINAL_STATUSES = frozenset({RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED})
+
+
+@dataclass(frozen=True, slots=True)
+class PointState:
+    """Точка sweep в том виде, в каком её отдаёт API, и статус её запуска.
+
+    Статус запуска в контракт точки не входит, но от него зависят прогресс и итоговый
+    статус эксперимента, поэтому он читается один раз вместе с метриками и едет рядом.
+    """
+
+    point: PointSchema
+    run_status: RunStatus
+
+    @property
+    def is_finished(self) -> bool:
+        return self.point.run_id is not None and self.run_status in TERMINAL_STATUSES
 
 
 async def create_experiment(
@@ -148,10 +166,9 @@ async def get_experiment(
     if experiment is None:
         raise EntityNotFoundError(EXPERIMENT_ENTITY, experiment_id)
     points = await _points(session, experiment_id)
-    terminal = {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
-    completed = sum(1 for p in points if p.run_id is not None and p._run_status in terminal)
-    statuses = [p._run_status for p in points if p.run_id is not None]
-    if statuses and all(status in terminal for status in statuses):
+    completed = sum(1 for p in points if p.is_finished)
+    statuses = [p.run_status for p in points if p.point.run_id is not None]
+    if statuses and all(status in TERMINAL_STATUSES for status in statuses):
         if any(status == RunStatus.FAILED for status in statuses):
             experiment.status = RunStatus.FAILED
             experiment.error = {
@@ -177,7 +194,7 @@ async def get_experiment(
             }
             for run_id in await _owned_active_run_ids(session, experiment.id, points):
                 await runtime.request_cancel(run_id)
-    if experiment.status in terminal:
+    if experiment.status in TERMINAL_STATUSES:
         await session.commit()
     return _serialize_experiment(experiment, points, len(points), completed)
 
@@ -186,7 +203,7 @@ async def list_points(session: AsyncSession, experiment_id: UUID) -> list[PointS
     experiment = await ExperimentRepository(session).get(experiment_id)
     if experiment is None:
         raise EntityNotFoundError(EXPERIMENT_ENTITY, experiment_id)
-    return [p._schema for p in await _points(session, experiment_id)]
+    return [p.point for p in await _points(session, experiment_id)]
 
 
 async def materialize(
@@ -233,18 +250,17 @@ async def cancel_experiment(
     if experiment is None:
         raise EntityNotFoundError(EXPERIMENT_ENTITY, experiment_id)
     points = await _points(session, experiment_id)
-    terminal = {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
-    if experiment.status not in terminal:
+    if experiment.status not in TERMINAL_STATUSES:
         experiment.status = RunStatus.CANCELLED
         experiment.error = {"code": "CANCELLED", "message": "cancelled by user"}
         await session.commit()
         for run_id in await _owned_active_run_ids(session, experiment.id, points):
             await runtime.request_cancel(run_id)
-    completed = sum(1 for point in points if point.run_id and point._run_status in terminal)
+    completed = sum(1 for point in points if point.is_finished)
     return _serialize_experiment(experiment, points, len(points), completed)
 
 
-async def _points(session: AsyncSession, experiment_id: UUID) -> list[Any]:
+async def _points(session: AsyncSession, experiment_id: UUID) -> list[PointState]:
     rows = await ExperimentRepository(session).points_of(experiment_id)
     if not rows:
         return []
@@ -271,42 +287,40 @@ async def _points(session: AsyncSession, experiment_id: UUID) -> list[Any]:
         if run_ids
         else {}
     )
-    out = []
+    out: list[PointState] = []
     for p in rows:
-        run = runs.get(p.run_id)
-        cfg = configs.get(p.run_id)
-        p._run_status = run.status if run else RunStatus.QUEUED
-        if cfg:
+        run = runs.get(p.run_id) if p.run_id is not None else None
+        cfg = configs.get(p.run_id) if p.run_id is not None else None
+        if cfg is not None:
+            # Метрики копируются в строку точки: после удаления запуска по TTL heatmap
+            # должен остаться, а `run_id` обнулится (`06_STORAGE.md` §6).
             p.min_client_availability = cfg.min_client_availability
             p.worst_max_gap_s = cfg.worst_max_gap_s
             p.mean_client_availability = cfg.mean_client_availability
-        p._schema = PointSchema.model_validate(
-            {
-                "id": p.id,
-                "experiment_id": p.experiment_id,
-                "params": p.params,
-                "config_hash": p.config_hash,
-                "run_id": p.run_id,
-                "min_client_availability": p.min_client_availability,
-                "worst_max_gap_s": p.worst_max_gap_s,
-                "mean_client_availability": p.mean_client_availability,
-            }
+        point = PointSchema(
+            id=p.id,
+            experiment_id=p.experiment_id,
+            params=p.params,
+            config_hash=p.config_hash,
+            run_id=p.run_id,
+            min_client_availability=p.min_client_availability,
+            worst_max_gap_s=p.worst_max_gap_s,
+            mean_client_availability=p.mean_client_availability,
         )
-        out.append(p)
+        out.append(PointState(point, run.status if run is not None else RunStatus.QUEUED))
     return out
 
 
 async def _owned_active_run_ids(
     session: AsyncSession,
     experiment_id: UUID,
-    points: Sequence[Any],
+    points: Sequence[PointState],
 ) -> set[UUID]:
     """Return active runs whose transient variant belongs to this experiment."""
     active_ids = {
-        point.run_id
-        for point in points
-        if point.run_id is not None
-        and point._run_status not in {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
+        state.point.run_id
+        for state in points
+        if state.point.run_id is not None and state.run_status not in TERMINAL_STATUSES
     }
     if not active_ids:
         return set()
@@ -322,15 +336,11 @@ async def _owned_active_run_ids(
 
 
 def _serialize_experiment(
-    e: models.Experiment, points: Sequence[Any], total: int, completed: int
+    e: models.Experiment, points: Sequence[PointState], total: int, completed: int
 ) -> ExperimentSchema:
     ranked = sorted(
-        (p._schema for p in points if p.min_client_availability is not None),
-        key=lambda p: (
-            -p.min_client_availability,
-            p.worst_max_gap_s or 10**9,
-            -(p.mean_client_availability or 0),
-        ),
+        (state.point for state in points if state.point.min_client_availability is not None),
+        key=_rank_key,
     )[:5]
     return ExperimentSchema(
         id=e.id,
@@ -345,4 +355,18 @@ def _serialize_experiment(
         total_points=total,
         progress=completed / total if total else 1.0,
         best_points=list(ranked),
+    )
+
+
+def _rank_key(point: PointSchema) -> tuple[float, float, float]:
+    """Лучше та точка, у которой выше худшая доступность, короче худший перерыв и выше средняя.
+
+    Нулевой перерыв — лучший возможный, поэтому неизвестный перерыв заменяется
+    бесконечностью явной проверкой на `None`, а не через `or`.
+    """
+    worst_gap = math.inf if point.worst_max_gap_s is None else point.worst_max_gap_s
+    return (
+        -(point.min_client_availability or 0.0),
+        worst_gap,
+        -(point.mean_client_availability or 0.0),
     )

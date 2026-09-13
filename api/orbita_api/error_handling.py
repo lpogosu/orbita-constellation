@@ -219,9 +219,10 @@ async def handle_invalid_request(request: Request, exc: Exception) -> JSONRespon
     """Ответ на бизнес-валидацию; бюджет эксперимента использует контрактный 422."""
     errors = cast(InvalidRequestError, exc).errors
     if errors and all(error.code == ErrorCode.EXPERIMENT_BUDGET_EXCEEDED for error in errors):
-        body = ErrorResponse(error=errors[0])
+        budget_body = ErrorResponse(error=errors[0])
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=jsonable_encoder(body)
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=jsonable_encoder(budget_body),
         )
     body = ValidationErrorResponse(errors=errors)
     return JSONResponse(

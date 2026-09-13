@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from orbita_core import resilience
+from orbita_core.routing import RoutingPolicy as CoreRoutingPolicy
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from orbita_api.adapters.registry import StorageRegistry
@@ -49,25 +50,6 @@ async def run_criticality(
     ``load_context`` means this endpoint follows the same storage/degraded fallback as
     snapshots, timelines and backup paths, and rejects queued/failed runs consistently.
     """
-    # The pure adapter is also unit-tested with a mocked context and no database.
-    if session is None:  # type: ignore[comparison-overlap]
-        context = await results.load_context(session, storage, run_id)
-        report = await asyncio.to_thread(resilience.criticality, context.scenario, context.policy)
-        return CriticalityReport(
-            run_id=run_id,
-            satellites=[
-                SatelliteCriticality(
-                    satellite_id=entry.satellite_id,
-                    plane_id=entry.plane_id,
-                    delta_min_client_availability=entry.delta_min_client_availability,
-                    delta_worst_max_gap_s=entry.delta_worst_max_gap_s,
-                    affected_clients=list(entry.affected_clients),
-                    min_cut_frequency=entry.min_cut_frequency,
-                    articulation_frequency=entry.articulation_frequency,
-                )
-                for entry in report.satellites
-            ],
-        )
     jobs = JobRepository(session)
     job = await jobs.find_for_criticality(run_id)
     if job is None:
@@ -116,7 +98,9 @@ async def run_criticality(
         report = await asyncio.to_thread(
             resilience.criticality,
             context.scenario,
-            context.policy,
+            # Ядро сравнивает политику через `is` со своим перечислением, поэтому значение
+            # из HTTP-схемы молча превратилось бы в BFS для любой другой политики.
+            CoreRoutingPolicy(str(context.policy)),
             progress=progress,
             cancel_check=lambda: cancellation_requested.is_set() or run_id in _CANCELLED_JOBS,
         )
@@ -125,21 +109,7 @@ async def run_criticality(
             raise resilience.CriticalityCancelledError(
                 f"criticality analysis {job.id} was cancelled",
             )
-        result = CriticalityReport(
-            run_id=run_id,
-            satellites=[
-                SatelliteCriticality(
-                    satellite_id=entry.satellite_id,
-                    plane_id=entry.plane_id,
-                    delta_min_client_availability=entry.delta_min_client_availability,
-                    delta_worst_max_gap_s=entry.delta_worst_max_gap_s,
-                    affected_clients=list(entry.affected_clients),
-                    min_cut_frequency=entry.min_cut_frequency,
-                    articulation_frequency=entry.articulation_frequency,
-                )
-                for entry in report.satellites
-            ],
-        )
+        result = _to_http_report(run_id, report)
         job.status = RunStatus.SUCCEEDED
         job.finished_at = datetime.now(UTC)
         job.payload = {
@@ -173,6 +143,24 @@ async def run_criticality(
         await session.commit()
         _CANCELLED_JOBS.discard(run_id)
         raise
+
+
+def _to_http_report(run_id: UUID, report: resilience.CriticalityReport) -> CriticalityReport:
+    return CriticalityReport(
+        run_id=run_id,
+        satellites=[
+            SatelliteCriticality(
+                satellite_id=entry.satellite_id,
+                plane_id=entry.plane_id,
+                delta_min_client_availability=entry.delta_min_client_availability,
+                delta_worst_max_gap_s=entry.delta_worst_max_gap_s,
+                affected_clients=list(entry.affected_clients),
+                min_cut_frequency=entry.min_cut_frequency,
+                articulation_frequency=entry.articulation_frequency,
+            )
+            for entry in report.satellites
+        ],
+    )
 
 
 async def _wait_for_existing_job(

@@ -9,6 +9,8 @@ import { createRun, runEvidencePackPath } from '@/api/runs';
 import type { Run, Variant } from '@/api/types';
 import { COMPARISON_PATH, NETWORK_PATH, RESULT_PATH, sectionHref } from '@/app/sections';
 import { useProjectSelection } from '@/app/project-selection';
+import { useStacked } from '@/app/viewport-mode';
+import { Block, PageStack } from '@/components/layout/Slot';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
@@ -34,6 +36,7 @@ const RECENT_RUNS_LIMIT = 20;
 export function ProjectPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const stacked = useStacked();
   const { select } = useProjectSelection();
 
   const load = useCallback(() => getProjectBoard(projectId), [projectId]);
@@ -73,102 +76,153 @@ export function ProjectPage() {
   }, []);
 
   if (board.error !== null) {
+    // На полотне карточка ошибки занимает всю ширину рабочей области: в ширину одной
+    // карточки вариантов справа оставалась пустая половина экрана без объяснения.
     return (
-      <Card
-        sceneX={25}
-        sceneY={214}
-        className="absolute left-[25px] top-[214px] h-[410px] w-[1250px]"
-      >
-        <ErrorBlock title="Проект не загрузился" message={board.error} onRetry={board.reload} />
-      </Card>
+      <PageStack>
+        <Card
+          sceneX={25}
+          sceneY={214}
+          className={
+            stacked
+              ? 'flex min-h-[320px] items-center justify-center'
+              : 'absolute left-[25px] top-[214px] h-[410px] w-[1870px]'
+          }
+        >
+          <ErrorBlock title="Проект не загрузился" message={board.error} onRetry={board.reload} />
+        </Card>
+      </PageStack>
     );
   }
 
   if (view === null) {
     return (
-      <LoadingBlock label="Загружаем проект">
-        <Skeleton className="absolute left-[36px] top-[110px] h-[80px] w-[760px] rounded-2xl" />
-        <Skeleton className="absolute left-[25px] top-[214px] h-[410px] w-[1250px] rounded-2xl" />
-        <Skeleton className="absolute left-[1299px] top-[214px] h-[410px] w-[596px] rounded-2xl" />
-        <Skeleton className="absolute left-[25px] top-[640px] h-[416px] w-[1870px] rounded-2xl" />
-      </LoadingBlock>
+      <PageStack>
+        <LoadingBlock label="Загружаем проект">
+          {stacked ? (
+            <div className="flex flex-col gap-[16px]">
+              <Skeleton className="h-[36px] w-3/4 rounded-md" />
+              <Skeleton className="h-[62px] w-full rounded-md" />
+              <Skeleton className="h-[46px] w-full rounded-md" />
+              <Skeleton className="h-[360px] w-full rounded-2xl" />
+              <Skeleton className="h-[240px] w-full rounded-2xl" />
+              <Skeleton className="h-[360px] w-full rounded-2xl" />
+            </div>
+          ) : (
+            <>
+              <Skeleton className="absolute left-[36px] top-[110px] h-[80px] w-[760px] rounded-2xl" />
+              <Skeleton className="absolute left-[25px] top-[214px] h-[410px] w-[1250px] rounded-2xl" />
+              <Skeleton className="absolute left-[1299px] top-[214px] h-[410px] w-[596px] rounded-2xl" />
+              <Skeleton className="absolute left-[25px] top-[640px] h-[416px] w-[1870px] rounded-2xl" />
+            </>
+          )}
+        </LoadingBlock>
+      </PageStack>
     );
   }
 
   const { project, variantRows, runRows, activeRow, latestSucceeded, scenarioId } = view;
 
   return (
-    <>
-      <h1 className="absolute left-[36px] top-[110px] w-[1400px] truncate font-display text-[36px] font-bold leading-[46px] text-ink-primary">
-        {project.title}
-      </h1>
-
-      {/* Ряд чипов кончается до кнопок в правом верхнем углу: идентификатор сценария
-          приходит из файла и длины не имеет. */}
-      <div className="absolute left-[36px] top-[162px] flex max-w-[1240px] gap-[10px]">
-        <Chip icon={<FileText aria-hidden="true" className="size-[14px]" />}>
-          <span className="max-w-[260px] truncate" title={scenarioId ?? undefined}>
-            сценарий {scenarioId ?? '—'}
-          </span>
-        </Chip>
-        <Chip icon={<Calendar aria-hidden="true" className="size-[14px]" />}>
-          создан {formatDate(project.created_at)}
-        </Chip>
-        <Chip icon={<Layers aria-hidden="true" className="size-[14px]" />}>
-          {variantRows.length} вариантов · {runRows.length} прогонов
-        </Chip>
-        <Chip icon={<Check aria-hidden="true" className="size-[14px]" />}>
-          активный вариант — {activeRow === null ? '—' : variantLetter(activeRow.index)}
-        </Chip>
-      </div>
-
-      <button
-        type="button"
-        disabled={activeRow === null || runningVariantId !== null}
-        onClick={() => {
-          if (activeRow !== null) {
-            startRun(activeRow.variant, DEFAULT_POLICY);
-          }
-        }}
-        title={`Запустить расчёт активного варианта с политикой «${policyLabel(DEFAULT_POLICY)}»`}
-        className={cx(
-          'absolute left-[1466px] top-[122px] flex h-[46px] w-[190px] items-center justify-center gap-[8px] rounded-md',
-          'bg-accent-violet text-[13px] font-semibold text-ink-onAccent shadow-glow-violet',
-          'transition-[filter] duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45',
-        )}
-      >
-        <Plus aria-hidden="true" className="size-[16px]" />
-        Новый расчёт
-      </button>
-
-      <button
-        type="button"
-        disabled={latestSucceeded === null}
-        onClick={() => {
-          if (latestSucceeded !== null) {
-            navigate(`${RESULT_PATH}/${latestSucceeded.run.id}`);
-          }
-        }}
-        title="Открыть подробный экран последнего успешного расчёта"
-        className={cx(
-          'absolute left-[1676px] top-[122px] flex h-[46px] w-[205px] items-center justify-center gap-[8px] rounded-md',
-          'border border-line bg-surface-raised text-[13px] font-semibold text-ink-primary',
-          'transition-colors duration-150 hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-45',
-        )}
-      >
-        <SquareArrowOutUpRight aria-hidden="true" className="size-[16px]" />
-        Открыть результат
-      </button>
-
-      {actionError !== null && (
-        <p
-          role="alert"
-          title={actionError}
-          className="absolute left-[1300px] top-[178px] line-clamp-2 w-[581px] text-right text-caption text-status-danger"
+    <PageStack>
+      <Block>
+        <h1
+          title={project.title}
+          className={cx(
+            'font-display font-bold text-ink-primary',
+            stacked
+              ? 'line-clamp-2 break-words text-title-l md:text-heading-m'
+              : 'absolute left-[36px] top-[110px] w-[1400px] truncate text-[36px] leading-[46px]',
+          )}
         >
-          {actionError}
-        </p>
-      )}
+          {project.title}
+        </h1>
+
+        {/* Ряд чипов кончается до кнопок в правом верхнем углу: идентификатор сценария
+          приходит из файла и длины не имеет. В потоке чипы переносятся на новые строки. */}
+        <div
+          className={
+            stacked
+              ? 'mt-[10px] flex flex-wrap gap-[8px]'
+              : 'absolute left-[36px] top-[162px] flex max-w-[1240px] gap-[10px]'
+          }
+        >
+          <Chip icon={<FileText aria-hidden="true" className="size-[14px]" />}>
+            <span className="max-w-[260px] truncate" title={scenarioId ?? undefined}>
+              сценарий {scenarioId ?? '—'}
+            </span>
+          </Chip>
+          <Chip icon={<Calendar aria-hidden="true" className="size-[14px]" />}>
+            создан {formatDate(project.created_at)}
+          </Chip>
+          <Chip icon={<Layers aria-hidden="true" className="size-[14px]" />}>
+            {variantRows.length} вариантов · {runRows.length} прогонов
+          </Chip>
+          <Chip icon={<Check aria-hidden="true" className="size-[14px]" />}>
+            активный вариант — {activeRow === null ? '—' : variantLetter(activeRow.index)}
+          </Chip>
+        </div>
+
+        <div className={stacked ? 'mt-[14px] flex gap-[12px]' : 'contents'}>
+          <button
+            type="button"
+            disabled={activeRow === null || runningVariantId !== null}
+            onClick={() => {
+              if (activeRow !== null) {
+                startRun(activeRow.variant, DEFAULT_POLICY);
+              }
+            }}
+            title={`Запустить расчёт активного варианта с политикой «${policyLabel(DEFAULT_POLICY)}»`}
+            className={cx(
+              stacked
+                ? 'min-w-0 flex-1 md:w-[190px] md:flex-none'
+                : 'absolute left-[1466px] top-[122px] w-[190px]',
+              'flex h-[46px] items-center justify-center gap-[8px] rounded-md',
+              'bg-accent-violet text-[13px] font-semibold text-ink-onAccent shadow-glow-violet',
+              'transition-[filter] duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45',
+            )}
+          >
+            <Plus aria-hidden="true" className="size-[16px]" />
+            Новый расчёт
+          </button>
+
+          <button
+            type="button"
+            disabled={latestSucceeded === null}
+            onClick={() => {
+              if (latestSucceeded !== null) {
+                navigate(`${RESULT_PATH}/${latestSucceeded.run.id}`);
+              }
+            }}
+            title="Открыть подробный экран последнего успешного расчёта"
+            className={cx(
+              stacked
+                ? 'min-w-0 flex-1 md:w-[205px] md:flex-none'
+                : 'absolute left-[1676px] top-[122px] w-[205px]',
+              'flex h-[46px] items-center justify-center gap-[8px] rounded-md',
+              'border border-line bg-surface-raised text-[13px] font-semibold text-ink-primary',
+              'transition-colors duration-150 hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-45',
+            )}
+          >
+            <SquareArrowOutUpRight aria-hidden="true" className="size-[16px]" />
+            Открыть результат
+          </button>
+        </div>
+
+        {actionError !== null && (
+          <p
+            role="alert"
+            title={actionError}
+            className={
+              stacked
+                ? 'mt-[8px] line-clamp-3 text-caption text-status-danger'
+                : 'absolute left-[1300px] top-[178px] line-clamp-2 w-[581px] text-right text-caption text-status-danger'
+            }
+          >
+            {actionError}
+          </p>
+        )}
+      </Block>
 
       <VariantsCard
         rows={variantRows}
@@ -217,7 +271,7 @@ export function ProjectPage() {
           }
         }}
       />
-    </>
+    </PageStack>
   );
 }
 
@@ -294,7 +348,7 @@ function buildView(board: ProjectBoard): ProjectView {
 
 function Chip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <span className="flex h-[27px] min-w-0 shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[8px] border border-line bg-surface-sunken pl-[11px] pr-[13px] text-[12px] font-medium leading-[15px] text-ink-secondary">
+    <span className="flex h-[27px] min-w-0 max-w-full shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[8px] border border-line bg-surface-sunken pl-[11px] pr-[13px] text-[12px] font-medium leading-[15px] text-ink-secondary">
       <span className="shrink-0 text-ink-muted">{icon}</span>
       {children}
     </span>

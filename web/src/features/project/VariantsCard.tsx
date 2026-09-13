@@ -2,6 +2,7 @@ import { Check, Download, GitCompare, Play, Radar, Star } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { Run, Variant } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { EmptyState } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import {
@@ -33,6 +34,20 @@ const COLUMNS = {
   run: 889,
   actions: 1059,
 } as const;
+
+/**
+ * Моноширинный шрифт при той же высоте строки рисует знаки выше пропорционального, и
+ * хеш на общей средней линии строки стоял на 2 px выше соседних колонок. Отступ сверху
+ * опускает его на общую базовую линию.
+ */
+const MONO_CELL = 'pt-[4px] font-mono text-[12px]';
+
+/**
+ * В потоке таблица сохраняет колонки полотна и прокручивается вбок внутри карточки:
+ * восемь колонок в ширину телефона не сжимаются без потери смысла. Строка выше, чтобы
+ * кнопки действий стали 40 px — под палец.
+ */
+const STACKED_TABLE_WIDTH = 1226;
 
 export interface VariantRowView {
   readonly variant: Variant;
@@ -68,151 +83,237 @@ export function VariantsCard({
   runningVariantId,
 }: VariantsCardProps) {
   const baseTitle = rows.find((row) => row.variant.parent_variant_id == null)?.variant.title;
+  const stacked = useStacked();
 
   return (
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute left-[25px] top-[214px] h-[410px] w-[1250px]"
+      className={
+        stacked ? 'pb-[12px] pt-[16px]' : 'absolute left-[25px] top-[214px] h-[410px] w-[1250px]'
+      }
     >
-      <h2 className="absolute left-[23px] top-[17px] text-title-m font-semibold text-ink-primary">
-        Варианты
-      </h2>
-      {rows.length > 0 && (
-        <p
-          title={baseTitle}
-          className="absolute left-[147px] top-[23px] w-[420px] truncate text-caption text-ink-secondary"
+      <div className={stacked ? 'flex items-baseline gap-[12px] px-[20px]' : 'contents'}>
+        <h2
+          className={cx(
+            'text-title-m font-semibold text-ink-primary',
+            stacked ? 'shrink-0' : 'absolute left-[23px] top-[17px]',
+          )}
         >
-          {rows.length} вариантов{baseTitle === undefined ? '' : ` · база — ${baseTitle}`}
-        </p>
-      )}
-
-      <div className="absolute left-[23px] top-[59px] h-[14px] w-[1202px] text-[9px] font-semibold uppercase tracking-[0.54px] text-ink-muted">
-        <Head left={COLUMNS.index}>#</Head>
-        <Head left={COLUMNS.title}>Название</Head>
-        <Head left={COLUMNS.created}>Создан</Head>
-        <Head left={COLUMNS.parent}>Родитель</Head>
-        <Head left={COLUMNS.hash}>config_hash</Head>
-        <Head left={COLUMNS.changes}>Изменено</Head>
-        <Head left={COLUMNS.run}>Последний расчёт</Head>
-        <Head left={COLUMNS.actions}>Действия</Head>
+          Варианты
+        </h2>
+        {rows.length > 0 && (
+          <p
+            title={baseTitle}
+            className={cx(
+              'truncate text-caption text-ink-secondary',
+              stacked ? 'min-w-0' : 'absolute left-[147px] top-[23px] w-[420px]',
+            )}
+          >
+            {rows.length} вариантов{baseTitle === undefined ? '' : ` · база — ${baseTitle}`}
+          </p>
+        )}
       </div>
-      <div aria-hidden="true" className="absolute left-[23px] top-[77px] h-px w-[1202px] bg-line-divider" />
 
-      <div className="absolute left-[17px] top-[85px] h-[304px] w-[1220px]">
-        {rows.length === 0 && (
+      <div className={stacked ? 'mt-[16px] overflow-x-auto' : 'contents'}>
+        <div
+          className={stacked ? 'relative px-[17px]' : 'contents'}
+          style={stacked ? { width: STACKED_TABLE_WIDTH + 34 } : undefined}
+        >
+          <div
+            className={cx(
+              'h-[14px] text-[9px] font-semibold uppercase tracking-[0.54px] text-ink-muted',
+              stacked ? 'relative ml-[6px]' : 'absolute left-[23px] top-[59px] w-[1202px]',
+            )}
+          >
+            <Head left={COLUMNS.index}>#</Head>
+            <Head left={COLUMNS.title}>Название</Head>
+            <Head left={COLUMNS.created}>Создан</Head>
+            <Head left={COLUMNS.parent}>Родитель</Head>
+            <Head left={COLUMNS.hash}>config_hash</Head>
+            <Head left={COLUMNS.changes}>Изменено</Head>
+            <Head left={COLUMNS.run}>Последний расчёт</Head>
+            <Head left={COLUMNS.actions}>Действия</Head>
+          </div>
+          <div
+            aria-hidden="true"
+            className={cx(
+              'h-px bg-line-divider',
+              stacked ? 'ml-[6px] mt-[4px]' : 'absolute left-[23px] top-[77px] w-[1202px]',
+            )}
+          />
+
+          <div
+            className={
+              stacked ? 'mt-[8px]' : 'absolute left-[17px] top-[85px] h-[304px] w-[1220px]'
+            }
+          >
+            {rows.length > 0 && (
+              <ul className={stacked ? undefined : 'scroll-area h-full w-[1226px]'}>
+                {rows.map((row, index) => (
+                  <li
+                    key={row.variant.id}
+                    className={cx(
+                      'relative rounded-[10px] border border-transparent text-[13px]',
+                      stacked ? 'h-[56px]' : 'h-[50px]',
+                      row.active &&
+                        'border-[var(--border-accent)] bg-[var(--surface-accent-soft)] shadow-[0_4px_14px_rgba(106,79,238,0.12)]',
+                    )}
+                    style={{
+                      backgroundColor: !row.active
+                        ? index % 2 === 1
+                          ? 'var(--surface-row-stripe)'
+                          : 'var(--surface-sunken)'
+                        : undefined,
+                    }}
+                  >
+                    <Cell left={COLUMNS.index} className="font-bold text-ink-muted">
+                      {variantLetter(row.index)}
+                    </Cell>
+
+                    <Cell
+                      left={COLUMNS.title}
+                      width={250}
+                      className="text-[14px] font-semibold text-ink-primary"
+                    >
+                      <span className="flex items-center gap-[8px]">
+                        <span className="truncate">{row.variant.title}</span>
+                        {row.active ? (
+                          <Tag
+                            icon={<Check aria-hidden="true" className="size-[12px]" />}
+                            tone="text-status-success"
+                          >
+                            активный
+                          </Tag>
+                        ) : (
+                          row.variant.parent_variant_id == null && (
+                            <Tag
+                              icon={<Star aria-hidden="true" className="size-[12px]" />}
+                              tone="text-status-neutral"
+                            >
+                              база
+                            </Tag>
+                          )
+                        )}
+                      </span>
+                    </Cell>
+
+                    <Cell
+                      left={COLUMNS.created}
+                      width={130}
+                      className="font-medium text-ink-secondary"
+                    >
+                      {formatDate(row.variant.created_at)}
+                    </Cell>
+
+                    <Cell
+                      left={COLUMNS.parent}
+                      width={140}
+                      className="font-medium text-ink-secondary"
+                    >
+                      <span className="truncate">{row.parentTitle ?? 'исходный'}</span>
+                    </Cell>
+
+                    <Cell
+                      left={COLUMNS.hash}
+                      width={130}
+                      className={`${MONO_CELL} text-ink-muted`}
+                    >
+                      <span title={row.variant.config_hash}>
+                        {formatHash(row.variant.config_hash)}
+                      </span>
+                    </Cell>
+
+                    <Cell
+                      left={COLUMNS.changes}
+                      width={120}
+                      className="font-medium text-ink-secondary"
+                    >
+                      <span className="truncate" title={changesHint(row)}>
+                        {changesLabel(row)}
+                      </span>
+                    </Cell>
+
+                    <Cell left={COLUMNS.run} width={160} className="font-medium text-ink-secondary">
+                      {row.latestRun === null ? (
+                        <span className="text-ink-muted">расчётов нет</span>
+                      ) : (
+                        <span className="flex items-baseline gap-[8px]">
+                          <span className={statusTone(row.latestRun.status)}>
+                            {runStatusLabel(row.latestRun.status)}
+                          </span>
+                          <span className="font-semibold text-ink-primary" data-numeric>
+                            {row.minAvailability === null ? DASH : formatShare(row.minAvailability)}
+                          </span>
+                        </span>
+                      )}
+                    </Cell>
+
+                    <span
+                      className="absolute inset-y-0 flex items-center gap-[8px]"
+                      style={{ left: COLUMNS.actions - 17 }}
+                    >
+                      <RowAction
+                        stacked={stacked}
+                        label="Открыть в сети"
+                        icon={<Radar aria-hidden="true" className="size-[16px]" />}
+                        onClick={() => {
+                          onOpenNetwork(row);
+                        }}
+                      />
+                      <RowAction
+                        stacked={stacked}
+                        label={
+                          runningVariantId === row.variant.id ? 'Запускаем расчёт' : 'Рассчитать'
+                        }
+                        icon={<Play aria-hidden="true" className="size-[16px]" />}
+                        disabled={runningVariantId !== null}
+                        onClick={() => {
+                          onRun(row);
+                        }}
+                      />
+                      <RowAction
+                        stacked={stacked}
+                        label="В сравнение"
+                        icon={<GitCompare aria-hidden="true" className="size-[16px]" />}
+                        disabled={row.latestRun === null}
+                        onClick={() => {
+                          onCompare(row);
+                        }}
+                      />
+                      <RowAction
+                        stacked={stacked}
+                        label="Экспорт сценария"
+                        icon={<Download aria-hidden="true" className="size-[16px]" />}
+                        onClick={() => {
+                          onExport(row);
+                        }}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Пустое состояние стоит вне прокрутки вбок: в потоке объяснение должно быть видно
+          целиком в ширину карточки, а не посреди таблицы шириной 1226 px. */}
+      {rows.length === 0 && (
+        <div
+          className={
+            stacked
+              ? 'min-h-[200px] px-[16px]'
+              : 'absolute left-[17px] top-[85px] h-[304px] w-[1220px]'
+          }
+        >
           <EmptyState
             title="Вариантов нет"
             hint="Проект создаётся сразу с первым вариантом — если список пуст, сценарий не сохранился."
           />
-        )}
-
-        {rows.length > 0 && (
-          <ul className="scroll-area h-full w-[1226px]">
-            {rows.map((row, index) => (
-              <li
-                key={row.variant.id}
-                className={cx(
-                  'relative h-[50px] rounded-[10px] border border-transparent text-[13px]',
-                  row.active && 'border-[var(--border-accent)] bg-[var(--surface-accent-soft)] shadow-[0_4px_14px_rgba(106,79,238,0.12)]',
-                )}
-                style={{
-                  backgroundColor: !row.active
-                    ? index % 2 === 1 ? 'var(--surface-row-stripe)' : 'var(--surface-sunken)'
-                    : undefined,
-                }}
-              >
-                <Cell left={COLUMNS.index} className="font-bold text-ink-muted">
-                  {variantLetter(row.index)}
-                </Cell>
-
-                <Cell left={COLUMNS.title} width={250} className="text-[14px] font-semibold text-ink-primary">
-                  <span className="flex items-center gap-[8px]">
-                    <span className="truncate">{row.variant.title}</span>
-                    {row.active ? (
-                      <Tag icon={<Check aria-hidden="true" className="size-[12px]" />} tone="text-status-success">
-                        активный
-                      </Tag>
-                    ) : (
-                      row.variant.parent_variant_id == null && (
-                        <Tag icon={<Star aria-hidden="true" className="size-[12px]" />} tone="text-status-neutral">
-                          база
-                        </Tag>
-                      )
-                    )}
-                  </span>
-                </Cell>
-
-                <Cell left={COLUMNS.created} width={130} className="font-medium text-ink-secondary">
-                  {formatDate(row.variant.created_at)}
-                </Cell>
-
-                <Cell left={COLUMNS.parent} width={140} className="font-medium text-ink-secondary">
-                  <span className="truncate">{row.parentTitle ?? 'исходный'}</span>
-                </Cell>
-
-                <Cell left={COLUMNS.hash} width={130} className="font-mono text-[12px] text-ink-muted">
-                  <span title={row.variant.config_hash}>{formatHash(row.variant.config_hash)}</span>
-                </Cell>
-
-                <Cell left={COLUMNS.changes} width={120} className="font-medium text-ink-secondary">
-                  <span className="truncate" title={changesHint(row)}>
-                    {changesLabel(row)}
-                  </span>
-                </Cell>
-
-                <Cell left={COLUMNS.run} width={160} className="font-medium text-ink-secondary">
-                  {row.latestRun === null ? (
-                    <span className="text-ink-muted">расчётов нет</span>
-                  ) : (
-                    <span className="flex items-baseline gap-[8px]">
-                      <span className={statusTone(row.latestRun.status)}>
-                        {runStatusLabel(row.latestRun.status)}
-                      </span>
-                      <span className="font-semibold text-ink-primary" data-numeric>
-                        {row.minAvailability === null ? DASH : formatShare(row.minAvailability)}
-                      </span>
-                    </span>
-                  )}
-                </Cell>
-
-                <span className="absolute top-[9px] flex gap-[8px]" style={{ left: COLUMNS.actions - 17 }}>
-                  <RowAction
-                    label="Открыть в сети"
-                    icon={<Radar aria-hidden="true" className="size-[16px]" />}
-                    onClick={() => {
-                      onOpenNetwork(row);
-                    }}
-                  />
-                  <RowAction
-                    label={runningVariantId === row.variant.id ? 'Запускаем расчёт' : 'Рассчитать'}
-                    icon={<Play aria-hidden="true" className="size-[16px]" />}
-                    disabled={runningVariantId !== null}
-                    onClick={() => {
-                      onRun(row);
-                    }}
-                  />
-                  <RowAction
-                    label="В сравнение"
-                    icon={<GitCompare aria-hidden="true" className="size-[16px]" />}
-                    disabled={row.latestRun === null}
-                    onClick={() => {
-                      onCompare(row);
-                    }}
-                  />
-                  <RowAction
-                    label="Экспорт сценария"
-                    icon={<Download aria-hidden="true" className="size-[16px]" />}
-                    onClick={() => {
-                      onExport(row);
-                    }}
-                  />
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -269,7 +370,7 @@ function Cell({
 }) {
   return (
     <span
-      className={cx('absolute top-[17px] flex items-baseline overflow-hidden', className)}
+      className={cx('absolute inset-y-0 flex items-center overflow-hidden', className)}
       style={{ left: left - 17, width }}
     >
       {children}
@@ -290,11 +391,13 @@ function RowAction({
   label,
   icon,
   onClick,
+  stacked,
   disabled = false,
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  stacked: boolean;
   disabled?: boolean;
 }) {
   return (
@@ -303,7 +406,10 @@ function RowAction({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-[30px] items-center justify-center rounded-sm border border-line text-accent-blue transition-colors duration-150 hover:border-line-strong hover:bg-[var(--surface-row-active)] disabled:cursor-not-allowed disabled:opacity-40"
+      className={cx(
+        stacked ? 'size-[40px]' : 'size-[30px]',
+        'flex items-center justify-center rounded-sm border border-line text-accent-blue transition-colors duration-150 hover:border-line-strong hover:bg-[var(--surface-row-active)] disabled:cursor-not-allowed disabled:opacity-40',
+      )}
     >
       {icon}
       <span className="sr-only">{label}</span>

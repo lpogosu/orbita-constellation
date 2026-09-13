@@ -1,5 +1,7 @@
 import { Pencil } from 'lucide-react';
 
+import { useStacked } from '@/app/viewport-mode';
+
 interface ProjectTitleFieldProps {
   value: string;
   onChange: (value: string) => void;
@@ -15,15 +17,21 @@ export function ProjectTitleField({
   placeholder,
   disabled,
 }: ProjectTitleFieldProps) {
+  const stacked = useStacked();
+
   return (
-    <div className="absolute left-[700px] top-[124px] h-[72px] w-[441px]">
+    <div className={stacked ? 'w-full' : 'absolute left-[700px] top-[124px] h-[72px] w-[441px]'}>
       <label
         htmlFor="project-title"
         className="block h-[13px] text-micro font-semibold uppercase leading-[13px] tracking-[0.66px] text-ink-muted"
       >
         Название проекта
       </label>
-      <div className="absolute inset-x-0 top-[20px] h-[52px]">
+      <div
+        className={
+          stacked ? 'relative mt-[8px] h-[52px]' : 'absolute inset-x-0 top-[20px] h-[52px]'
+        }
+      >
         <input
           id="project-title"
           type="text"

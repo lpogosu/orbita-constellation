@@ -1,8 +1,10 @@
 import { ChevronRight, Download } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
+import { useStacked } from '@/app/viewport-mode';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { cx } from '@/lib/cx';
 import { formatCount } from '@/lib/format';
 import type { ScenarioProblem } from './use-scenario-review';
 
@@ -28,6 +30,7 @@ export function ValidationErrorsModal({
   const [editorText, setEditorText] = useState(sourceText ?? '');
   const [editorScrollTop, setEditorScrollTop] = useState(0);
   const editor = useRef<HTMLTextAreaElement>(null);
+  const stacked = useStacked();
   const sourceLines = useMemo(
     () =>
       sourceText === null && editorText === ''
@@ -37,23 +40,28 @@ export function ValidationErrorsModal({
   );
   const activeLine = findProblemLine(sourceLines, problems[activeProblem]);
 
-  const focusProblem = useCallback((index: number) => {
-    setActiveProblem(index);
-    const line = findProblemLine(editorText.split(/\r?\n/), problems[index]);
-    if (line === null || editor.current === null) {
-      return;
-    }
-    const lines = editorText.split(/\r?\n/);
-    const start = lines.slice(0, line - 1).reduce((offset, value) => offset + value.length + 1, 0);
-    const end = start + (lines[line - 1]?.length ?? 0);
-    editor.current.focus();
-    editor.current.setSelectionRange(start, end);
-    const scrollTop = Math.max(0, (line - 4) * 20);
-    editor.current.scrollTop = scrollTop;
-    setEditorScrollTop(scrollTop);
-  }, [editorText, problems]);
+  const focusProblem = useCallback(
+    (index: number) => {
+      setActiveProblem(index);
+      const line = findProblemLine(editorText.split(/\r?\n/), problems[index]);
+      if (line === null || editor.current === null) {
+        return;
+      }
+      const lines = editorText.split(/\r?\n/);
+      const start = lines
+        .slice(0, line - 1)
+        .reduce((offset, value) => offset + value.length + 1, 0);
+      const end = start + (lines[line - 1]?.length ?? 0);
+      editor.current.focus();
+      editor.current.setSelectionRange(start, end);
+      const scrollTop = Math.max(0, (line - 4) * 20);
+      editor.current.scrollTop = scrollTop;
+      setEditorScrollTop(scrollTop);
+    },
+    [editorText, problems],
+  );
 
-  return (
+  const modal = (
     <Modal
       title="Сценарий содержит ошибки"
       subtitle={
@@ -70,21 +78,12 @@ export function ValidationErrorsModal({
       scrollBody={false}
       onClose={onClose}
       footer={
-        <>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              downloadReport(fileName, problems);
-            }}
-            icon={<Download aria-hidden="true" className="size-5" />}
-          >
-            Скачать отчёт
-          </Button>
-          <span className="ml-auto flex gap-4">
-            <Button variant="secondary" onClick={onClose}>
-              Отмена
-            </Button>
+        stacked ? (
+          // Ряд из трёх кнопок макета в колонку телефона не помещается: главное действие
+          // идёт первым и на всю ширину.
+          <div className="flex w-full flex-col gap-[12px] md:flex-row-reverse md:flex-wrap">
             <Button
+              className={STACKED_BUTTON}
               onClick={() => {
                 onValidateText(editorText);
               }}
@@ -92,29 +91,91 @@ export function ValidationErrorsModal({
             >
               Проверить и продолжить
             </Button>
-          </span>
-        </>
+            <Button variant="secondary" className={STACKED_BUTTON} onClick={onClose}>
+              Отмена
+            </Button>
+            <Button
+              variant="secondary"
+              className={cx(STACKED_BUTTON, 'md:mr-auto')}
+              onClick={() => {
+                downloadReport(fileName, problems);
+              }}
+              icon={<Download aria-hidden="true" className="size-5" />}
+            >
+              Скачать отчёт
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                downloadReport(fileName, problems);
+              }}
+              icon={<Download aria-hidden="true" className="size-5" />}
+            >
+              Скачать отчёт
+            </Button>
+            <span className="ml-auto flex gap-4">
+              <Button variant="secondary" onClick={onClose}>
+                Отмена
+              </Button>
+              <Button
+                onClick={() => {
+                  onValidateText(editorText);
+                }}
+                iconAfter={<ChevronRight aria-hidden="true" className="size-5" />}
+              >
+                Проверить и продолжить
+              </Button>
+            </span>
+          </>
+        )
       }
     >
-      <div className="grid h-[470px] grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] gap-4">
+      <div
+        className={
+          stacked
+            ? 'flex flex-col gap-4 md:grid md:grid-cols-2'
+            : 'grid h-[470px] grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] gap-4'
+        }
+      >
+        {/* Тёмная подложка редактора — из тёмной темы макета; в светлой на ней терялся
+            текст цвета темы, поэтому там редактор берёт поверхность поля ввода. */}
         <section
           aria-label="Исходный JSON"
-          className="overflow-hidden rounded-xl border border-line bg-[rgba(6,13,42,0.86)]"
+          className={cx(
+            'overflow-hidden rounded-xl border border-line bg-[rgba(6,13,42,0.86)]',
+            "[:root[data-theme='light']_&]:bg-surface-input",
+          )}
         >
           <div className="flex h-[38px] items-center gap-4 border-b border-line-divider bg-surface-sunken px-4">
-            <span className="font-mono text-caption font-semibold text-ink-primary">{fileName}</span>
-            <span className="text-micro font-semibold uppercase tracking-wide text-accent-blue">JSON</span>
+            <span className="font-mono text-caption font-semibold text-ink-primary">
+              {fileName}
+            </span>
+            <span className="text-micro font-semibold uppercase tracking-wide text-accent-blue">
+              JSON
+            </span>
           </div>
-          <div className="relative h-[432px] overflow-hidden">
+          <div
+            className={cx('relative overflow-hidden', stacked ? STACKED_PANE_HEIGHT : 'h-[432px]')}
+          >
             <ol
               aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-0 z-10 w-11 border-r border-line-divider bg-[rgba(6,13,42,0.95)] py-2 font-mono text-[12px] leading-5"
+              className={cx(
+                'pointer-events-none absolute left-0 top-0 z-10 w-11 border-r border-line-divider bg-[rgba(6,13,42,0.95)] py-2 font-mono text-[12px] leading-5',
+                "[:root[data-theme='light']_&]:bg-surface-sunken",
+              )}
               style={{ transform: `translateY(${-editorScrollTop}px)` }}
             >
               {sourceLines.map((line, index) => (
                 <li
                   key={`${index}-${line}`}
-                  className={index + 1 === activeLine ? 'bg-status-danger-soft text-ink-primary' : 'text-ink-muted'}
+                  className={
+                    index + 1 === activeLine
+                      ? 'bg-status-danger-soft text-ink-primary'
+                      : 'text-ink-muted'
+                  }
                 >
                   <span className="block pr-3 text-right">{index + 1}</span>
                 </li>
@@ -136,26 +197,37 @@ export function ValidationErrorsModal({
           </div>
         </section>
 
+        {/* На телефоне список ошибок идёт первым: ради него окно и открыто. */}
         <section
           aria-label="Список ошибок"
-          className="overflow-hidden rounded-xl border border-line bg-surface-raised"
+          className={cx(
+            'overflow-hidden rounded-xl border border-line bg-surface-raised',
+            stacked && 'order-first md:order-none',
+          )}
         >
           <div className="flex h-[38px] items-center justify-between border-b border-line-divider px-4">
             <h3 className="text-small font-semibold text-ink-primary">Ошибки</h3>
             <button
               type="button"
               onClick={onPickAnotherFile}
-              className="text-caption font-semibold text-accent-blue transition-colors hover:text-ink-primary"
+              className={cx(
+                'text-caption font-semibold text-accent-blue transition-colors hover:text-ink-primary',
+                stacked && '-mr-2 h-[38px] px-2',
+              )}
             >
               Другой файл
             </button>
           </div>
-          <ol className="scroll-area h-[432px] space-y-2 p-3">
+          <ol
+            className={cx('scroll-area space-y-2 p-3', stacked ? STACKED_PANE_HEIGHT : 'h-[432px]')}
+          >
             {problems.map((problem, index) => (
               <li key={`${problem.path ?? 'нет поля'}-${index}`}>
                 <button
                   type="button"
-                  onClick={() => { focusProblem(index); }}
+                  onClick={() => {
+                    focusProblem(index);
+                  }}
                   aria-pressed={activeProblem === index}
                   className={
                     activeProblem === index
@@ -189,9 +261,20 @@ export function ValidationErrorsModal({
       </div>
     </Modal>
   );
+
+  return modal;
 }
 
-function findProblemLine(lines: readonly string[], problem: ScenarioProblem | undefined): number | null {
+/** Размеры кнопок макета (60 px, шрифт 19) в колонку телефона не помещаются. */
+const STACKED_BUTTON = 'w-full !h-[48px] !px-[16px] !text-base md:w-auto';
+
+/** Высота редактора и списка ошибок в потоке: на телефоне они идут друг под другом. */
+const STACKED_PANE_HEIGHT = 'h-[240px] md:h-[340px]';
+
+function findProblemLine(
+  lines: readonly string[],
+  problem: ScenarioProblem | undefined,
+): number | null {
   if (problem?.path === null || problem?.path === undefined) {
     return null;
   }

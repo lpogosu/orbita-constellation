@@ -10,6 +10,7 @@ import pytest
 
 from orbita_core.scenario import (
     ErrorCode,
+    Scenario,
     ScenarioError,
     canonical_json,
     config_hash,
@@ -97,16 +98,24 @@ def test_angles_are_normalized_to_single_turn() -> None:
     assert scenario.environment.earth_angle0_deg == pytest.approx(330.0)
 
 
+def _exported_sites(scenario: Scenario) -> list[dict[str, object]]:
+    """Наземные пункты из `to_dict`: функция отдаёт `dict[str, object]`, и индексировать
+    вложенный список без сужения типа mypy справедливо не даёт."""
+    sites = to_dict(scenario)["ground_sites"]
+    assert isinstance(sites, list)
+    return sites
+
+
 def test_ground_site_horizon_override_round_trips_and_old_shape_is_preserved() -> None:
     """Локальный порог сериализуется, а старый сценарий не получает лишнее поле."""
     legacy = parse(synthetic_scenario())
-    assert "min_elevation_deg" not in to_dict(legacy)["ground_sites"][0]
+    assert "min_elevation_deg" not in _exported_sites(legacy)[0]
 
     data = synthetic_scenario()
     data["ground_sites"][1]["min_elevation_deg"] = 25.0
     scenario = parse(data)
     assert scenario.ground_sites[1].min_elevation_deg == pytest.approx(25.0)
-    assert to_dict(scenario)["ground_sites"][1]["min_elevation_deg"] == pytest.approx(25.0)
+    assert _exported_sites(scenario)[1]["min_elevation_deg"] == pytest.approx(25.0)
 
 
 def test_lists_are_sorted_by_id() -> None:

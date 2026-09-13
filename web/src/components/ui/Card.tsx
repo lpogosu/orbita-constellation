@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react';
 
+import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -14,10 +15,13 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 /** Стеклянная карточка макета: сцена под тонировкой, рамка, радиус 24 и тень Elevation/Card. */
 export function Card({ sceneX = 0, sceneY = 0, className, style, children, ...rest }: CardProps) {
+  // В потоке у карточки нет места на полотне: сдвиг показал бы случайный кусок сцены.
+  const stacked = useStacked();
+  const offset = stacked ? '0 0' : `${-sceneX}px ${-sceneY}px`;
   return (
     <div
       className={cx('card-glass', className)}
-      style={{ backgroundPosition: `0 0, ${-sceneX}px ${-sceneY}px`, ...style }}
+      style={{ backgroundPosition: `0 0, ${offset}`, ...style }}
       {...rest}
     >
       {children}

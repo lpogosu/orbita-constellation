@@ -27,6 +27,9 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
           ? { projectId: null, variantId: null, runId: null }
           : { projectId: fallback.id, variantId: null, runId: null };
       });
+    }, () => {
+      // Список нужен только чтобы сбросить выбор удалённого проекта. Если API недоступен,
+      // выбор остаётся как был, а ошибку покажет сам экран, который за проектом пойдёт.
     });
     return () => {
       active = false;

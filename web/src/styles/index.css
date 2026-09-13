@@ -21,6 +21,15 @@
        прокручивается ни при какой ширине и высоте окна. */
     overflow: hidden;
     background-color: var(--bg-page);
+  }
+
+  /* В потоке страница — обычный документ. Правило выше запрещало бы прокрутку пальцем и
+     колесом: остался бы только программный `scrollTo`, то есть экран без конца. */
+  html[data-layout='stacked'],
+  html[data-layout='stacked'] body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-size: 17px;
@@ -99,6 +108,48 @@
       transform: scale(var(--canvas-scale, 1));
       transform-origin: center center;
     }
+  }
+
+  /* Поток. Полотно ужимается по меньшей из сторон, поэтому на телефоне коэффициент
+     выходит около 0.2 и весь интерфейс становится нечитаемой полоской. Ниже порога
+     макетные координаты отбрасываются: рамка перестаёт быть фиксированной, полотно —
+     полотном, и страница прокручивается как обычный документ. */
+  .app-frame--stacked {
+    position: static;
+    display: block;
+    overflow: visible;
+    min-height: 100dvh;
+  }
+
+  /* Размытая подложка за полями полотна в потоке не нужна: полей нет. */
+  .app-frame--stacked::before {
+    content: none;
+  }
+
+  .app-canvas--stacked {
+    width: 100%;
+    /* В потоке страница не ездит вбок ни при каких обстоятельствах: остатки макетных
+       координат внутри карточек обрезаются, а не растягивают документ. */
+    overflow-x: clip;
+    height: auto;
+    min-height: 100dvh;
+    zoom: 1;
+    transform: none;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
+  /* Колонка экрана в потоке. Раскладку внутри (одна колонка на телефоне, сетка на
+     планшете) задаёт сама страница: общий сброс макетных координат не годится, он
+     ломал внутреннюю вёрстку карточек, которую в каждой нужно переложить осмысленно. */
+  .page-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: calc(1180px + 32px);
+    margin: 0 auto;
+    padding: 16px 16px 88px;
   }
 
   /* Стеклянная карточка макета: сцена под стеклом — тот же фон полотна, сдвинутый на

@@ -12,6 +12,7 @@ import {
   RESULT_PATH,
   sectionHref,
 } from '@/app/sections';
+import { useStacked } from '@/app/viewport-mode';
 
 type Area = Readonly<{ x: number; y: number; width: number; height: number }>;
 type Section = 'projects' | 'network' | 'outages' | 'comparison' | 'result';
@@ -124,6 +125,7 @@ function routeFor(step: TourStep, selection: ReturnType<typeof useProjectSelecti
 
 /** A replayable Figma-matched walkthrough, deliberately independent from feature state. */
 export function OnboardingTour() {
+  const stacked = useStacked();
   const navigate = useNavigate();
   const { selection } = useProjectSelection();
   const [isOpen, setIsOpen] = useState(false);
@@ -180,15 +182,16 @@ export function OnboardingTour() {
         return;
       }
       automaticResumeUsed = true;
+      const resumeAt = pending;
       const frame = requestAnimationFrame(() => {
-        start(pending ?? 0);
+        start(resumeAt);
       });
       return () => {
         cancelAnimationFrame(frame);
       };
     }
 
-    if (automaticStartUsed) {
+    if (automaticStartUsed || stacked) {
       return;
     }
     automaticStartUsed = true;
@@ -198,7 +201,7 @@ export function OnboardingTour() {
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [selection.projectId, start]);
+  }, [selection.projectId, stacked, start]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -255,24 +258,45 @@ export function OnboardingTour() {
       <button
         type="button"
         onClick={open}
-        className="absolute left-[1852px] top-[30px] z-20 flex size-[32px] items-center justify-center rounded-md text-ink-secondary transition-colors hover:bg-surface-raised hover:text-ink-primary"
+        className={
+          stacked
+            ? // В потоке кнопка стоит в строке логотипа, рядом с переключателем темы: плавающая
+              // в углу экрана она перекрывала подписи карточек и шкалы.
+              'fixed right-[62px] top-[10px] z-30 flex size-[38px] items-center justify-center rounded-full border border-line bg-surface-raised text-ink-secondary transition-colors hover:text-ink-primary'
+            : 'absolute left-[1852px] top-[30px] z-20 flex size-[32px] items-center justify-center rounded-md text-ink-secondary transition-colors hover:bg-surface-raised hover:text-ink-primary'
+        }
         aria-label="Открыть онбординг"
       >
         <CircleHelp aria-hidden="true" className="size-[28px]" strokeWidth={1.75} />
       </button>
 
       {isOpen && (
-        <div className="absolute inset-0 z-30" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-          <Scrim area={step.highlight} />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute rounded-[20px] border-2 border-[#7c5cff] shadow-[0_0_14px_rgba(124,92,255,0.45)]"
-            style={toCssArea(step.highlight)}
-          />
+        <div
+          className={stacked ? 'fixed inset-0 z-40 bg-[rgba(7,20,49,0.72)]' : 'absolute inset-0 z-30'}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-title"
+        >
+          {/* Подсветка опирается на макетные координаты блоков. В потоке блоков на этих
+              координатах нет, поэтому шаг показывается шторкой снизу, без подсветки. */}
+          {!stacked && (
+            <>
+              <Scrim area={step.highlight} />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute rounded-[20px] border-2 border-[#7c5cff] shadow-[0_0_14px_rgba(124,92,255,0.45)]"
+                style={toCssArea(step.highlight)}
+              />
+            </>
+          )}
 
           <section
-            className="absolute h-[238px] w-[400px] rounded-[20px] border border-[#29437d] bg-[#172653] px-[24px] pb-[20px] pt-[20px] shadow-[0_18px_48px_rgba(0,11,34,0.48)]"
-            style={toCssPosition(step.tooltip)}
+            className={
+              stacked
+                ? 'fixed inset-x-[12px] bottom-[12px] rounded-[20px] border border-[#29437d] bg-[#172653] px-[20px] pb-[18px] pt-[18px] shadow-[0_18px_48px_rgba(0,11,34,0.48)]'
+                : 'absolute h-[238px] w-[400px] rounded-[20px] border border-[#29437d] bg-[#172653] px-[24px] pb-[20px] pt-[20px] shadow-[0_18px_48px_rgba(0,11,34,0.48)]'
+            }
+            style={stacked ? undefined : toCssPosition(step.tooltip)}
             aria-describedby="onboarding-description"
           >
             <div className="flex items-start justify-between text-[13px] font-medium leading-[18px] text-[#b6c1e6]">

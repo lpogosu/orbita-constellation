@@ -1,7 +1,9 @@
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
+import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
 
 const FOCUSABLE =
@@ -45,6 +47,11 @@ export function Modal({
   children,
 }: ModalProps) {
   const dialog = useRef<HTMLDivElement>(null);
+  const stacked = useStacked();
+  // Обработчик закрытия страницы пересоздаются на каждой отрисовке. Эффект фокуса от него
+  // зависеть не должен: иначе на каждый ввод фокус выдёргивался бы на первое поле окна.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   const trapFocus = useCallback((event: KeyboardEvent) => {
     if (event.key !== 'Tab' || dialog.current === null) {
@@ -72,7 +79,7 @@ export function Modal({
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        onClose();
+        closeRef.current();
         return;
       }
       trapFocus(event);
@@ -85,11 +92,17 @@ export function Modal({
         opener.focus();
       }
     };
-  }, [onClose, trapFocus]);
+  }, [trapFocus]);
 
-  return (
+  const layer = (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(4,8,26,0.72)] px-6 py-16"
+      className={
+        stacked
+          ? // В потоке документ длинный: слой привязан к окну и прокручивается сам, иначе
+            // диалог вставал бы посреди страницы, далеко от места, где его открыли.
+            'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(4,8,26,0.72)] px-3 pb-6 pt-16'
+          : 'absolute inset-0 z-50 flex items-center justify-center bg-[rgba(4,8,26,0.72)] px-6 py-16'
+      }
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -101,14 +114,17 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card-glass relative w-full border-line-strong px-8 pb-8 pt-6"
+        className={cx(
+          'card-glass relative w-full border-line-strong',
+          stacked ? 'px-5 pb-6 pt-5' : 'px-8 pb-8 pt-6',
+        )}
         style={{ maxWidth: width }}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Закрыть окно"
-          className="absolute right-6 top-6 rounded-sm p-1.5 text-ink-muted transition-colors duration-150 hover:text-ink-primary"
+          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-sm text-ink-muted transition-colors duration-150 hover:text-ink-primary"
         >
           <X aria-hidden="true" className="size-5" />
         </button>
@@ -117,7 +133,8 @@ export function Modal({
 
         <h2
           className={cx(
-            'text-heading-m font-bold text-ink-primary',
+            'font-bold text-ink-primary',
+            stacked ? 'pr-10 text-[22px] leading-[28px]' : 'text-heading-m',
             align === 'center' && 'text-center',
           )}
         >
@@ -129,7 +146,10 @@ export function Modal({
           </p>
         )}
 
-        <div className={cx('mt-6', scrollBody && 'scroll-area max-h-[420px] pr-2')}>{children}</div>
+        {/* В потоке прокручивается весь слой, вторая прокрутка внутри окна была бы лишней. */}
+        <div className={cx('mt-6', scrollBody && !stacked && 'scroll-area max-h-[420px] pr-2')}>
+          {children}
+        </div>
 
         <div
           className={cx(
@@ -142,4 +162,9 @@ export function Modal({
       </div>
     </div>
   );
+
+  // В потоке окно выносится в `body`: стеклянные карточки с `backdrop-filter` становятся
+  // контейнером для `position: fixed`, и открытое из такой карточки окно оказалось бы
+  // заперто в её прямоугольнике.
+  return stacked ? createPortal(layer, document.body) : layer;
 }

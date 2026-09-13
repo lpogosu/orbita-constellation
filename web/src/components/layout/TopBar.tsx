@@ -4,14 +4,90 @@ import { Link, useLocation } from 'react-router-dom';
 import { cx } from '@/lib/cx';
 import { isSectionActive, NAV_SECTIONS, PROJECTS_PATH, RESULT_PATH, sectionHref } from '@/app/sections';
 import { useProjectSelection } from '@/app/project-selection';
+import { useStacked } from '@/app/viewport-mode';
 import { useTheme } from '@/theme/use-theme';
 import { ProjectSwitcher } from './ProjectSwitcher';
 
 /**
- * Top Bar макета: 1920×92, координаты частей — из узла шапки. Ужимать её больше не
- * нужно: полотно целиком масштабируется под окно.
+ * Шапка.
+ *
+ * На полотне это узел макета 1920×92 с абсолютными координатами частей — ужимать её не
+ * нужно, полотно масштабируется целиком. В потоке те же координаты означали бы шапку
+ * шириной 1920 на экране шириной 390, поэтому там она собирается заново: логотип,
+ * прокручиваемый вбок список разделов и переключатель темы.
  */
 export function TopBar() {
+  const stacked = useStacked();
+  return stacked ? <StackedTopBar /> : <CanvasTopBar />;
+}
+
+function StackedTopBar() {
+  const { theme, toggle } = useTheme();
+  const { pathname } = useLocation();
+  const { selection } = useProjectSelection();
+
+  return (
+    <header className="sticky top-0 z-20 border-b border-line-strong bg-[var(--topbar-bg)]">
+      <div className="flex items-center gap-[10px] px-[16px] py-[10px]">
+        <img src="/assets/logo-mark.png" alt="" className="h-[32px] w-[42px] object-contain" />
+        <span className="font-display text-[22px] font-bold leading-none tracking-[1.6px] text-ink-primary">
+          ОРБИТА
+        </span>
+
+        <button
+          type="button"
+          onClick={toggle}
+          aria-pressed={theme === 'light'}
+          className="ml-auto flex size-[38px] items-center justify-center rounded-[19px] border border-line bg-surface-raised text-ink-primary transition-colors duration-150 hover:border-line-strong"
+        >
+          {theme === 'dark' ? (
+            <Moon aria-hidden="true" className="size-[20px]" />
+          ) : (
+            <Sun aria-hidden="true" className="size-[20px]" />
+          )}
+          <span className="sr-only">
+            {theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+          </span>
+        </button>
+      </div>
+
+      <div className="px-[16px] pb-[10px]">
+        <ProjectSwitcher />
+      </div>
+
+      {/* Пять разделов в строку на 390px не помещаются. Горизонтальная прокрутка честнее
+          выпадающего меню: все пункты видны сразу и доступны одним движением. */}
+      <nav
+        aria-label="Разделы"
+        className="flex gap-[6px] overflow-x-auto px-[16px] pb-[10px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {NAV_SECTIONS.map((section) => {
+          const active = isSectionActive(section.path, pathname);
+          return (
+            <Link
+              key={section.path}
+              to={sectionHref(
+                section.path,
+                section.path === PROJECTS_PATH ? null : selection.projectId,
+              )}
+              aria-current={active ? 'page' : undefined}
+              className={cx(
+                'shrink-0 whitespace-nowrap rounded-pill px-[14px] py-[7px] text-[15px] font-medium leading-none transition-colors duration-150',
+                active
+                  ? 'border border-line bg-surface-raised text-ink-primary'
+                  : 'text-ink-secondary hover:text-ink-primary',
+              )}
+            >
+              {section.title}
+            </Link>
+          );
+        })}
+      </nav>
+    </header>
+  );
+}
+
+function CanvasTopBar() {
   const { theme, toggle } = useTheme();
   const { pathname } = useLocation();
   const { selection } = useProjectSelection();
@@ -62,9 +138,10 @@ export function TopBar() {
         <Link
           to={`${RESULT_PATH}/${encodeURIComponent(selection.runId)}`}
           title="Открыть подробный результат текущего расчёта"
-          className="absolute left-[1555px] top-[26px] flex h-[40px] w-[220px] items-center justify-end gap-[7px] rounded-sm px-[10px] text-[12px] font-semibold text-accent-blue transition-colors hover:bg-surface-row-active"
+          className="absolute left-[1575px] top-[26px] flex h-[40px] items-center gap-[7px] rounded-sm border border-line bg-surface-raised px-[12px] text-[12px] font-semibold text-ink-primary transition-colors duration-150 hover:border-line-strong"
         >
-          <SquareArrowOutUpRight aria-hidden="true" className="size-[16px]" />
+          {/* Подложка: голый синий текст на сиянии панорамы в тёмной теме не читался. */}
+          <SquareArrowOutUpRight aria-hidden="true" className="size-[16px] text-accent-blue" />
           Результат расчёта
         </Link>
       )}

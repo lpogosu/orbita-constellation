@@ -7,12 +7,16 @@ import { api } from '@/api/client';
 import { getProject } from '@/api/projects';
 import type { Project, ProjectDetail } from '@/api/types';
 import { useProjectSelection } from '@/app/project-selection';
+import { useStacked } from '@/app/viewport-mode';
 import { NETWORK_PATH, OUTAGES_PATH, PROJECTS_PATH, sectionHref, sectionOfPath } from '@/app/sections';
 import { ErrorBlock, Skeleton } from '@/components/state/States';
 import { cx } from '@/lib/cx';
 import { describe, useResource } from '@/lib/use-resource';
 
 const BOX = 'absolute left-[1268px] top-[24px] h-[44px] w-[272px]';
+/** В потоке переключатель занимает строку шапки целиком: на телефоне это главный
+ * способ сменить проект, прятать его в меню незачем. */
+const STACKED_BOX = 'relative h-[44px] w-full';
 
 /**
  * Переключатель «Проект › Вариант» из шапки макета (14_SCREENS.md §0.1). Названия не
@@ -21,6 +25,7 @@ const BOX = 'absolute left-[1268px] top-[24px] h-[44px] w-[272px]';
  */
 export function ProjectSwitcher() {
   const { selection, select } = useProjectSelection();
+  const stacked = useStacked();
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId, variantId } = selection;
@@ -110,13 +115,13 @@ export function ProjectSwitcher() {
 
   const project = detail.data;
   const variant = project?.variants.find((item) => item.id === variantId);
-  // The base variant often has the same title as the project. Rendering it twice
-  // made the compact header look like a moving breadcrumb while a draft/run was
-  // refreshed, without conveying any additional information.
+  // Базовый вариант часто называется так же, как проект. Два одинаковых названия
+  // подряд превращали компактную шапку в дёргающуюся «хлебную крошку» при каждом
+  // обновлении черновика, не добавляя информации.
   const showVariant = variant !== undefined && variant.title !== project?.project.title;
 
   return (
-    <div ref={root} className={BOX}>
+    <div ref={root} className={stacked ? STACKED_BOX : BOX}>
       <button
         type="button"
         onClick={toggle}
@@ -174,7 +179,12 @@ export function ProjectSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[52px] w-[392px] rounded-md border border-line bg-surface-raised p-[14px] shadow-card">
+        <div
+          className={cx(
+            'absolute left-0 top-[52px] z-30 rounded-md border border-line bg-surface-raised p-[14px] shadow-card',
+            stacked ? 'max-h-[70vh] w-full overflow-y-auto' : 'w-[392px]',
+          )}
+        >
           <Group title="Проект">
             {projectsError !== null && (
               <div className="h-[120px]">

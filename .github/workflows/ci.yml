@@ -121,6 +121,33 @@ jobs:
           ORBITA_TEST_MEMGRAPH_URI: bolt://localhost:7687
         run: pytest -q
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: eslint
+        run: npm run lint
+
+      # `build` сам начинается с `tsc --noEmit`, но отдельный шаг проверяет и конфиг Vite.
+      - name: tsc
+        run: npm run typecheck
+
+      - name: Сборка
+        run: npx vite build
+
   compose:
     runs-on: ubuntu-latest
     steps:

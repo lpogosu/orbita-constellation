@@ -1,0 +1,16 @@
+# Переводы строк фиксируются здесь, а не настройкой каждой машины: коммиты с Windows
+# складывали файлы с CRLF, и ruff, yamllint и shellcheck в Linux-образах падали на
+# содержимом, которого никто не менял.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.glb binary
+*.bin binary

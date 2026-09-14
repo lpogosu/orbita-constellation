@@ -5,6 +5,8 @@ import { ErrorBlock, Skeleton, UnavailableBlock } from '@/components/state/State
 import { cx } from '@/lib/cx';
 import { formatPoints } from './format';
 import { formatGap } from '@/lib/run-format';
+import { useCardBox } from '@/components/layout/box';
+import { useStacked } from '@/app/viewport-mode';
 
 interface CriticalityCardProps {
   readonly x: number;
@@ -40,24 +42,24 @@ export function CriticalityCard(props: CriticalityCardProps) {
     ...ranked.filter((entry) => entry.item.satellite_id !== focusSatelliteId),
   ].slice(0, 3);
 
+  const box = useCardBox(props);
+  const stacked = useStacked();
+
   return (
     <div
-      className="card-glass absolute px-[20px] pb-[14px] pt-[11px]"
-      style={{
-        left: props.x,
-        top: props.y,
-        width: props.width,
-        height: props.height,
-        backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
-      }}
+      className={`card-glass ${box.positionClass} px-[20px] pb-[14px] pt-[11px]`}
+      style={box.style}
     >
-      <div className="flex items-center gap-[12px]">
+      <div className={cx('flex items-center', stacked ? 'flex-wrap gap-x-[12px]' : 'gap-[12px]')}>
         <h3 className="truncate text-title-m font-semibold text-ink-primary">Критические аппараты</h3>
         <button
           type="button"
           onClick={state.request}
           disabled={props.runId === null || state.loading}
-          className="ml-auto shrink-0 whitespace-nowrap text-caption font-semibold text-accent-blue disabled:text-ink-muted"
+          className={cx(
+            'ml-auto shrink-0 whitespace-nowrap text-caption font-semibold text-accent-blue disabled:text-ink-muted',
+            stacked && 'h-[40px]',
+          )}
         >
           {state.loading ? 'Считаем…' : state.report === null ? 'Рассчитать критичность' : 'Пересчитать'}
         </button>
@@ -71,7 +73,7 @@ export function CriticalityCard(props: CriticalityCardProps) {
         <div className="mt-[10px]" style={{ height: bodyHeight }}>
           <UnavailableBlock
             title="Нужен завершённый расчёт"
-            hint="Выберите готовый прогон или примените отказ — тогда можно рассчитать критичность."
+            hint="Выберите базу сравнения или примените отказ."
             compact
           />
         </div>
@@ -108,7 +110,10 @@ export function CriticalityCard(props: CriticalityCardProps) {
                 type="button"
                 onClick={() => { props.onFocusSatellite(item.satellite_id); }}
                 className={cx(
-                  'flex h-[38px] w-full items-center gap-[16px] rounded-sm px-[20px] text-left',
+                  'flex w-full items-center rounded-sm text-left',
+                  // В потоке метрики не помещаются в строку рядом с аппаратом и уходят
+                  // второй строкой под него, а не за край карточки.
+                  stacked ? 'min-h-[56px] gap-[12px] px-[12px] py-[6px]' : 'h-[38px] gap-[16px] px-[20px]',
                   'transition-colors duration-150 hover:bg-surface-rowActive',
                   item.satellite_id === focusSatelliteId && 'bg-surface-rowActive',
                 )}
@@ -116,17 +121,22 @@ export function CriticalityCard(props: CriticalityCardProps) {
                 <span className="text-base text-ink-muted" data-numeric>
                   {rank}
                 </span>
-                <span
-                  title={item.satellite_id}
-                  className="min-w-0 flex-1 truncate text-title-m font-semibold text-ink-primary"
-                >
-                  {item.satellite_id}
-                </span>
-                <span className="shrink-0 whitespace-nowrap text-caption text-ink-secondary" data-numeric>
-                  {formatPoints(item.delta_min_client_availability)} ·{' '}
-                  {formatGap(item.delta_worst_max_gap_s)} · клиентов{' '}
-                  {item.affected_clients.length} · min-cut{' '}
-                  {(item.min_cut_frequency * 100).toFixed(0)}%
+                <span className={cx('min-w-0 flex-1', stacked ? 'flex flex-col' : 'flex items-center gap-[16px]')}>
+                  <span
+                    title={item.satellite_id}
+                    className="min-w-0 flex-1 truncate text-title-m font-semibold text-ink-primary"
+                  >
+                    {item.satellite_id}
+                  </span>
+                  <span
+                    className={cx('text-caption text-ink-secondary', !stacked && 'shrink-0 whitespace-nowrap')}
+                    data-numeric
+                  >
+                    {formatPoints(item.delta_min_client_availability)} ·{' '}
+                    {formatGap(item.delta_worst_max_gap_s)} · клиентов{' '}
+                    {item.affected_clients.length} · min-cut{' '}
+                    {(item.min_cut_frequency * 100).toFixed(0)}%
+                  </span>
                 </span>
                 <ChevronRight aria-hidden="true" className="size-[20px] shrink-0 text-ink-muted" />
               </button>

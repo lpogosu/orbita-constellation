@@ -4,6 +4,8 @@ import type { EChartsOption } from 'echarts';
 import type { ComparisonEntry } from '@/api/types';
 import { EChart } from '@/components/chart/EChart';
 import { Card } from '@/components/ui/Card';
+import { useViewport } from '@/app/viewport-mode';
+import { cx } from '@/lib/cx';
 import { useTokenColors } from '@/theme/use-token-colors';
 import { slotToken } from './slots';
 
@@ -11,6 +13,10 @@ const LEFT = 26;
 const TOP = 564;
 const CHART_WIDTH = 1098;
 const CHART_HEIGHT = 212;
+/** Поле карточки в потоке: ширина графика — колонка минус поле и рамка с двух сторон. */
+const STACKED_PADDING = 16;
+const CARD_BORDERS = 2;
+const STACKED_CHART_HEIGHT = 240;
 
 /**
  * «Доступность клиентов по сценариям» (узел Figma `46:513`): столбик на клиента и вариант,
@@ -25,6 +31,8 @@ export function AvailabilityCard({
   target: number | null;
 }) {
   const color = useTokenColors();
+  const { mode, contentWidth } = useViewport();
+  const stacked = mode === 'stacked';
   const base = entries[0];
 
   const option = useMemo<EChartsOption>(() => {
@@ -47,7 +55,7 @@ export function AvailabilityCard({
         data: clients,
         axisLine: { lineStyle: { color: color('--chart-grid') } },
         axisTick: { show: false },
-        axisLabel: { color: color('--text-primary'), fontSize: 17, fontWeight: 600 },
+        axisLabel: { color: color('--text-primary'), fontSize: stacked ? 14 : 17, fontWeight: 600 },
       },
       yAxis: {
         type: 'value',
@@ -63,7 +71,9 @@ export function AvailabilityCard({
         barMaxWidth: 42,
         itemStyle: { color: color(slotToken(index)), borderRadius: [4, 4, 0, 0] },
         label: {
-          show: true,
+          // На телефоне столбики уже подписей в два знака после запятой: значения
+          // остаются в подсказке по касанию.
+          show: !stacked || contentWidth >= 600,
           position: 'top' as const,
           color: color('--text-primary'),
           fontSize: 12,
@@ -90,22 +100,32 @@ export function AvailabilityCard({
           : {}),
       })),
     };
-  }, [base, entries, target, color]);
+  }, [base, entries, target, color, stacked, contentWidth]);
 
   return (
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute h-[288px] w-[1160px]"
-      style={{ left: LEFT, top: TOP }}
+      className={stacked ? 'order-4 md:col-span-2' : 'absolute h-[288px] w-[1160px]'}
+      style={stacked ? { padding: STACKED_PADDING } : { left: LEFT, top: TOP }}
     >
-      <h2 className="absolute left-[31px] top-[17px] text-title-m font-semibold text-ink-primary">
+      <h2
+        className={cx(
+          'text-title-m font-semibold text-ink-primary',
+          !stacked && 'absolute left-[31px] top-[17px]',
+        )}
+      >
         Доступность клиентов по сценариям
       </h2>
 
       {/* Легенда прижата к правому краю и ограничена по ширине: четыре названия вариантов
-          подряд доходили до заголовка карточки. */}
-      <div className="absolute right-[31px] top-[21px] flex max-w-[790px] flex-wrap items-center justify-end gap-x-[22px] gap-y-[4px]">
+          подряд доходили до заголовка карточки. В потоке она идёт строкой под заголовком. */}
+      <div
+        className={cx(
+          'flex flex-wrap items-center gap-x-[22px] gap-y-[4px]',
+          stacked ? 'mt-[8px]' : 'absolute right-[31px] top-[21px] max-w-[790px] justify-end',
+        )}
+      >
         {entries.map((entry, index) => (
           <span key={entry.run_id} className="flex items-center gap-[8px] text-small text-ink-secondary">
             <span
@@ -130,10 +150,10 @@ export function AvailabilityCard({
         )}
       </div>
 
-      <div className="absolute left-[31px] top-[56px]">
+      <div className={stacked ? 'mt-[8px]' : 'absolute left-[31px] top-[56px]'}>
         <EChart
-          width={CHART_WIDTH}
-          height={CHART_HEIGHT}
+          width={stacked ? contentWidth - STACKED_PADDING * 2 - CARD_BORDERS : CHART_WIDTH}
+          height={stacked ? STACKED_CHART_HEIGHT : CHART_HEIGHT}
           option={option}
           ariaLabel="Столбчатый график доступности по клиентам для каждого варианта"
         />

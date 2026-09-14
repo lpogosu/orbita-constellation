@@ -1,11 +1,13 @@
 import { AlertCircle, ChevronRight, Clock, Crosshair, FolderClosed, Rocket, SatelliteDish, Trash2 } from 'lucide-react';
 
 import type { ClientComparison, Run } from '@/api/types';
-import { Skeleton } from '@/components/state/States';
+import { ErrorBlock, Skeleton } from '@/components/state/States';
 import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 import { formatGap, formatTick, policyLabel } from '@/lib/run-format';
 import { formatPoints, rowKey } from './format';
+import { useCardBox } from '@/components/layout/box';
+import { useStacked } from '@/app/viewport-mode';
 
 export interface FailureRowRef {
   readonly kind: 'satellite' | 'gateway';
@@ -44,6 +46,7 @@ interface FailuresCardProps {
   readonly perClient: readonly ClientComparison[] | null;
   readonly comparisonError: string | null;
   readonly comparisonLoading: boolean;
+  readonly onRetryComparison: () => void;
   readonly selectedClientId: string | null;
   readonly onSelectClient: (clientId: string) => void;
   readonly firstDivergenceTS: number | null;
@@ -55,16 +58,15 @@ export function FailuresCard(props: FailuresCardProps) {
   const affected = (props.perClient ?? []).filter((item) => item.affected);
   const untouched = (props.perClient ?? []).filter((item) => !item.affected);
 
+  const box = useCardBox(props);
+  // В потоке панель управляется пальцем: мелкие флажки и корзины макета получают
+  // область касания 40px, а на полотне остаются в размерах макета.
+  const stacked = useStacked();
+
   return (
     <div
-      className="card-glass absolute flex flex-col px-[23px] pb-[16px] pt-[15px]"
-      style={{
-        left: props.x,
-        top: props.y,
-        width: props.width,
-        height: props.height,
-        backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
-      }}
+      className={`card-glass ${box.positionClass} flex flex-col px-[23px] pb-[16px] pt-[15px]`}
+      style={box.style}
     >
       <p className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
         База сравнения
@@ -74,7 +76,7 @@ export function FailuresCard(props: FailuresCardProps) {
         className="mt-[8px]"
         value={props.baseRunId ?? ''}
         onChange={props.onBaseRun}
-        placeholder="Завершённых расчётов нет"
+        placeholder={props.baseRuns.length === 0 ? 'Завершённых расчётов нет' : 'Выберите расчёт'}
         icon={<FolderClosed aria-hidden="true" className="size-[16px] shrink-0 text-ink-secondary" />}
         options={props.baseRuns.map((run) => ({
           value: run.id,
@@ -94,18 +96,21 @@ export function FailuresCard(props: FailuresCardProps) {
         <button
           type="button"
           onClick={props.onAdd}
-          className="ml-auto text-caption font-semibold text-accent-blue"
+          className={cx(
+            'ml-auto text-caption font-semibold text-accent-blue',
+            stacked && 'h-[40px] px-[4px]',
+          )}
         >
           + Добавить
         </button>
       </div>
 
       <div className="mt-[10px] flex text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
-        <span className="w-[26px]">Вкл</span>
+        <span className={stacked ? 'w-[40px]' : 'w-[26px]'}>Вкл</span>
         <span className="flex-1">Объект</span>
         <span className="w-[64px]">Начало</span>
-        <span className="w-[64px]">Длит.</span>
-        <span className="w-[20px]" />
+        <span className="w-[76px]">Длит.</span>
+        <span className={stacked ? 'w-[40px]' : 'w-[20px]'} />
       </div>
       <div aria-hidden="true" className="mt-[6px] h-px bg-line-divider" />
 
@@ -114,7 +119,12 @@ export function FailuresCard(props: FailuresCardProps) {
           Отказов в черновике нет. Добавьте интервал или кликните аппарат на карте.
         </p>
       ) : (
-        <ul className="mt-[8px] max-h-[148px] space-y-[2px] overflow-y-auto pr-[2px] [scrollbar-width:thin]">
+        <ul
+          className={cx(
+            'mt-[8px] space-y-[2px]',
+            !stacked && 'max-h-[148px] overflow-y-auto pr-[2px] [scrollbar-width:thin]',
+          )}
+        >
           {props.rows.map((row) => {
             const key = rowKey(row.kind, row.index);
             const off = props.disabled.has(key);
@@ -122,36 +132,46 @@ export function FailuresCard(props: FailuresCardProps) {
               <li
                 key={key}
                 className={cx(
-                  'flex h-[34px] items-center rounded-[10px] px-[7px]',
+                  'flex items-center rounded-[10px]',
+                  stacked ? 'h-[44px]' : 'h-[34px] px-[7px]',
                   off ? 'opacity-45' : 'bg-surface-rowActive',
                 )}
               >
-                <input
-                  type="checkbox"
-                  checked={!off}
-                  aria-label={`Учитывать отказ ${row.id}`}
-                  onChange={() => { props.onToggle(key); }}
-                  className="size-[14px] accent-[var(--accent-violet)]"
-                />
+                <label className={cx('flex shrink-0 items-center', stacked && 'size-[40px] justify-center')}>
+                  <input
+                    type="checkbox"
+                    checked={!off}
+                    aria-label={`Учитывать отказ ${row.id}`}
+                    onChange={() => { props.onToggle(key); }}
+                    className={cx('accent-[var(--accent-violet)]', stacked ? 'size-[18px]' : 'size-[14px]')}
+                  />
+                </label>
                 {row.kind === 'satellite' ? (
-                  <Rocket aria-hidden="true" className="ml-[8px] size-[14px] text-ink-secondary" />
+                  <Rocket aria-hidden="true" className="ml-[8px] size-[14px] shrink-0 text-ink-secondary" />
                 ) : (
-                  <SatelliteDish aria-hidden="true" className="ml-[8px] size-[14px] text-ink-secondary" />
+                  <SatelliteDish aria-hidden="true" className="ml-[8px] size-[14px] shrink-0 text-ink-secondary" />
                 )}
-                <span className="ml-[7px] flex-1 truncate text-caption font-semibold text-ink-primary">
+                <span
+                  title={row.id}
+                  className="ml-[7px] min-w-0 flex-1 truncate text-caption font-semibold text-ink-primary"
+                >
                   {row.id}
                 </span>
-                <span className="w-[64px] text-caption text-ink-secondary" data-numeric>
+                <span className="w-[64px] shrink-0 text-caption text-ink-secondary" data-numeric>
                   {formatTick(row.startS)}
                 </span>
-                <span className="w-[64px] text-caption text-ink-secondary" data-numeric>
+                {/* Длительность шире начала: «1 ч 43 мин» в 64px упиралась в корзину. */}
+                <span className="w-[76px] shrink-0 truncate text-caption text-ink-secondary" data-numeric>
                   {formatGap(row.endS - row.startS)}
                 </span>
                 <button
                   type="button"
                   aria-label={`Удалить отказ ${row.id}`}
                   onClick={() => { props.onRemove(row); }}
-                  className="text-ink-muted transition-colors duration-150 hover:text-status-danger"
+                  className={cx(
+                    'flex shrink-0 items-center text-ink-muted transition-colors duration-150 hover:text-status-danger',
+                    stacked ? 'size-[40px] justify-center' : 'w-[20px] justify-end',
+                  )}
                 >
                   <Trash2 aria-hidden="true" className="size-[14px]" />
                 </button>
@@ -233,11 +253,16 @@ export function FailuresCard(props: FailuresCardProps) {
         Затронутые клиенты · {affected.length}
       </p>
 
-      <div className="scroll-area mt-[8px] min-h-0 flex-1 pr-[6px]">
+      <div className={cx('mt-[8px]', !stacked && 'scroll-area min-h-0 flex-1 pr-[6px]')}>
         {props.comparisonError !== null ? (
-          <p role="alert" className="text-caption text-status-danger">
-            {props.comparisonError}
-          </p>
+          <div className="h-[72px] rounded-sm border border-line-subtle bg-surface-sunken">
+            <ErrorBlock
+              title="Сравнение не получено"
+              message={props.comparisonError}
+              onRetry={props.onRetryComparison}
+              compact
+            />
+          </div>
         ) : props.comparisonLoading ? (
           <Skeleton className="h-[100px] w-full" />
         ) : props.perClient === null ? (
@@ -254,7 +279,8 @@ export function FailuresCard(props: FailuresCardProps) {
                   onClick={() => { props.onSelectClient(item.client_id); }}
                   aria-pressed={item.client_id === props.selectedClientId}
                   className={cx(
-                    'flex h-[48px] w-full items-center rounded-sm border px-[13px] text-left',
+                    'flex w-full items-center rounded-sm border px-[13px] text-left',
+                    stacked ? 'min-h-[48px] py-[6px]' : 'h-[48px]',
                     item.client_id === props.selectedClientId
                       ? 'border-[rgba(145,132,255,0.7)] bg-surface-rowActive'
                       : 'border-line-subtle bg-surface-sunken',
@@ -265,9 +291,18 @@ export function FailuresCard(props: FailuresCardProps) {
                     <span className="block truncate text-small font-semibold text-ink-primary">
                       {item.client_id}
                     </span>
-                    <span className="block truncate text-caption text-ink-secondary">
+                    {/* Короткая форма: полная фраза про отсчёты обрезалась посередине слова
+                        уже на макетной ширине панели. Целиком она в подсказке. */}
+                    <span
+                      title={
+                        item.affected
+                          ? `Маршрут сохранился на ${item.route_kept_ticks} отсчётах, перестроен на ${item.route_rebuilt_ticks}`
+                          : undefined
+                      }
+                      className={cx('block text-caption text-ink-secondary', !stacked && 'truncate')}
+                    >
                       {item.affected
-                        ? `${item.route_kept_ticks} отсчётов маршрут сохранился · ${item.route_rebuilt_ticks} перестроен`
+                        ? `сохранён ${item.route_kept_ticks} · перестроен ${item.route_rebuilt_ticks} отсч.`
                         : 'маршрут не изменился'}
                     </span>
                   </span>
@@ -297,10 +332,15 @@ export function FailuresCard(props: FailuresCardProps) {
         <button
           type="button"
           onClick={() => { props.onSeek(props.firstDivergenceTS ?? 0); }}
-          className="mt-[10px] flex h-[42px] items-center gap-[10px] rounded-[11px] border border-[rgba(46,139,251,0.45)] bg-[rgba(46,139,251,0.16)] px-[13px] text-caption font-semibold text-accent-blue"
+          className={cx(
+            'mt-[10px] flex items-center gap-[10px] rounded-[11px] border border-[rgba(46,139,251,0.45)] bg-[rgba(46,139,251,0.16)] px-[13px] text-left text-caption font-semibold text-accent-blue',
+            stacked ? 'min-h-[42px] py-[8px]' : 'h-[42px]',
+          )}
         >
-          <Clock aria-hidden="true" className="size-[15px]" />
-          Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
+          <Clock aria-hidden="true" className="size-[15px] shrink-0" />
+          <span className={stacked ? undefined : 'truncate'}>
+            Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
+          </span>
         </button>
       )}
     </div>

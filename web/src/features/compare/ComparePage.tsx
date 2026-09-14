@@ -23,6 +23,8 @@ import { defaultRunIds, groupRuns, policyRuns, variantOfRun } from './runs';
 import { TimelineCard } from './TimelineCard';
 import { VariantRow } from './VariantRow';
 import type { CompareMode } from './VariantRow';
+import { PageRoot } from '@/components/layout/Slot';
+import { useStacked } from '@/app/viewport-mode';
 
 /** Сравнению нужны минимум два запуска: с одним сравнивать не с чем (`05_API.md` §1). */
 const MIN_RUNS = 2;
@@ -37,6 +39,7 @@ type ComparisonState = ComparisonResult | 'incomplete';
  */
 export function ComparePage() {
   const navigate = useNavigate();
+  const stacked = useStacked();
   const [params, setParams] = useSearchParams();
   const [mode, setMode] = useState<CompareMode>('variants');
   const [busyVariantId, setBusyVariantId] = useState<string | null>(null);
@@ -172,80 +175,121 @@ export function ComparePage() {
     }
   }, [entries]);
 
+  // Большие состояния экрана: на полотне — карточка по макетной строке, в потоке — во всю
+  // ширину сетки своей высоты.
+  const stateCard = (top: number, content: ReactNode) => (
+    <Card
+      sceneX={26}
+      sceneY={top}
+      className={stacked ? 'h-[320px] md:col-span-2' : 'absolute left-[26px] h-[420px] w-[1868px]'}
+      style={stacked ? undefined : { top }}
+    >
+      {content}
+    </Card>
+  );
+
   if (projectId === '') {
     return (
-      <Screen>
-        <Card sceneX={26} sceneY={200} className="absolute left-[26px] top-[200px] h-[420px] w-[1868px]">
+      <Screen stacked={stacked}>
+        {stateCard(
+          200,
           <EmptyState
             title="Проект не выбран"
             hint="Откройте сравнение из проекта: адрес экрана содержит его идентификатор — /compare?project=…"
-          />
-        </Card>
+          />,
+        )}
       </Screen>
     );
   }
 
-  return (
-    <Screen>
-      <div className="absolute left-[1088px] top-[116px] flex h-[44px] w-[350px] items-center rounded-md border border-line bg-surface-input p-[4px]">
-        {(['variants', 'policies'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={mode === value}
-            onClick={() => { switchMode(value); }}
-            className={cx(
-              'h-[36px] flex-1 rounded-sm text-small font-semibold transition-colors duration-150',
-              mode === value
-                ? 'bg-accent-violet text-ink-onAccent'
-                : 'text-ink-secondary hover:text-ink-primary',
-            )}
-          >
-            {value === 'variants' ? 'Варианты' : 'Политики'}
-          </button>
-        ))}
-      </div>
+  const comparisonLoading =
+    project.data !== null && comparison.data === null && comparison.error === null;
 
-      <HeaderButton
-        left={1460}
-        width={200}
-        disabled={runIds.length < MIN_RUNS}
-        onClick={downloadEvidence}
-        icon={<Download aria-hidden="true" className="size-[16px]" />}
+  return (
+    <Screen stacked={stacked}>
+      <div
+        className={cx(
+          stacked
+            ? 'flex flex-wrap items-center gap-[8px] md:col-span-2'
+            : 'contents',
+        )}
       >
-        Evidence Pack
-      </HeaderButton>
-      <HeaderButton
-        left={1676}
-        width={118}
-        disabled={entries === null}
-        onClick={downloadCsv}
-        icon={<FileText aria-hidden="true" className="size-[16px]" />}
-      >
-        CSV
-      </HeaderButton>
+        <div
+          className={cx(
+            'flex h-[44px] items-center rounded-md border border-line bg-surface-input p-[4px]',
+            stacked ? 'w-full md:w-[350px]' : 'absolute left-[1088px] top-[116px] w-[350px]',
+          )}
+        >
+          {(['variants', 'policies'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={mode === value}
+              onClick={() => { switchMode(value); }}
+              className={cx(
+                'h-[36px] flex-1 rounded-sm text-small font-semibold transition-colors duration-150',
+                mode === value
+                  ? 'bg-accent-violet text-ink-onAccent'
+                  : 'text-ink-secondary hover:text-ink-primary',
+              )}
+            >
+              {value === 'variants' ? 'Варианты' : 'Политики'}
+            </button>
+          ))}
+        </div>
+
+        <HeaderButton
+          stacked={stacked}
+          left={1460}
+          width={200}
+          disabled={runIds.length < MIN_RUNS}
+          onClick={downloadEvidence}
+          icon={<Download aria-hidden="true" className="size-[16px]" />}
+        >
+          Evidence Pack
+        </HeaderButton>
+        <HeaderButton
+          stacked={stacked}
+          left={1676}
+          width={118}
+          disabled={entries === null}
+          onClick={downloadCsv}
+          icon={<FileText aria-hidden="true" className="size-[16px]" />}
+        >
+          CSV
+        </HeaderButton>
+      </div>
 
       {notice !== null && (
         <p
           role="status"
           title={notice}
-          className="absolute left-[420px] top-[120px] line-clamp-2 w-[640px] text-small text-ink-secondary"
+          className={cx(
+            'text-small text-ink-secondary',
+            stacked ? 'md:col-span-2' : 'absolute left-[420px] top-[120px] line-clamp-2 w-[640px]',
+          )}
         >
           {notice}
         </p>
       )}
 
-      {project.error !== null && (
-        <Card sceneX={26} sceneY={166} className="absolute left-[26px] top-[166px] h-[420px] w-[1868px]">
-          <ErrorBlock title="Проект не загрузился" message={project.error} onRetry={project.reload} />
-        </Card>
-      )}
+      {project.error !== null &&
+        stateCard(
+          166,
+          <ErrorBlock title="Проект не загрузился" message={project.error} onRetry={project.reload} />,
+        )}
 
       {project.data === null && project.error === null && (
         <LoadingBlock label="Загрузка вариантов проекта">
-          <div className="absolute left-[26px] top-[166px] flex gap-[16px]">
-            <Skeleton className="h-[88px] w-[455px]" />
-            <Skeleton className="h-[88px] w-[455px]" />
+          <div
+            className={
+              stacked
+                ? 'grid gap-[16px] md:col-span-2 md:grid-cols-2'
+                : 'absolute left-[26px] top-[166px] flex gap-[16px]'
+            }
+          >
+            <Skeleton className={stacked ? 'h-[88px]' : 'h-[88px] w-[455px]'} />
+            <Skeleton className={stacked ? 'h-[88px]' : 'h-[88px] w-[455px]'} />
           </div>
         </LoadingBlock>
       )}
@@ -256,24 +300,27 @@ export function ComparePage() {
           groups={groups}
           runIds={runIds}
           entries={entries}
+          comparing={comparisonLoading}
           busyVariantId={busyVariantId}
           onChange={setRunIds}
           onCalculate={calculate}
         />
       )}
 
-      {comparison.error !== null && (
-        <Card sceneX={26} sceneY={266} className="absolute left-[26px] top-[266px] h-[420px] w-[1868px]">
+      {comparison.error !== null &&
+        stateCard(
+          266,
           <ErrorBlock
             title="Сравнение не построено"
             message={comparison.error}
             onRetry={comparison.reload}
-          />
-        </Card>
-      )}
+          />,
+        )}
 
-      {comparison.data === 'incomplete' && project.data !== null && (
-        <Card sceneX={26} sceneY={266} className="absolute left-[26px] top-[266px] h-[420px] w-[1868px]">
+      {comparison.data === 'incomplete' &&
+        project.data !== null &&
+        stateCard(
+          266,
           <EmptyState
             title={mode === 'variants' ? 'Выбран один вариант' : 'Политика посчитана одна'}
             hint={
@@ -281,9 +328,12 @@ export function ComparePage() {
                 ? 'Добавьте второй вариант с завершённым расчётом: сравнивать один вариант не с чем.'
                 : 'Рассчитайте этот же вариант другой политикой маршрутизации — тогда их можно положить рядом.'
             }
-          />
-        </Card>
-      )}
+          />,
+        )}
+
+      {/* Пока сравнение считается, блоки держат свои места скелетонами: иначе под строкой
+          вариантов на секунды оставалось пустое полотно. */}
+      {comparisonLoading && <ComparisonSkeleton stacked={stacked} />}
 
       {entries !== null && (
         <>
@@ -317,18 +367,54 @@ export function ComparePage() {
   );
 }
 
-function Screen({ children }: { children: ReactNode }) {
+/**
+ * Корень экрана. В потоке блоки сравнения расставляются классами `order` (их задают сами
+ * карточки): в разметке они идут построчно по макету — метрики, параметры, график,
+ * рекомендация, — а на планшете параметры и рекомендация должны встать парой под метриками.
+ */
+function Screen({ stacked, children }: { stacked: boolean; children: ReactNode }) {
   return (
-    <div className="absolute inset-0">
-      <h1 className="absolute left-[36px] top-[110px] text-heading-m font-bold text-ink-primary">
+    <PageRoot canvasClassName="absolute inset-0" className="md:grid md:grid-cols-2">
+      <h1
+        className={
+          stacked
+            ? 'text-title-l font-bold text-ink-primary md:col-span-2'
+            : 'absolute left-[36px] top-[110px] text-heading-m font-bold text-ink-primary'
+        }
+      >
         Сравнение вариантов
       </h1>
       {children}
-    </div>
+    </PageRoot>
+  );
+}
+
+function ComparisonSkeleton({ stacked }: { stacked: boolean }) {
+  if (stacked) {
+    return (
+      <LoadingBlock label="Загрузка сравнения">
+        <div className="grid gap-[16px] md:col-span-2 md:grid-cols-2">
+          <Skeleton className="h-[288px] rounded-2xl md:col-span-2" />
+          <Skeleton className="h-[240px] rounded-2xl" />
+          <Skeleton className="h-[240px] rounded-2xl" />
+          <Skeleton className="h-[288px] rounded-2xl md:col-span-2" />
+        </div>
+      </LoadingBlock>
+    );
+  }
+  return (
+    <LoadingBlock label="Загрузка сравнения">
+      <Skeleton className="absolute left-[26px] top-[266px] h-[288px] w-[1160px] rounded-2xl" />
+      <Skeleton className="absolute left-[1202px] top-[266px] h-[288px] w-[692px] rounded-2xl" />
+      <Skeleton className="absolute left-[26px] top-[564px] h-[288px] w-[1160px] rounded-2xl" />
+      <Skeleton className="absolute left-[1202px] top-[564px] h-[288px] w-[692px] rounded-2xl" />
+      <Skeleton className="absolute left-[26px] top-[862px] h-[206px] w-[1868px] rounded-2xl" />
+    </LoadingBlock>
   );
 }
 
 function HeaderButton({
+  stacked,
   left,
   width,
   disabled,
@@ -336,6 +422,7 @@ function HeaderButton({
   icon,
   children,
 }: {
+  stacked: boolean;
   left: number;
   width: number;
   disabled: boolean;
@@ -348,9 +435,10 @@ function HeaderButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      style={{ left, width }}
+      style={stacked ? undefined : { left, width }}
       className={cx(
-        'absolute top-[116px] flex h-[44px] items-center gap-[8px] rounded-md',
+        'flex h-[44px] items-center gap-[8px] rounded-md',
+        stacked ? 'flex-1 justify-center md:flex-none' : 'absolute top-[116px]',
         'border border-line bg-surface-input px-[16px] text-small font-semibold text-ink-primary',
         'transition-colors duration-150 hover:border-line-strong',
         'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line',

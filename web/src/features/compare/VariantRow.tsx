@@ -3,9 +3,11 @@ import { useState } from 'react';
 
 import type { ComparisonEntry, RoutingPolicy } from '@/api/types';
 import { Card } from '@/components/ui/Card';
+import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
-import { deltaArrow, deltaTone, formatPoints } from '@/lib/measures';
+import { deltaArrow, formatPoints } from '@/lib/measures';
 import { formatShare, policyLabel, ROUTING_POLICIES, variantLetter } from '@/lib/run-format';
+import { deltaToneClass } from './metrics';
 import { pickRun } from './runs';
 import type { VariantRuns } from './runs';
 import { MAX_SLOTS, slotColor } from './slots';
@@ -21,6 +23,8 @@ interface VariantRowProps {
   readonly groups: readonly VariantRuns[];
   readonly runIds: readonly string[];
   readonly entries: readonly ComparisonEntry[] | null;
+  /** Сравнение запрошено и ещё не пришло: иначе карточке без данных нечего обещать. */
+  readonly comparing: boolean;
   readonly busyVariantId: string | null;
   readonly onChange: (runIds: readonly string[]) => void;
   readonly onCalculate: (variantId: string, policy: RoutingPolicy) => void;
@@ -36,11 +40,13 @@ export function VariantRow({
   groups,
   runIds,
   entries,
+  comparing,
   busyVariantId,
   onChange,
   onCalculate,
 }: VariantRowProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const stacked = useStacked();
 
   const remove = (runId: string): void => {
     onChange(runIds.filter((id) => id !== runId));
@@ -53,11 +59,13 @@ export function VariantRow({
     }
   };
 
-  return (
+  const row = (
     <>
       {runIds.map((runId, index) => (
         <VariantChip
           key={runId}
+          stacked={stacked}
+          comparing={comparing}
           index={index}
           left={SLOT_LEFT + index * SLOT_STEP}
           entry={entries?.find((item) => item.run_id === runId) ?? null}
@@ -71,11 +79,12 @@ export function VariantRow({
           aria-expanded={pickerOpen}
           onClick={() => { setPickerOpen((open) => !open); }}
           className={cx(
-            'absolute h-[88px] w-[455px] rounded-lg border border-dashed border-line',
+            'h-[88px] rounded-lg border border-dashed border-line',
+            stacked ? 'w-full' : 'absolute w-[455px]',
             'flex items-center justify-center gap-3 text-ink-secondary',
             'transition-colors duration-150 hover:border-line-strong hover:text-ink-primary',
           )}
-          style={{ left: SLOT_LEFT + runIds.length * SLOT_STEP, top: ROW_TOP }}
+          style={stacked ? undefined : { left: SLOT_LEFT + runIds.length * SLOT_STEP, top: ROW_TOP }}
         >
           <Plus aria-hidden="true" className="size-[18px]" />
           <span className="text-[17px] font-semibold">
@@ -84,27 +93,49 @@ export function VariantRow({
         </button>
       )}
 
-      {pickerOpen && (
-        <RunPicker
-          mode={mode}
-          groups={groups}
-          runIds={runIds}
-          busyVariantId={busyVariantId}
-          onPick={add}
-          onCalculate={onCalculate}
-          onClose={() => { setPickerOpen(false); }}
-        />
-      )}
+    </>
+  );
+
+  const picker = pickerOpen && (
+    <RunPicker
+      stacked={stacked}
+      mode={mode}
+      groups={groups}
+      runIds={runIds}
+      busyVariantId={busyVariantId}
+      onPick={add}
+      onCalculate={onCalculate}
+      onClose={() => { setPickerOpen(false); }}
+    />
+  );
+
+  if (stacked) {
+    return (
+      <>
+        <div className="grid gap-[16px] md:col-span-2 md:grid-cols-2">{row}</div>
+        {picker}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {row}
+      {picker}
     </>
   );
 }
 
 function VariantChip({
+  stacked,
+  comparing,
   index,
   left,
   entry,
   onRemove,
 }: {
+  stacked: boolean;
+  comparing: boolean;
   index: number;
   left: number;
   entry: ComparisonEntry | null;
@@ -118,10 +149,11 @@ function VariantChip({
       sceneX={left}
       sceneY={ROW_TOP}
       className={cx(
-        'absolute h-[88px] w-[455px] rounded-lg',
+        'h-[88px] rounded-lg',
+        stacked ? 'relative w-full' : 'absolute w-[455px]',
         isBase && 'border-2 border-accent-violet-light',
       )}
-      style={{ left, top: ROW_TOP }}
+      style={stacked ? undefined : { left, top: ROW_TOP }}
     >
       <span
         aria-hidden="true"
@@ -133,7 +165,7 @@ function VariantChip({
       </p>
 
       {isBase ? (
-        <span className="absolute left-[126px] top-[12px] rounded-pill bg-surface-row-active px-[9px] py-[3px] text-micro font-semibold tracking-normal text-ink-primary">
+        <span className="absolute left-[126px] top-[12px] rounded-pill bg-surface-rowActive px-[9px] py-[3px] text-micro font-semibold tracking-normal text-ink-primary">
           база
         </span>
       ) : (
@@ -142,7 +174,10 @@ function VariantChip({
             type="button"
             onClick={onRemove}
             aria-label={`Убрать вариант ${variantLetter(index)} из сравнения`}
-            className="absolute left-[124px] top-[11px] rounded-sm p-[2px] text-ink-muted transition-colors duration-150 hover:text-ink-primary"
+            className={cx(
+              'absolute flex items-center justify-center rounded-sm text-ink-muted transition-colors duration-150 hover:text-ink-primary',
+              stacked ? 'left-[108px] top-0 size-[40px]' : 'left-[124px] top-[11px] p-[2px]',
+            )}
           >
             <X aria-hidden="true" className="size-[14px]" />
           </button>
@@ -151,11 +186,18 @@ function VariantChip({
 
       {entry === null ? (
         <p className="absolute left-[18px] top-[36px] text-small text-ink-secondary">
-          Запуск выбран, сравнение считается…
+          {comparing ? 'Запуск выбран, сравнение считается…' : 'Запуск выбран, сравнения пока нет'}
         </p>
       ) : (
         <>
-          <p className="absolute left-[18px] top-[34px] max-w-[280px] truncate text-[16px] font-semibold text-ink-primary">
+          <p
+            title={entry.variant_title}
+            className={cx(
+              'absolute left-[18px] top-[34px] truncate text-[16px] font-semibold text-ink-primary',
+              // Справа стоит доступность шириной около 120px: заголовок до неё не доходит.
+              stacked ? 'max-w-[calc(100%-160px)]' : 'max-w-[280px]',
+            )}
+          >
             {entry.variant_title}
           </p>
           <span className="absolute left-[18px] top-[58px] rounded-[7px] bg-surface-chip px-[8px] py-[3px] text-micro font-medium tracking-normal text-ink-secondary">
@@ -174,7 +216,7 @@ function VariantChip({
             <p
               className={cx(
                 'absolute right-[22px] top-[12px] text-[11px] font-semibold',
-                deltaTone(delta, 'up') === 'good' ? 'text-status-success' : 'text-status-danger',
+                deltaToneClass(delta, 'up'),
               )}
               data-numeric
             >
@@ -188,6 +230,7 @@ function VariantChip({
 }
 
 function RunPicker({
+  stacked,
   mode,
   groups,
   runIds,
@@ -196,6 +239,7 @@ function RunPicker({
   onCalculate,
   onClose,
 }: {
+  stacked: boolean;
   mode: CompareMode;
   groups: readonly VariantRuns[];
   runIds: readonly string[];
@@ -214,12 +258,16 @@ function RunPicker({
         type="button"
         aria-label="Закрыть список вариантов"
         onClick={onClose}
-        className="absolute inset-0 cursor-default"
+        className={cx('cursor-default', stacked ? 'fixed inset-0 z-10' : 'absolute inset-0')}
       />
       <Card
         sceneX={SLOT_LEFT}
         sceneY={262}
-        className="absolute left-[26px] top-[262px] z-10 w-[560px] p-[18px]"
+        className={cx(
+          'p-[18px]',
+          // В потоке список раскрывается под строкой вариантов и поверх подложки закрытия.
+          stacked ? 'relative z-20' : 'absolute left-[26px] top-[262px] z-10 w-[560px]',
+        )}
       >
         <p className="text-micro font-semibold tracking-wide text-ink-muted">
           {mode === 'variants' ? 'ВАРИАНТЫ ПРОЕКТА' : 'ПОЛИТИКИ ЭТОГО ВАРИАНТА'}
@@ -242,7 +290,8 @@ function RunPicker({
                         disabled={calculating}
                         onClick={() => { onCalculate(group.variant.id, policy); }}
                         className={cx(
-                          'rounded-sm border border-dashed border-line px-[10px] py-[6px] text-caption',
+                          'rounded-sm border border-dashed border-line px-[10px] py-[6px] text-left text-caption',
+                          stacked && 'min-h-[40px]',
                           'text-ink-muted transition-colors duration-150',
                           'hover:border-line-strong hover:text-ink-secondary',
                           'disabled:cursor-not-allowed disabled:opacity-50',
@@ -261,9 +310,10 @@ function RunPicker({
                       onClick={() => { onPick(run.id); }}
                       className={cx(
                         'rounded-sm border px-[10px] py-[6px] text-caption font-medium',
+                        stacked && 'min-h-[40px]',
                         'transition-colors duration-150',
                         chosen
-                          ? 'cursor-not-allowed border-line-strong bg-surface-row-active text-ink-primary'
+                          ? 'cursor-not-allowed border-line-strong bg-surface-rowActive text-ink-primary'
                           : 'border-line text-ink-secondary hover:border-line-strong hover:text-ink-primary',
                       )}
                     >

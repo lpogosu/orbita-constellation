@@ -3,6 +3,8 @@ import { AlertTriangle } from 'lucide-react';
 import type { ComparisonEntry, ParameterChange } from '@/api/types';
 import { EmptyState } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
+import { useStacked } from '@/app/viewport-mode';
+import { cx } from '@/lib/cx';
 import { variantLetter } from '@/lib/run-format';
 
 const LEFT = 1202;
@@ -17,6 +19,7 @@ const ENVIRONMENT_PREFIX = 'environment.';
  * ничего вписывать руками здесь нельзя.
  */
 export function ChangedParametersCard({ entries }: { entries: readonly ComparisonEntry[] }) {
+  const stacked = useStacked();
   const base = entries[0];
   if (base === undefined) {
     return null;
@@ -30,60 +33,76 @@ export function ChangedParametersCard({ entries }: { entries: readonly Compariso
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute h-[288px] w-[692px]"
-      style={{ left: LEFT, top: TOP }}
+      className={stacked ? 'order-2 flex flex-col p-[16px]' : 'absolute h-[288px] w-[692px]'}
+      style={stacked ? undefined : { left: LEFT, top: TOP }}
     >
-      <h2 className="absolute left-[27px] top-[17px] text-title-m font-semibold text-ink-primary">
+      <h2
+        className={cx(
+          'text-title-m font-semibold text-ink-primary',
+          !stacked && 'absolute left-[27px] top-[17px]',
+        )}
+      >
         Изменённые параметры
       </h2>
 
       {paths.length === 0 ? (
-        <div className="absolute inset-x-[27px] bottom-[24px] top-[56px]">
+        <div className={stacked ? 'min-h-[180px] flex-1' : 'absolute inset-x-[27px] bottom-[24px] top-[56px]'}>
           <EmptyState
             title="Сценарии совпадают"
             hint="Варианты различаются только политикой маршрутизации: в канонических сценариях нет ни одного расхождения."
           />
         </div>
       ) : (
-        <div className="absolute inset-x-[27px] top-[56px] h-[184px]">
-          <div
-            className="grid gap-x-[12px] pb-[6px] text-[10px] font-semibold tracking-[0.7px] text-ink-muted"
-            style={{ gridTemplateColumns: template(candidates.length) }}
-          >
-            <span>ПАРАМЕТР</span>
-            <span className="truncate">{variantLetter(0)} · база</span>
-            {candidates.map((entry, index) => (
-              <span key={entry.run_id} className="truncate">
-                {variantLetter(index + 1)} · {entry.variant_title}
-              </span>
-            ))}
-          </div>
-          <div className="h-px w-full bg-line-divider" />
-
-          <ul className="scroll-area max-h-[150px] pr-[6px]">
-            {paths.map((path) => (
-              <li
-                key={path}
-                className="grid items-center gap-x-[12px] border-b border-line-divider py-[8px] last:border-0"
-                style={{ gridTemplateColumns: template(candidates.length) }}
-              >
-                <span className="break-words font-mono text-[12px] text-ink-secondary">{path}</span>
-                <span className="text-[13px] text-ink-primary" data-numeric>
-                  {baseValue(candidates, path)}
+        <div
+          className={
+            stacked ? 'mt-[12px] overflow-x-auto [scrollbar-width:thin]' : 'absolute inset-x-[27px] top-[56px] h-[184px]'
+          }
+        >
+          <div className={stacked ? 'min-w-max' : undefined}>
+            <div
+              className="grid gap-x-[12px] pb-[6px] text-[10px] font-semibold tracking-[0.7px] text-ink-muted"
+              style={{ gridTemplateColumns: template(candidates.length) }}
+            >
+              <span>ПАРАМЕТР</span>
+              <span className="truncate">{variantLetter(0)} · база</span>
+              {candidates.map((entry, index) => (
+                <span key={entry.run_id} className="truncate">
+                  {variantLetter(index + 1)} · {entry.variant_title}
                 </span>
-                {candidates.map((entry) => (
-                  <span key={entry.run_id} className="text-[13px] text-ink-primary" data-numeric>
-                    {show(entry.changed_parameters.find((change) => change.path === path)?.to)}
+              ))}
+            </div>
+            <div className="h-px w-full bg-line-divider" />
+
+            <ul className={stacked ? undefined : 'scroll-area max-h-[150px] pr-[6px]'}>
+              {paths.map((path) => (
+                <li
+                  key={path}
+                  className="grid items-center gap-x-[12px] border-b border-line-divider py-[8px] last:border-0"
+                  style={{ gridTemplateColumns: template(candidates.length) }}
+                >
+                  <span className="break-words font-mono text-[12px] text-ink-secondary">{path}</span>
+                  <span className="text-[13px] text-ink-primary" data-numeric>
+                    {baseValue(candidates, path)}
                   </span>
-                ))}
-              </li>
-            ))}
-          </ul>
+                  {candidates.map((entry) => (
+                    <span key={entry.run_id} className="text-[13px] text-ink-primary" data-numeric>
+                      {show(entry.changed_parameters.find((change) => change.path === path)?.to)}
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
       {mixedConditions && (
-        <p className="absolute inset-x-[27px] bottom-[36px] flex items-start gap-[8px] text-[11px] text-status-warning">
+        <p
+          className={cx(
+            'flex items-start gap-[8px] text-[11px] text-status-warning',
+            stacked ? 'mt-[12px]' : 'absolute inset-x-[27px] bottom-[36px]',
+          )}
+        >
           <AlertTriangle aria-hidden="true" className="mt-[1px] size-[13px] shrink-0" />
           Варианты с разными условиями расчёта: сопоставление ориентировочно.
         </p>
@@ -91,7 +110,10 @@ export function ChangedParametersCard({ entries }: { entries: readonly Compariso
 
       <p
         title={base.variant_title}
-        className="absolute inset-x-[27px] bottom-[14px] truncate text-[11px] text-ink-muted"
+        className={cx(
+          'truncate text-[11px] text-ink-muted',
+          stacked ? 'mt-[12px]' : 'absolute inset-x-[27px] bottom-[14px]',
+        )}
       >
         источник: сравнение канонических сценариев · база — {base.variant_title}
       </p>

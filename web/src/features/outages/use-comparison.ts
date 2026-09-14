@@ -80,19 +80,27 @@ export interface ComparisonState {
   readonly entry: ComparisonEntry | null;
   readonly error: string | null;
   readonly loading: boolean;
+  /** Повтор запроса после ошибки: сравнение падает вместе с сетью, а не только навсегда. */
+  readonly reload: () => void;
 }
+
+type ComparisonData = Omit<ComparisonState, 'reload'>;
 
 /**
  * `POST /api/comparisons` с парой запусков. База — первый элемент, у неё дельты пустые,
  * поэтому экран читает второй: всё «что изменилось» живёт именно там (`05_API.md` §1).
  */
 export function useComparison(baseRunId: string | null, otherRunId: string | null): ComparisonState {
-  const [state, setState] = useState<ComparisonState>({
+  const [state, setState] = useState<ComparisonData>({
     base: null,
     entry: null,
     error: null,
     loading: false,
   });
+  const [attempt, setAttempt] = useState(0);
+  const reload = useCallback(() => {
+    setAttempt((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     if (baseRunId === null || otherRunId === null || baseRunId === otherRunId) {
@@ -121,9 +129,9 @@ export function useComparison(baseRunId: string | null, otherRunId: string | nul
     return () => {
       active = false;
     };
-  }, [baseRunId, otherRunId]);
+  }, [baseRunId, otherRunId, attempt]);
 
-  return state;
+  return { ...state, reload };
 }
 
 export interface CriticalityState {

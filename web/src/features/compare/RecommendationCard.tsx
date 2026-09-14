@@ -8,10 +8,12 @@ import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
+import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
-import { deltaArrow, deltaTone, formatPoints } from '@/lib/measures';
+import { deltaArrow, formatPoints } from '@/lib/measures';
 import { formatGap, variantLetter } from '@/lib/run-format';
 import { useResource } from '@/lib/use-resource';
+import { deltaToneClass } from './metrics';
 
 const LEFT = 1202;
 const TOP = 564;
@@ -42,6 +44,7 @@ interface RecommendationCardProps {
  */
 export function RecommendationCard({ entries, onApply, onSwap }: RecommendationCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const stacked = useStacked();
   const base = entries[0];
   const candidate = entries[1];
   const baseRunId = base?.run_id ?? '';
@@ -67,15 +70,22 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute h-[288px] w-[692px]"
-      style={{ left: LEFT, top: TOP }}
+      className={stacked ? 'order-3 flex flex-col p-[16px]' : 'absolute h-[288px] w-[692px]'}
+      style={stacked ? undefined : { left: LEFT, top: TOP }}
     >
-      <p className="absolute left-[27px] top-[13px] text-[11px] font-semibold tracking-[0.88px] text-accent-cyan">
+      <p
+        className={cx(
+          'text-[11px] font-semibold tracking-[0.88px] text-accent-cyan',
+          !stacked && 'absolute left-[27px] top-[13px]',
+        )}
+      >
         РЕКОМЕНДАЦИЯ · ranking_order
       </p>
 
       {recommendation.error !== null ? (
-        <div className="absolute inset-x-[27px] top-[40px] h-[170px]">
+        // На полотне ошибка занимает колонку вывода, а не всю ширину: справа стоит талисман,
+        // и кнопка «Повторить» оказывалась под ним.
+        <div className={stacked ? 'mt-[8px] h-[120px]' : 'absolute left-[27px] top-[40px] h-[170px] w-[446px]'}>
           <ErrorBlock
             title="Вывод не получен"
             message={recommendation.error}
@@ -85,15 +95,16 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
         </div>
       ) : recommendation.data === null ? (
         <LoadingBlock label="Загрузка рекомендации">
-          <div className="absolute inset-x-[27px] top-[40px] space-y-[12px]">
-            <Skeleton className="h-[28px] w-[300px]" />
-            <Skeleton className="h-[16px] w-[420px]" />
-            <Skeleton className="h-[96px] w-[440px]" />
+          <div className={stacked ? 'mt-[8px] space-y-[12px]' : 'absolute inset-x-[27px] top-[40px] space-y-[12px]'}>
+            <Skeleton className={stacked ? 'h-[28px] w-[70%]' : 'h-[28px] w-[300px]'} />
+            <Skeleton className={stacked ? 'h-[16px] w-full' : 'h-[16px] w-[420px]'} />
+            <Skeleton className={stacked ? 'h-[96px] w-full' : 'h-[96px] w-[440px]'} />
           </div>
         </LoadingBlock>
       ) : (
         <>
           <Verdict
+            stacked={stacked}
             recommendation={recommendation.data}
             winnerTitle={winner?.variant_title ?? '—'}
             winnerLetter={variantLetter(entries.findIndex((entry) => entry.run_id === winner?.run_id))}
@@ -102,6 +113,7 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
           />
           {detailsOpen && (
             <RecommendationDetailsModal
+              stacked={stacked}
               recommendation={recommendation.data}
               onClose={() => { setDetailsOpen(false); }}
             />
@@ -113,20 +125,33 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
         src="/assets/mascot-recommendation.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute left-[485px] top-[87px] h-[120px] w-[180px] object-contain"
+        className={cx(
+          'pointer-events-none absolute object-contain',
+          // В потоке талисман уходит в угол к короткой подписи «Рекомендация»: рядом с
+          // выводом в узкой колонке он заслонял бы текст.
+          stacked ? 'right-[10px] top-[4px] h-[52px] w-[78px]' : 'left-[485px] top-[87px] h-[120px] w-[180px]',
+        )}
       />
 
       {/*
         Обе кнопки одной высоты и одной ширины: «Поменять местами» в 220 пикселях
         ломалось на две строки и выпадало из своих 50 по высоте.
       */}
-      <div className="absolute inset-x-[27px] top-[223px] flex h-[50px] items-stretch gap-[11px]">
+      <div
+        className={cx(
+          'flex items-stretch',
+          stacked
+            ? 'mt-[16px] flex-col gap-[8px]'
+            : 'absolute inset-x-[27px] top-[223px] h-[50px] gap-[11px]',
+        )}
+      >
         <button
           type="button"
           onClick={() => { onApply(winnerIsBase ? base.variant_id : candidate.variant_id); }}
           className={cx(
-            'flex w-[300px] shrink-0 items-center justify-center gap-3 whitespace-nowrap',
-            'rounded-lg bg-accent-violet text-[22px] font-semibold text-ink-onAccent shadow-glow-violet',
+            'flex items-center justify-center gap-3 whitespace-nowrap',
+            stacked ? 'h-[50px] text-title-m' : 'w-[300px] shrink-0 text-[22px]',
+            'rounded-lg bg-accent-violet font-semibold text-ink-onAccent shadow-glow-violet',
             'transition-[filter] duration-150 hover:brightness-110',
           )}
         >
@@ -138,8 +163,9 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
           type="button"
           onClick={onSwap}
           className={cx(
-            'flex w-[300px] shrink-0 items-center justify-center gap-3 whitespace-nowrap',
-            'rounded-lg border border-line bg-surface-input text-[22px] font-semibold text-ink-primary',
+            'flex items-center justify-center gap-3 whitespace-nowrap',
+            stacked ? 'h-[50px] text-title-m' : 'w-[300px] shrink-0 text-[22px]',
+            'rounded-lg border border-line bg-surface-input font-semibold text-ink-primary',
             'transition-colors duration-150 hover:border-line-strong',
           )}
         >
@@ -152,12 +178,14 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
 }
 
 function Verdict({
+  stacked,
   recommendation,
   winnerTitle,
   winnerLetter,
   winnerIsBase,
   onOpenDetails,
 }: {
+  stacked: boolean;
   recommendation: Recommendation;
   winnerTitle: string;
   winnerLetter: string;
@@ -165,9 +193,14 @@ function Verdict({
   onOpenDetails: () => void;
 }) {
   const availabilityDelta = recommendation.deltas['min_client_availability'];
-  const change = availabilityDelta === undefined
-    ? ''
-    : ` минимум ${availabilityDelta >= 0 ? 'выше' : 'ниже'} на ${formatPoints(availabilityDelta)}.`;
+  // Нулевая дельта — «не изменился», а не «выше на 0.00 п.п.»: иначе вывод обещает
+  // улучшение, которого нет.
+  const change =
+    availabilityDelta === undefined
+      ? ''
+      : availabilityDelta === 0
+        ? ' минимум доступности не изменился.'
+        : ` минимум ${availabilityDelta > 0 ? 'выше' : 'ниже'} на ${formatPoints(availabilityDelta)}.`;
   const summary = winnerIsBase
     ? `База остаётся лучшей:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`
     : `${winnerTitle} — лучший вариант:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`;
@@ -175,7 +208,7 @@ function Verdict({
   return (
     /* Длинные списки открываются явно в окне деталей, а не скрываются за прокруткой
        небольшой карточки рекомендации. */
-    <div className="absolute left-[27px] top-[31px] flex h-[184px] w-[446px] flex-col">
+    <div className={cx('flex flex-col', stacked ? 'mt-[6px]' : 'absolute left-[27px] top-[31px] h-[184px] w-[446px]')}>
       <h2 className="shrink-0 text-[20px] font-bold leading-[1.1] tracking-[-0.55px] text-accent-cyan">
         {winnerIsBase
           ? 'Изменение не улучшает худшего клиента'
@@ -203,7 +236,10 @@ function Verdict({
       <button
         type="button"
         onClick={onOpenDetails}
-        className="mt-[10px] flex h-[34px] w-fit items-center rounded-sm border border-line bg-surface-input px-[12px] text-[12px] font-semibold text-ink-primary transition-colors hover:border-line-strong"
+        className={cx(
+          'mt-[10px] flex w-fit items-center rounded-sm border border-line bg-surface-input px-[12px] text-left text-[12px] font-semibold text-ink-primary transition-colors hover:border-line-strong',
+          stacked ? 'min-h-[40px] py-[6px]' : 'h-[34px]',
+        )}
       >
         Подробнее: {recommendation.per_client.length} клиентов
         {recommendation.limitations.length > 0 && ` · ${recommendation.limitations.length} ограничений`}
@@ -213,9 +249,11 @@ function Verdict({
 }
 
 function RecommendationDetailsModal({
+  stacked,
   recommendation,
   onClose,
 }: {
+  stacked: boolean;
   recommendation: Recommendation;
   onClose: () => void;
 }) {
@@ -242,27 +280,24 @@ function RecommendationDetailsModal({
             {recommendation.per_client.map((client) => (
               <li
                 key={client.client_id}
-                className="grid grid-cols-[minmax(96px,1fr)_minmax(150px,1fr)_minmax(190px,1fr)] gap-[16px] py-[10px] text-small"
+                className={cx(
+                  'grid gap-[16px] py-[10px] text-small',
+                  stacked
+                    ? 'grid-cols-1 gap-y-[2px] md:grid-cols-3'
+                    : 'grid-cols-[minmax(96px,1fr)_minmax(150px,1fr)_minmax(190px,1fr)]',
+                )}
               >
                 <span className="truncate font-semibold text-ink-primary" title={client.client_id}>
                   {client.client_id}
                 </span>
                 <span
-                  className={cx(
-                    deltaTone(client.availability_delta, 'up') === 'good'
-                      ? 'text-status-success'
-                      : 'text-status-danger',
-                  )}
+                  className={deltaToneClass(client.availability_delta, 'up')}
                   data-numeric
                 >
                   {deltaArrow(client.availability_delta)} {formatPoints(client.availability_delta)} доступность
                 </span>
                 <span
-                  className={cx(
-                    deltaTone(client.max_gap_delta_s, 'down') === 'good'
-                      ? 'text-status-success'
-                      : 'text-status-danger',
-                  )}
+                  className={deltaToneClass(client.max_gap_delta_s, 'down')}
                   data-numeric
                 >
                   {deltaArrow(client.max_gap_delta_s)} {formatGap(client.max_gap_delta_s)} перерыв
@@ -296,6 +331,9 @@ function RecommendationDetailsModal({
   // Карточка рекомендации обрезает overflow ради стеклянной маски. Детали
   // должны жить поверх всего полотна, иначе при раскрытии они остаются в
   // пределах 288 px карточки и становятся недоступны.
+  if (stacked) {
+    return modal;
+  }
   const canvas = document.querySelector('.app-canvas');
   return canvas === null ? modal : createPortal(modal, canvas);
 }

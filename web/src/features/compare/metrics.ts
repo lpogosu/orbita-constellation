@@ -174,3 +174,12 @@ function numberRow(
     },
   };
 }
+
+/**
+ * Цвет дельты по её пользе. Нулевая дельта — не проигрыш: раньше «= 0.00 п.п.» на
+ * карточке варианта красилась красным, будто вариант хуже базы.
+ */
+export function deltaToneClass(delta: number, better: Better): string {
+  const tone = deltaTone(delta, better);
+  return tone === 'good' ? 'text-status-success' : tone === 'bad' ? 'text-status-danger' : 'text-ink-muted';
+}

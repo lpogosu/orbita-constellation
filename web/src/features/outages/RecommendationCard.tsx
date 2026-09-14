@@ -1,8 +1,13 @@
 import { Lightbulb } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import type { ClientComparison, ComparisonEntry } from '@/api/types';
 import { causeView, formatTick } from '@/lib/run-format';
 import { formatPoints } from './format';
+import { useCardBox } from '@/components/layout/box';
+import { EmptyState, ErrorBlock, Skeleton } from '@/components/state/States';
+import { useStacked } from '@/app/viewport-mode';
+import { cx } from '@/lib/cx';
 
 interface RecommendationCardProps {
   readonly x: number;
@@ -11,54 +16,97 @@ interface RecommendationCardProps {
   readonly height: number;
   readonly entry: ComparisonEntry | null;
   readonly baseTitle: string | null;
+  readonly loading: boolean;
+  readonly error: string | null;
+  readonly onRetry: () => void;
 }
 
 /**
  * «Рекомендация» (`14_SCREENS.md` §3.3), узел макета `43:461`.
  *
  * Текст собирается только из полей сравнения: клиент, дельта доступности, границы нового
- * перерыва, доля отсчётов с уцелевшим маршрутом. Общих фраз здесь нет; если сравнения нет
- * — блока нет тоже.
+ * перерыва, доля отсчётов с уцелевшим маршрутом. Общих фраз здесь нет: пока сравнения нет,
+ * карточка объясняет, откуда вывод возьмётся, а не оставляет пустое место в колонке.
  */
 export function RecommendationCard(props: RecommendationCardProps) {
+  const box = useCardBox(props);
+  const stacked = useStacked();
+
   const entry = props.entry;
-  if (entry === null || entry.per_client.length === 0) {
-    return null;
+  const worst =
+    entry === null
+      ? undefined
+      : [...entry.per_client]
+          .filter((item) => item.affected)
+          .sort((a, b) => a.availability_delta - b.availability_delta)[0];
+
+  let body: ReactNode;
+  if (props.error !== null) {
+    body = (
+      <ErrorBlock title="Сравнение не получено" message={props.error} onRetry={props.onRetry} compact />
+    );
+  } else if (props.loading) {
+    body = (
+      <div className="space-y-[8px] pt-[4px]">
+        <Skeleton className="h-[14px] w-full" />
+        <Skeleton className="h-[14px] w-[85%]" />
+        <Skeleton className="h-[14px] w-[60%]" />
+      </div>
+    );
+  } else if (entry === null) {
+    body = (
+      <EmptyState
+        title="Вывода пока нет"
+        hint="Задайте отказ и нажмите «Применить отказ» — вывод соберётся из сравнения с базой."
+        compact
+      />
+    );
+  } else if (worst === undefined) {
+    body = (
+      <EmptyState
+        title="Клиенты не затронуты"
+        hint="Отказ не изменил ни одного маршрута: доступность осталась как в базе."
+        compact
+      />
+    );
+  } else {
+    body = (
+      // Вывод собирается из полей сравнения и длины не имеет: на полотне он прокручивается
+      // внутри карточки, а не обрезается её краем.
+      <p className={cx('text-small text-ink-secondary', !stacked && 'scroll-area h-full pr-[6px]')}>
+        {sentence(worst, entry)}
+      </p>
+    );
   }
 
-  const worst = [...entry.per_client]
-    .filter((item) => item.affected)
-    .sort((a, b) => a.availability_delta - b.availability_delta)[0];
-  if (worst === undefined) {
-    return null;
-  }
+  const footer =
+    entry === null
+      ? null
+      : `основано на сравнении ${entry.run_id.slice(0, 8)}${
+          props.baseTitle === null ? '' : ` с «${props.baseTitle}»`
+        } · политика ${entry.routing_policy}`;
 
   return (
     <div
-      className="card-glass absolute flex flex-col px-[20px] pb-[14px] pt-[11px]"
-      style={{
-        left: props.x,
-        top: props.y,
-        width: props.width,
-        height: props.height,
-        backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
-      }}
+      className={`card-glass ${box.positionClass} flex flex-col px-[20px] pb-[14px] pt-[11px]`}
+      style={box.style}
     >
       <p className="flex shrink-0 items-center gap-[12px] text-title-m font-semibold text-ink-primary">
         <Lightbulb aria-hidden="true" className="size-[26px] shrink-0 text-status-warning" />
         Что показало сравнение
       </p>
 
-      {/* Вывод собирается из полей сравнения и длины не имеет: он прокручивается внутри
-          карточки, а не обрезается её краем. */}
-      <p className="scroll-area mt-[12px] min-h-0 flex-1 pr-[6px] text-small text-ink-secondary">
-        {sentence(worst, entry)}
-      </p>
+      {/* Отступы подобраны под четыре строки вывода в 160 пикселях карточки: при прежних
+          строка обрезалась посередине. */}
+      <div className={cx('mt-[8px]', stacked ? 'min-h-[64px]' : 'min-h-0 flex-1')}>
+        {body}
+      </div>
 
-      <p className="mt-[10px] shrink-0 truncate text-micro text-ink-muted">
-        основано на сравнении {entry.run_id.slice(0, 8)}
-        {props.baseTitle !== null && ` с «${props.baseTitle}»`} · политика {entry.routing_policy}
-      </p>
+      {footer !== null && worst !== undefined && (
+        <p title={footer} className="mt-[6px] shrink-0 truncate text-micro text-ink-muted">
+          {footer}
+        </p>
+      )}
     </div>
   );
 }

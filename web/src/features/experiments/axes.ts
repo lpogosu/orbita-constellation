@@ -8,6 +8,13 @@ import type { ExperimentAxis, Scenario } from '@/api/types';
 export interface AxisOption {
   readonly path: string;
   readonly title: string;
+  /**
+   * Короткая подпись для строк таблиц и топа: «RAAN P2» вместо «RAAN плоскости P2». В узкой
+   * строке длинные названия съедали значение, и точки перебора выглядели одинаковыми.
+   */
+  readonly short: string;
+  /** Единица значения в короткой подписи: градусы у углов, пусто у этапа запуска. */
+  readonly unit: string;
   /** Границы значения по схеме `cosmo-A-1.0`: вне них сервис ответит 400. */
   readonly min: number;
   readonly max: number;
@@ -24,6 +31,8 @@ export function axisOptions(scenario: Scenario): AxisOption[] {
     options.push({
       path: `design.planes[${index}].raan_deg`,
       title: `RAAN плоскости ${plane.id}`,
+      short: `RAAN ${plane.id}`,
+      unit: '°',
       min: 0,
       max: 359.9,
       current: plane.raan_deg,
@@ -32,6 +41,8 @@ export function axisOptions(scenario: Scenario): AxisOption[] {
     options.push({
       path: `design.planes[${index}].phase_deg`,
       title: `Фаза плоскости ${plane.id}`,
+      short: `фаза ${plane.id}`,
+      unit: '°',
       min: 0,
       max: 359.9,
       current: plane.phase_deg,
@@ -42,6 +53,8 @@ export function axisOptions(scenario: Scenario): AxisOption[] {
   options.push({
     path: 'design.launch_stage',
     title: 'Этап запуска',
+    short: 'этап',
+    unit: '',
     min: 1,
     max: 3,
     current: scenario.design.launch_stage,

@@ -15,6 +15,7 @@ import {
   variantLetter,
 } from '@/lib/run-format';
 import { cx } from '@/lib/cx';
+import { plural } from '@/lib/format';
 
 const LEFT = 25;
 const TOP = 214;
@@ -106,11 +107,11 @@ export function VariantsCard({
           <p
             title={baseTitle}
             className={cx(
-              'truncate text-caption text-ink-secondary',
-              stacked ? 'min-w-0' : 'absolute left-[147px] top-[23px] w-[420px]',
+              'text-caption text-ink-secondary',
+              stacked ? 'min-w-0 break-words' : 'absolute left-[147px] top-[23px] w-[420px] truncate',
             )}
           >
-            {rows.length} вариантов{baseTitle === undefined ? '' : ` · база — ${baseTitle}`}
+            {rows.length} {plural(rows.length, 'вариант', 'варианта', 'вариантов')}{baseTitle === undefined ? '' : ` · база — ${baseTitle}`}
           </p>
         )}
       </div>
@@ -177,7 +178,9 @@ export function VariantsCard({
                       className="text-[14px] font-semibold text-ink-primary"
                     >
                       <span className="flex items-center gap-[8px]">
-                        <span className="truncate">{row.variant.title}</span>
+                        <span className="truncate" title={row.variant.title}>
+                          {row.variant.title}
+                        </span>
                         {row.active ? (
                           <Tag
                             icon={<Check aria-hidden="true" className="size-[12px]" />}
@@ -211,7 +214,9 @@ export function VariantsCard({
                       width={140}
                       className="font-medium text-ink-secondary"
                     >
-                      <span className="truncate">{row.parentTitle ?? 'исходный'}</span>
+                      <span className="truncate" title={row.parentTitle ?? undefined}>
+                        {row.parentTitle ?? 'исходный'}
+                      </span>
                     </Cell>
 
                     <Cell

@@ -86,9 +86,9 @@ export function RecommendationCard(props: RecommendationCardProps) {
   const footer =
     entry === null
       ? null
-      : `основано на сравнении ${entry.run_id.slice(0, 8)}${
-          props.baseTitle === null ? '' : ` с «${props.baseTitle}»`
-        } · политика ${entry.routing_policy}`;
+      : `прогон ${entry.run_id.slice(0, 8)}${
+          props.baseTitle === null ? '' : ` против «${props.baseTitle}»`
+        } · ${entry.routing_policy}`;
 
   return (
     <div
@@ -107,7 +107,10 @@ export function RecommendationCard(props: RecommendationCardProps) {
       </div>
 
       {footer !== null && worst !== undefined && (
-        <p title={footer} className="mt-[6px] shrink-0 truncate text-micro text-ink-muted">
+        <p
+          title={footer}
+          className={cx('mt-[6px] shrink-0 text-micro text-ink-muted', stacked ? 'break-words' : 'truncate')}
+        >
           {footer}
         </p>
       )}

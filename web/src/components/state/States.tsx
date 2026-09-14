@@ -105,7 +105,7 @@ export function ErrorBlock({
       >
         <AlertCircle aria-hidden="true" className="size-[30px] text-status-danger" />
         <p className="text-small font-semibold text-ink-primary">{title}</p>
-        <p className="max-w-full truncate text-caption text-status-danger" title={message}>
+        <p className="line-clamp-3 max-w-full break-words text-caption text-status-danger" title={message}>
           {message}
         </p>
         <Button variant="secondary" onClick={onRetry} className="mt-1 w-[240px] rounded-[15px]">

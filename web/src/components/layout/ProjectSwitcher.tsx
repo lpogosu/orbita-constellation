@@ -152,14 +152,20 @@ export function ProjectSwitcher() {
               </span>
             )}
             {project !== null && (
-              <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-[6px]">
-                <span className="truncate text-[13px] font-semibold text-ink-primary">
+              <span
+                title={showVariant ? `${project.project.title} › ${variant.title}` : project.project.title}
+                // Сетка из двух равных колонок резала оба названия пополам даже при свободном
+                // месте справа. Во флексе каждое занимает свою длину, а при нехватке места
+                // оба сжимаются пропорционально — ни одно не пропадает целиком.
+                className="flex min-w-0 flex-1 items-center gap-[6px]"
+              >
+                <span className="min-w-0 truncate text-[13px] font-semibold text-ink-primary">
                   {project.project.title}
                 </span>
                 {showVariant && (
                   <>
                     <ChevronRight aria-hidden="true" className="size-[14px] shrink-0 text-ink-muted" />
-                    <span className="truncate text-[13px] font-medium text-ink-secondary">
+                    <span className="min-w-0 truncate text-[13px] font-medium text-ink-secondary">
                       {variant.title}
                     </span>
                   </>
@@ -306,7 +312,9 @@ function Option({
           : 'text-ink-secondary hover:bg-[var(--surface-row-active)] hover:text-ink-primary',
       )}
     >
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate" title={label}>
+        {label}
+      </span>
       {selected && <Check aria-hidden="true" className="size-[15px] shrink-0 text-accent-blue" />}
     </button>
   );

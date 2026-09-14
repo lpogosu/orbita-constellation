@@ -34,6 +34,7 @@ import { TradeoffCard } from './TradeoffCard';
 import { useExperiment } from './use-experiment';
 import { Block, PageRoot } from '@/components/layout/Slot';
 import { cx } from '@/lib/cx';
+import type { AxisLabel } from './points';
 
 const EMPTY_AXIS: AxisDraft = { path: NO_AXIS, from: '', to: '', step: '' };
 const DEFAULT_BUDGET: BudgetDraft = { maxPoints: '100', maxSeconds: '600' };
@@ -158,6 +159,13 @@ export function ExperimentsPage() {
 
   const axisTitle = useCallback(
     (path: string) => options.find((option) => option.path === path)?.title ?? path,
+    [options],
+  );
+  const axisLabel = useCallback(
+    (path: string): AxisLabel => {
+      const option = options.find((item) => item.path === path);
+      return option === undefined ? { short: path, unit: '' } : { short: option.short, unit: option.unit };
+    },
     [options],
   );
 
@@ -336,6 +344,7 @@ export function ExperimentsPage() {
             point={selectedPoint}
             target={target}
             axisTitle={axisTitle}
+            axisLabel={axisLabel}
             materializing={materializing}
             stackedClassName={PLACE.point}
             onMaterialize={materialize}
@@ -349,6 +358,7 @@ export function ExperimentsPage() {
             policy={state.experiment.routing_policy}
             selectedPointId={selectedPointId}
             axisTitle={axisTitle}
+            axisLabel={axisLabel}
             stackedClassName={PLACE.runs}
             onSelect={(point) => { setSelectedPointId(point.id); }}
             onMaterialize={materialize}
@@ -394,6 +404,7 @@ export function ExperimentsPage() {
             policy={policy}
             selectedPointId={null}
             axisTitle={axisTitle}
+            axisLabel={axisLabel}
             stackedClassName={PLACE.runs}
             onSelect={noop}
             onMaterialize={noop}
@@ -450,7 +461,7 @@ function Screen({ children, notice }: { children: ReactNode; notice?: string | n
           <p
             role="status"
             title={notice}
-            className="absolute left-[600px] top-[158px] w-[1280px] truncate text-caption text-ink-secondary"
+            className="absolute left-[600px] top-[158px] line-clamp-2 w-[1280px] break-words text-caption text-ink-secondary"
           >
             {notice}
           </p>
@@ -631,7 +642,8 @@ function budgetMessage(
     return 'бюджет времени — целое число секунд больше нуля';
   }
   if (gridPoints > maxPoints) {
-    return `сетка даёт ${gridPoints} точек — больше бюджета в ${maxPoints}: увеличьте шаг или сузьте диапазон`;
+    // Строка под полями бюджета на полотне одна: совет стоит сразу, числа — после.
+    return `увеличьте шаг или сузьте диапазон: ${gridPoints} точек > бюджета ${maxPoints}`;
   }
   return null;
 }

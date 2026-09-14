@@ -19,6 +19,8 @@ import { useId, useState } from 'react';
 
 import type { GroundSite, Plane, Scenario, ScenarioValidationResult } from '@/api/types';
 import { useStacked } from '@/app/viewport-mode';
+import { useContainerSize } from '@/components/layout/box';
+import { InlineMessage } from '@/components/state/InlineMessage';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -29,8 +31,14 @@ import type { ScenarioReview } from './use-scenario-review';
 
 /** Высота прокручиваемой середины карточки: от «Параметров сценария» до нижнего разделителя. */
 const BODY_HEIGHT = 348;
-/** Строка с ошибкой создания проекта забирает высоту у середины, а не у ряда кнопок. */
-const BODY_HEIGHT_WITH_ERROR = 316;
+/**
+ * Ошибка создания проекта стоит между серединой и разделителем над кнопками. Место под неё
+ * забирается у прокручиваемой середины — ровно столько, сколько строк заняло сообщение, и
+ * ещё зазор, — а не у ряда кнопок: «Открыть проект» не должна уезжать из-за текста ошибки.
+ */
+const ERROR_GAP = 12;
+/** Низ сообщения на полотне: 8 пикселей над разделителем (`top-[507px]`) в карточке высотой 600. */
+const ERROR_BOTTOM = 600 - 499;
 
 interface ScenarioCardProps {
   review: ScenarioReview;
@@ -213,6 +221,7 @@ function AcceptedState({
   onOpenProject: () => void;
 }) {
   const { environment, design, ground_sites: groundSites } = scenario;
+  const [errorRef, errorBox] = useContainerSize<HTMLDivElement>();
 
   return (
     <>
@@ -237,7 +246,7 @@ function AcceptedState({
         style={
           stacked
             ? undefined
-            : { height: createError === null ? BODY_HEIGHT : BODY_HEIGHT_WITH_ERROR }
+            : { height: errorBox.height > 0 ? BODY_HEIGHT - errorBox.height - ERROR_GAP : BODY_HEIGHT }
         }
       >
         <h3 className="h-[22px] text-[18px] font-semibold leading-[22px] text-ink-primary">
@@ -346,21 +355,19 @@ function AcceptedState({
         </p>
       </div>
 
-      {createError !== null && (
-        <p
-          role="alert"
-          title={createError}
-          className={cx(
-            'flex items-center gap-2 text-small text-status-danger',
-            stacked ? 'min-h-[20px]' : 'absolute left-[27px] top-[479px] h-[20px] w-[665px]',
-          )}
-        >
-          <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-          <span className={stacked ? 'min-w-0 line-clamp-2' : 'min-w-0 truncate'}>
+      {/* Слот есть всегда, даже пустой: его высоту меряет середина карточки. На полотне он
+          прижат низом к разделителю и растёт вверх. */}
+      <div
+        ref={errorRef}
+        className={stacked ? undefined : 'absolute left-[27px] w-[665px]'}
+        style={stacked ? undefined : { bottom: ERROR_BOTTOM }}
+      >
+        {createError !== null && (
+          <InlineMessage className="text-small" lines={stacked ? 'all' : 3}>
             {createError}
-          </span>
-        </p>
-      )}
+          </InlineMessage>
+        )}
+      </div>
 
       <Divider top={507} stacked={stacked} />
 

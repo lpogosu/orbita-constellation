@@ -311,8 +311,8 @@ export function FailuresCard(props: FailuresCardProps) {
                     <span className="block truncate text-small font-semibold text-ink-primary">
                       {item.client_id}
                     </span>
-                    {/* Короткая форма: полная фраза про отсчёты обрезалась посередине слова
-                        уже на макетной ширине панели. Целиком она в подсказке. */}
+                    {/* Короткая форма «перестроен N из M»: фраза про сохранённые и перестроенные
+                        отсчёты обрезалась на цифрах. Целиком она в подсказке. */}
                     <span
                       title={
                         item.affected
@@ -322,7 +322,7 @@ export function FailuresCard(props: FailuresCardProps) {
                       className={cx('block text-caption text-ink-secondary', !stacked && 'truncate')}
                     >
                       {item.affected
-                        ? `сохранён ${item.route_kept_ticks} · перестроен ${item.route_rebuilt_ticks} отсч.`
+                        ? `перестроен ${item.route_rebuilt_ticks} из ${item.route_kept_ticks + item.route_rebuilt_ticks}`
                         : 'маршрут не изменился'}
                     </span>
                   </span>
@@ -358,21 +358,13 @@ export function FailuresCard(props: FailuresCardProps) {
           )}
         >
           <Clock aria-hidden="true" className="size-[15px] shrink-0" />
-          {!captionGrown ? (
-            <span className={stacked ? undefined : 'truncate'}>
-              Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
-            </span>
-          ) : (
-            // Подросший на ноутбуке кегль в строку не помещается, и уступает место только
-            // подпись: момент, к которому ведёт кнопка, виден всегда. Пока текст макетный,
-            // разметка прежняя — отдельные блоки сдвинули бы глифы на доли пикселя.
-            <span className="flex min-w-0">
-              <span className="truncate" title="Открыть первый затронутый момент">
-                Открыть первый затронутый момент
-              </span>
-              <span className="shrink-0 whitespace-pre">{` · ${formatTick(props.firstDivergenceTS)}`}</span>
-            </span>
-          )}
+          {/* Подросший на ноутбуке кегль не вмещал макетную подпись, и многоточие съедало её
+              середину. Кнопку не обрезаем — на полотне у неё короче текст, а момент, к которому
+              она ведёт, виден всегда. */}
+          <span className={stacked ? undefined : 'whitespace-nowrap'}>
+            {captionGrown ? 'К первому сбою' : 'Открыть первый затронутый момент'} ·{' '}
+            {formatTick(props.firstDivergenceTS)}
+          </span>
         </button>
       )}
     </div>

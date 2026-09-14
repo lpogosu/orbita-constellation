@@ -350,7 +350,9 @@ function AxisFields({
             !stacked && 'h-[16px] truncate',
           )}
         >
-          {check.problems.join('; ')}
+          {/* Под полями оси на полотне одна строка. Каждая проблема — короткая фраза, но две
+              подряд уже не влезают, поэтому видна главная, а все — в подсказке. */}
+          {stacked ? check.problems.join('; ') : check.problems[0]}
         </p>
       )}
     </section>

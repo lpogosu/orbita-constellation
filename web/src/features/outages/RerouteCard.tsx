@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import type { ClientComparison, ClientMetrics, ClientRoute } from '@/api/types';
 import { EmptyState, Skeleton } from '@/components/state/States';
 import { causeView, formatTick } from '@/lib/run-format';
+import { plural } from '@/lib/format';
 import { formatPoints } from './format';
 import { useCardBox } from '@/components/layout/box';
 import { useStacked } from '@/app/viewport-mode';
@@ -171,7 +172,11 @@ function RouteBox({
   // На полотне путь — одна строка с подсказкой: вторая строка сдвигала причину под край
   // карточки. В потоке высоты хватает, а колонка узкая, поэтому путь переносится.
   const stacked = useStacked();
-  const hops = `${route?.hops ?? '—'} переходов`;
+  // На полотне коробка маршрута узкая, и «переходов» не влезало в строку вместе с
+  // процентами. Цифры обрезать нельзя, поэтому там короче слово: «2 шага · 96.67 %».
+  const hopWord = (count: number) =>
+    stacked ? plural(count, 'переход', 'перехода', 'переходов') : plural(count, 'шаг', 'шага', 'шагов');
+  const hops = route?.hops == null ? '—' : `${route.hops} ${hopWord(route.hops)}`;
   const availability = metrics === null ? '' : ` · ${(metrics.availability * 100).toFixed(2)}\u00a0%`;
   return (
     <div className="min-w-0 rounded-lg border border-line-subtle bg-surface-sunken px-[15px] py-[11px]">
@@ -193,13 +198,11 @@ function RouteBox({
       ) : (
         // На полотне — одна строка при любом кегле: подросшая на ноутбуке подпись
         // переносилась, коробка маршрута становилась выше, и влияние отказа уходило под край
-        // карточки. Место уступает счётчик переходов, а доступность — ради неё сравнивают
-        // «до» и «после» — остаётся целиком. `whitespace-pre` хранит пробел на стыке частей.
-        <p className="mt-[8px] flex whitespace-pre text-micro text-ink-muted" data-numeric>
-          <span className="min-w-0 truncate" title={hops}>
-            {hops}
-          </span>
-          <span className="shrink-0">{availability}</span>
+        // карточки. Короткая форма помещается целиком, поэтому ни счётчик, ни доступность
+        // не обрезаются.
+        <p className="mt-[8px] whitespace-nowrap text-micro text-ink-muted" data-numeric>
+          {hops}
+          {availability}
         </p>
       )}
     </div>

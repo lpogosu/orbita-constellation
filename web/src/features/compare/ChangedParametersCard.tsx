@@ -111,8 +111,9 @@ export function ChangedParametersCard({ entries }: { entries: readonly Compariso
       <p
         title={base.variant_title}
         className={cx(
-          'truncate text-[11px] text-ink-muted',
-          stacked ? 'mt-[12px]' : 'absolute inset-x-[27px] bottom-[14px]',
+          'text-[11px] text-ink-muted',
+          // В потоке высота не задана макетом — сноска переносится, а не прячет название базы.
+          stacked ? 'mt-[12px] break-words' : 'absolute inset-x-[27px] bottom-[14px] truncate',
         )}
       >
         источник: сравнение канонических сценариев · база — {base.variant_title}

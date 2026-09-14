@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { formatShareShort } from '@/lib/measures';
 import { formatGap, policyLabel } from '@/lib/run-format';
-import { pointTitle } from './points';
+import { pointLabel, pointTitle } from './points';
+import type { AxisLabel } from './points';
 
 const LEFT = 25;
 const TOP = 872;
@@ -24,6 +25,8 @@ interface RunsCardProps {
   readonly policy: RoutingPolicy;
   readonly selectedPointId: string | null;
   readonly axisTitle: (path: string) => string;
+  /** Короткие подписи осей для видимой строки; полные названия остаются в подсказке. */
+  readonly axisLabel: (path: string) => AxisLabel;
   readonly onSelect: (point: ExperimentPoint) => void;
   readonly onMaterialize: (point: ExperimentPoint) => void;
   readonly onCompare: (point: ExperimentPoint) => void;
@@ -44,6 +47,7 @@ export function RunsCard({
   policy,
   selectedPointId,
   axisTitle,
+  axisLabel,
   onSelect,
   onMaterialize,
   onCompare,
@@ -121,7 +125,7 @@ export function RunsCard({
                   stacked && 'h-[40px]',
                 )}
               >
-                {pointTitle(point, axisTitle)}
+                {pointLabel(point, axisLabel)}
               </button>
               <span className="truncate pr-[10px] text-caption text-ink-secondary">
                 {policyLabel(policy)}

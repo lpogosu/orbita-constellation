@@ -8,7 +8,8 @@ import { cx } from '@/lib/cx';
 import { formatShareShort } from '@/lib/measures';
 import { formatGap } from '@/lib/run-format';
 import { bottomAnchoredTop } from '@/styles/readable-text';
-import { pointTitle } from './points';
+import { pointLabel, pointTitle } from './points';
+import type { AxisLabel } from './points';
 
 const LEFT = 1403;
 const TOP = 200;
@@ -21,6 +22,8 @@ interface PointCardProps {
   readonly point: ExperimentPoint | null;
   readonly target: number;
   readonly axisTitle: (path: string) => string;
+  /** Короткие подписи осей для видимой строки; полные названия остаются в подсказке. */
+  readonly axisLabel: (path: string) => AxisLabel;
   readonly materializing: boolean;
   readonly onMaterialize: (point: ExperimentPoint) => void;
   readonly onCompare: (point: ExperimentPoint) => void;
@@ -40,6 +43,7 @@ export function PointCard({
   point,
   target,
   axisTitle,
+  axisLabel,
   materializing,
   onMaterialize,
   onCompare,
@@ -117,7 +121,7 @@ export function PointCard({
             stacked ? 'text-[18px] md:text-[22px]' : 'absolute left-[23px] top-[39px] w-[445px] text-[22px]',
           )}
         >
-          {pointTitle(point, axisTitle)}
+          {pointLabel(point, axisLabel)}
         </h2>
         <p
           className={cx(
@@ -243,15 +247,17 @@ export function PointCard({
                 title={pointTitle(best, axisTitle)}
                 className={cx(
                   'grid w-full items-center rounded-sm px-[6px] text-left',
-                  stacked ? 'h-[44px]' : 'h-[34px]',
+                  // Высота минимальная, а не точная: не поместившаяся в строку точка переносится
+                  // между осями, а не теряет цифры под многоточием.
+                  stacked ? 'min-h-[44px] py-[4px]' : 'min-h-[34px] py-[2px]',
                   'transition-colors duration-150 hover:bg-surface-chip',
                   best.id === point?.id && 'bg-surface-row-active',
                 )}
                 style={{ gridTemplateColumns: columns }}
               >
                 <span className="text-caption font-semibold text-ink-muted">{index + 1}</span>
-                <span className="truncate pr-[10px] text-[13px] font-medium text-ink-primary">
-                  {pointTitle(best, axisTitle)}
+                <span className="line-clamp-2 pr-[10px] text-[13px] font-medium leading-tight text-ink-primary">
+                  {pointLabel(best, axisLabel)}
                 </span>
                 <span
                   className={cx(
@@ -309,15 +315,15 @@ export function PointCard({
         прогонов
       </p>
       {/* На полотне пояснение — одна строка в плашке фиксированной высоты: подросший на
-          ноутбуке кегль переносил «автоматически» за нижний край, где его срезала рамка. */}
+          ноутбуке кегль переносил «автоматически» за нижний край, где его срезала рамка, а
+          многоточие съедало саму суть. Короткая фраза помещается в строку целиком. */}
       <p
         className={cx(
           'text-[11px] text-ink-muted',
-          stacked ? 'col-start-2' : 'absolute left-[35px] right-[13px] top-[27px] truncate',
+          stacked ? 'col-start-2' : 'absolute left-[35px] right-[13px] top-[27px] whitespace-nowrap',
         )}
-        title={stacked ? undefined : `после ${experiment.budget.max_points} прогонов эксперимент остановится автоматически`}
       >
-        после {experiment.budget.max_points} прогонов эксперимент остановится автоматически
+        на {experiment.budget.max_points}-м прогоне эксперимент остановится сам
       </p>
     </div>
   );

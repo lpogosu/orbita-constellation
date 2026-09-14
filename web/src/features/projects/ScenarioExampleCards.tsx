@@ -143,25 +143,20 @@ function ExampleCard({
       <span
         className={cx(
           'flex w-full shrink-0 flex-col items-center justify-center gap-[2px] overflow-hidden bg-surface-raised px-[10px]',
-          stacked ? 'min-h-[66px] flex-1 py-[8px]' : 'h-[66px]',
+          stacked ? 'min-h-[66px] flex-1 py-[8px]' : 'min-h-[66px] py-[6px]',
         )}
       >
-        {/* Название длиннее карточки занимает две строки; подпись файла остаётся видна,
-            а обрезанное название целиком уходит в подсказку. */}
+        {/* В двух строках терялся конец названия — «…межспутниковой связи 2000 км», то есть
+            ровно то, чем примеры отличаются. Название получает до трёх строк, место отдаёт
+            обложка над ним, а имя файла уходит в подсказку. */}
         <span
           className={cx(
-            'line-clamp-2 text-center font-semibold leading-[1.15] text-ink-primary',
+            'line-clamp-3 text-center font-semibold leading-[1.15] text-ink-primary',
             stacked ? 'text-small md:text-base' : 'text-title-m',
           )}
-          title={title}
+          title={`${title}\n${example.name}`}
         >
           {title}
-        </span>
-        <span
-          className="w-full truncate text-center font-mono text-[10px] text-ink-muted"
-          title={example.name}
-        >
-          {example.name}
         </span>
       </span>
     </button>

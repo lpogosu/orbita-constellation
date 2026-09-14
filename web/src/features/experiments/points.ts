@@ -80,6 +80,28 @@ export function pointAt(
   );
 }
 
+/** Короткая подпись оси и единица её значения. */
+export interface AxisLabel {
+  readonly short: string;
+  readonly unit: string;
+}
+
+/**
+ * Видимая подпись точки в тесной строке: «RAAN P2 60° · фаза P2 5°». Значения стоят рядом
+ * со своими осями и не уходят в многоточие; полные названия параметров — в `pointTitle`,
+ * который идёт в подсказку.
+ */
+export function pointLabel(point: ExperimentPoint, labelOf: (path: string) => AxisLabel): string {
+  // Внутри оси пробелы неразрывные: в узкой колонке строка переносится только между осями,
+  // и значение никогда не отрывается от своего имени.
+  return Object.entries(point.params)
+    .map(([path, value]) => {
+      const { short, unit } = labelOf(path);
+      return `${short} ${formatDecimal(value, value % 1 === 0 ? 0 : 1)}${unit}`.replaceAll(' ', '\u00a0');
+    })
+    .join('\u00a0· ');
+}
+
 /** Подпись точки: значения всех её осей словами параметров, а не путями в JSON. */
 export function pointTitle(
   point: ExperimentPoint,

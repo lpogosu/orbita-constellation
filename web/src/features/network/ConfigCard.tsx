@@ -192,15 +192,15 @@ export function ConfigCard(props: ConfigCardProps) {
             <ChevronRight aria-hidden="true" className="size-[15px] text-ink-secondary" />
           )}
           <span className="ml-[8px] whitespace-nowrap text-small font-semibold text-ink-primary">
-            Условия расчёта
+            {summaryGrown ? 'Условия' : 'Условия расчёта'}
           </span>
           {/* На полотне сводка делит строку шириной 260 пикселей с подписью: подросший на
               ноутбуке кегль сводил их вплотную, а на 1280×720 выталкивал «км» за край кнопки.
-              Сводка уступает место подписи и показывается целиком в подсказке. */}
+              Цифры сводки не обрезаются — место уступает подпись, она становится короче. */}
           <span
             className={cx(
               'ml-auto whitespace-nowrap text-micro font-medium text-ink-muted',
-              summaryGrown && 'min-w-0 truncate pl-[8px]',
+              summaryGrown && 'pl-[8px]',
             )}
             title={conditionsSummary}
             data-numeric

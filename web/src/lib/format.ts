@@ -56,7 +56,7 @@ export function shortHash(hash: string): string {
   return hash.slice(0, 12);
 }
 
-function plural(value: number, one: string, few: string, many: string): string {
+export function plural(value: number, one: string, few: string, many: string): string {
   const absolute = Math.abs(value) % 100;
   const tail = absolute % 10;
   if (absolute > 10 && absolute < 20) {

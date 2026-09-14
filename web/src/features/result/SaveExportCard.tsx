@@ -15,6 +15,7 @@ import { downloadFile, exportFileName } from '@/lib/download';
 import { ROUTING_POLICIES, policyLabel } from '@/lib/run-format';
 import { describe } from '@/lib/use-resource';
 import { publicPath } from '@/lib/public-path';
+import { InlineMessage } from '@/components/state/InlineMessage';
 
 /**
  * Подпись маскота по статусу. «Отличный результат!» над ещё идущим или упавшим расчётом
@@ -144,8 +145,8 @@ export function SaveExportCard({
             succeeded ? 'bg-status-success' : 'bg-status-neutral',
           )}
         />
-        <span className="truncate" title={variant?.title}>
-          {variant === null ? 'Загружаем вариант' : `Расчёт привязан к варианту «${variant.title}»`}
+        <span className={stacked ? 'min-w-0 break-words' : 'truncate'} title={variant?.title}>
+          {variant === null ? 'Загружаем вариант' : `Расчёт варианта «${variant.title}»`}
         </span>
       </p>
 
@@ -212,9 +213,10 @@ export function SaveExportCard({
           )}
         >
           <History aria-hidden="true" className="size-[16px] shrink-0" />
-          {/* В узкой колонке подпись переносится на вторую строку, а не обрезается. */}
+          {/* Подпись кнопки не обрезается: высоты строки (48 px) хватает на две строки и на
+              полотне, где подросший кегль иначе резал «Пересчитать с другой политикой». */}
           <span
-            className={stacked ? 'line-clamp-2' : 'truncate'}
+            className="line-clamp-2"
             title={recompute.progressLabel ?? 'Пересчитать с другой политикой'}
           >
             {recompute.progressLabel ?? 'Пересчитать с другой политикой'}
@@ -242,22 +244,20 @@ export function SaveExportCard({
       </div>
 
       {message !== null && (
-        // Сообщение встаёт под строкой пересчёта, а не поверх неё. На полотне у него одна
-        // строка, и полный текст остаётся во всплывающей подсказке.
-        <p
-          role="alert"
-          title={message}
-          className={cx(
-            'text-[12px] text-status-danger',
-            at('left-[23px] top-[453px] line-clamp-1 w-[462px]'),
-          )}
+        // Ошибка выгрузки или пересчёта приходит из API, и её длину макет не знает. На полотне
+        // под строкой пересчёта до края карточки 51 px — ровно на две строки, поэтому пока
+        // ошибка показана, она занимает эту полосу вместо ссылки на сравнение: ссылка
+        // вторична и доступна из шапки, а обрезанная ошибка не объяснила бы, что случилось.
+        <InlineMessage
+          className={cx('text-[12px]', at('left-[23px] top-[453px] w-[462px]'))}
+          lines={stacked ? 'all' : 2}
         >
           {message}
-        </p>
+        </InlineMessage>
       )}
 
       {/* Сравнению нужен проект: без него оно не знает, среди каких вариантов выбирать. */}
-      {projectId !== null && (
+      {projectId !== null && (stacked || message === null) && (
         <Link
           to={`${sectionHref(COMPARISON_PATH, projectId)}&runs=${run.id}`}
           className={cx(

@@ -2,6 +2,10 @@ import type { ReactNode } from 'react';
 
 import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
+import { bottomAnchoredTop } from '@/styles/readable-text';
+
+/** Высота строки подписи в макете: 10px при унаследованном интерлиньяже 1.5. */
+const LABEL_LINE_HEIGHT = 15;
 
 /** Поля формы постановки эксперимента: одна высота 42, один радиус 11, одна рамка. */
 const FIELD_CLASS = cx(
@@ -23,6 +27,10 @@ export function FieldLabel({
   className?: string;
 }) {
   const positioned = left !== undefined || top !== undefined;
+  // Подпись стоит над своим полем: подросший на ноутбуке кегль уводит её вверх, а не на поле.
+  const style = positioned
+    ? { left, ...(top === undefined ? {} : { top: bottomAnchoredTop(top, LABEL_LINE_HEIGHT) }) }
+    : undefined;
 
   return (
     <span
@@ -31,7 +39,7 @@ export function FieldLabel({
         'text-[10px] font-semibold tracking-[0.8px] text-ink-muted',
         className,
       )}
-      style={positioned ? { left, top } : undefined}
+      style={style}
     >
       {children}
     </span>

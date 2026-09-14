@@ -14,6 +14,7 @@ import { cx } from '@/lib/cx';
 import { downloadFile, exportFileName } from '@/lib/download';
 import { ROUTING_POLICIES, policyLabel } from '@/lib/run-format';
 import { describe } from '@/lib/use-resource';
+import { publicPath } from '@/lib/public-path';
 
 /**
  * Подпись маскота по статусу. «Отличный результат!» над ещё идущим или упавшим расчётом
@@ -95,7 +96,7 @@ export function SaveExportCard({
     >
       <div className={stacked ? 'flex items-center gap-[8px]' : 'contents'}>
         <img
-          src="/assets/mascot-success.png"
+          src={publicPath('assets/mascot-success.png')}
           alt=""
           aria-hidden="true"
           className={cx(
@@ -212,7 +213,10 @@ export function SaveExportCard({
         >
           <History aria-hidden="true" className="size-[16px] shrink-0" />
           {/* В узкой колонке подпись переносится на вторую строку, а не обрезается. */}
-          <span className={stacked ? 'line-clamp-2' : 'truncate'}>
+          <span
+            className={stacked ? 'line-clamp-2' : 'truncate'}
+            title={recompute.progressLabel ?? 'Пересчитать с другой политикой'}
+          >
             {recompute.progressLabel ?? 'Пересчитать с другой политикой'}
           </span>
         </button>

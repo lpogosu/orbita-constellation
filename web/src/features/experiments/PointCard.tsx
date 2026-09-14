@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { formatShareShort } from '@/lib/measures';
 import { formatGap } from '@/lib/run-format';
+import { bottomAnchoredTop } from '@/styles/readable-text';
 import { pointTitle } from './points';
 
 const LEFT = 1403;
@@ -206,12 +207,19 @@ export function PointCard({
       </p>
     ) : (
       <div className={stacked ? 'flex flex-col' : undefined}>
+        {/* Заголовки колонок не переносятся и растут вверх от разделителя: на ужатом
+            полотне «МАКС. ОКНО» не помещалось в 90 пикселей и второй строкой ложилось на
+            первую строку списка. */}
         <div
           className={cx(
             'grid text-[9px] font-semibold tracking-[0.54px] text-ink-muted',
-            stacked ? 'px-[6px] pb-[4px]' : 'absolute left-[23px] top-[355px] w-[443px]',
+            stacked ? 'px-[6px] pb-[4px]' : 'absolute left-[23px] w-[443px] whitespace-nowrap',
           )}
-          style={{ gridTemplateColumns: columns }}
+          style={
+            stacked
+              ? { gridTemplateColumns: columns }
+              : { gridTemplateColumns: columns, top: bottomAnchoredTop(355, 13.5) }
+          }
         >
           <span>#</span>
           <span>КОНФИГУРАЦИЯ</span>
@@ -300,11 +308,14 @@ export function PointCard({
         Бюджет почти исчерпан: {experiment.completed_points} из {experiment.budget.max_points}{' '}
         прогонов
       </p>
+      {/* На полотне пояснение — одна строка в плашке фиксированной высоты: подросший на
+          ноутбуке кегль переносил «автоматически» за нижний край, где его срезала рамка. */}
       <p
         className={cx(
           'text-[11px] text-ink-muted',
-          stacked ? 'col-start-2' : 'absolute left-[35px] top-[27px]',
+          stacked ? 'col-start-2' : 'absolute left-[35px] right-[13px] top-[27px] truncate',
         )}
+        title={stacked ? undefined : `после ${experiment.budget.max_points} прогонов эксперимент остановится автоматически`}
       >
         после {experiment.budget.max_points} прогонов эксперимент остановится автоматически
       </p>

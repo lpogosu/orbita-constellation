@@ -9,12 +9,24 @@ import { Card } from '@/components/ui/Card';
 import { NETWORK_PATH } from '@/app/sections';
 import { cx } from '@/lib/cx';
 import { causeView, formatGap, formatTick } from '@/lib/run-format';
+import { withTextGrowth } from '@/styles/readable-text';
 
 const LEFT = 1373;
 const TOP = 628;
 
 /** Колонки макета (141:1079…141:1082) плюс «конец»: он требуется карточкой экрана. */
 const COLUMNS = { client: 23, start: 100, end: 160, duration: 220, cause: 291 } as const;
+/**
+ * На ужатом полотне подписи колонок растут вместе с текстом (`readable-text.ts`), а шаг
+ * «начало — конец» в 60 пикселей рассчитан на макетный капс: «НАЧАЛО» наезжало на
+ * «КОНЕЦ». Каждая колонка правее начала отодвигается от предыдущей на свой запас.
+ */
+const COLUMN_GROWTH = { start: 0, end: 32, duration: 64, cause: 80 } as const;
+
+/** Левый край колонки относительно `origin` с учётом роста текста. */
+function columnLeft(column: keyof typeof COLUMN_GROWTH, origin: number): string {
+  return withTextGrowth(COLUMNS[column] - origin, COLUMN_GROWTH[column]);
+}
 /** В потоке начало и конец — одна колонка «интервал»: так причина помещается без прокрутки. */
 const HEADERS = ['Клиент', 'Интервал', 'Длит.', 'Причина'] as const;
 
@@ -187,16 +199,16 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
         <span className="absolute" style={{ left: 0 }}>
           Клиент
         </span>
-        <span className="absolute" style={{ left: COLUMNS.start - COLUMNS.client }}>
+        <span className="absolute" style={{ left: columnLeft('start', COLUMNS.client) }}>
           Начало
         </span>
-        <span className="absolute" style={{ left: COLUMNS.end - COLUMNS.client }}>
+        <span className="absolute" style={{ left: columnLeft('end', COLUMNS.client) }}>
           Конец
         </span>
-        <span className="absolute" style={{ left: COLUMNS.duration - COLUMNS.client }}>
+        <span className="absolute" style={{ left: columnLeft('duration', COLUMNS.client) }}>
           Длит.
         </span>
-        <span className="absolute" style={{ left: COLUMNS.cause - COLUMNS.client }}>
+        <span className="absolute" style={{ left: columnLeft('cause', COLUMNS.client) }}>
           Причина
         </span>
       </div>
@@ -224,21 +236,21 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
                 </span>
                 <span
                   className="absolute top-[10px] font-medium text-ink-secondary"
-                  style={{ left: COLUMNS.start - 17 }}
+                  style={{ left: columnLeft('start', 17) }}
                   data-numeric
                 >
                   {formatTick(outage.start_s)}
                 </span>
                 <span
                   className="absolute top-[10px] font-medium text-ink-secondary"
-                  style={{ left: COLUMNS.end - 17 }}
+                  style={{ left: columnLeft('end', 17) }}
                   data-numeric
                 >
                   {formatTick(outage.end_s)}
                 </span>
                 <span
                   className="absolute top-[10px] font-medium text-ink-secondary"
-                  style={{ left: COLUMNS.duration - 17 }}
+                  style={{ left: columnLeft('duration', 17) }}
                   data-numeric
                 >
                   {formatGap(outage.duration_s)}
@@ -248,13 +260,13 @@ export function OutageWindowsCard({ outages, error, onRetry, projectId }: Outage
                   aria-hidden="true"
                   className="absolute top-[14px] size-[9px] rounded-[2px]"
                   style={{
-                    left: COLUMNS.cause - 17,
+                    left: columnLeft('cause', 17),
                     backgroundColor: causeView(outage.primary_cause).color,
                   }}
                 />
                 <span
                   className="absolute top-[10px] font-medium text-ink-secondary"
-                  style={{ left: COLUMNS.cause - 1 }}
+                  style={{ left: columnLeft('cause', 1) }}
                   title={causeView(outage.primary_cause).full}
                 >
                   {causeView(outage.primary_cause).short}

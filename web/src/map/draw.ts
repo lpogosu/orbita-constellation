@@ -36,6 +36,8 @@ export interface DrawInput {
   readonly width: number;
   readonly height: number;
   readonly dpr: number;
+  /** Кегль подписи с компенсацией ужатого полотна (`useCanvasTextSize`). */
+  readonly textSize: (px: number) => number;
 }
 
 export function drawScene(ctx: CanvasRenderingContext2D, input: DrawInput): DrawResult {
@@ -163,7 +165,7 @@ function drawGraticule(
 
   ctx.setLineDash([]);
   ctx.fillStyle = palette.labelMuted;
-  ctx.font = `500 11px ${SANS}`;
+  ctx.font = `500 ${input.textSize(11)}px ${SANS}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const [lon, label] of [
@@ -216,7 +218,7 @@ function drawFlatGraticule(ctx: CanvasRenderingContext2D, input: DrawInput, pale
 
   ctx.save();
   ctx.fillStyle = palette.labelMuted;
-  ctx.font = `500 11px ${SANS}`;
+  ctx.font = `500 ${input.textSize(11)}px ${SANS}`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   ctx.fillText('180°', view.left + 6, view.top + 6);
@@ -556,7 +558,7 @@ function drawSatellite(
   // маршрута и событий, остальные доступны через hover/tooltip.
   if (hovered || inRoute || failed || highlighted) {
     ctx.fillStyle = hovered ? palette.label : palette.labelMuted;
-    ctx.font = `600 11px ${SANS}`;
+    ctx.font = `600 ${input.textSize(11)}px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     fillTextInside(ctx, satellite.id, point.x, point.y - SATELLITE_WIDTH * 0.55, input);
@@ -617,7 +619,7 @@ function drawSite(
   }
 
   ctx.fillStyle = palette.label;
-  ctx.font = `700 ${hovered || selected ? 17 : 15}px ${DISPLAY}`;
+  ctx.font = `700 ${input.textSize(hovered || selected ? 17 : 15)}px ${DISPLAY}`;
   ctx.textBaseline = 'bottom';
   // Подпись уводится от центра карты, чтобы не легла на Землю поверх маршрута.
   const mapCenterX = view.kind === 'polar' ? view.centerX : view.left + view.width / 2;

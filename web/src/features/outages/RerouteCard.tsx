@@ -7,6 +7,7 @@ import { formatPoints } from './format';
 import { useCardBox } from '@/components/layout/box';
 import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
+import { withTextGrowth } from '@/styles/readable-text';
 
 interface RerouteCardProps {
   readonly x: number;
@@ -29,6 +30,7 @@ export function RerouteCard(props: RerouteCardProps) {
 
   const box = useCardBox(props);
   const stacked = useStacked();
+  const labelStyle = stacked ? undefined : CANVAS_LABEL_STYLE;
 
   return (
     <div
@@ -109,7 +111,7 @@ export function RerouteCard(props: RerouteCardProps) {
               страховкой для длинного списка отказавших аппаратов. */}
           <dl className={cx('mt-[10px] space-y-[6px]', !stacked && 'scroll-area min-h-0 flex-1 pr-[6px]')}>
             <div className="flex items-baseline gap-[16px]">
-              <dt className={labelClass}>Причина</dt>
+              <dt className={labelClass} style={labelStyle}>Причина</dt>
               <dd className="min-w-0 flex-1 text-base font-semibold text-ink-primary">
                 {added === undefined
                   ? 'Перерывов не добавилось'
@@ -122,7 +124,7 @@ export function RerouteCard(props: RerouteCardProps) {
             </div>
             <div className={cx('flex', stacked ? 'flex-col gap-[6px]' : 'items-baseline gap-[24px]')}>
               <div className="flex items-baseline gap-[16px]">
-                <dt className={labelClass}>Влияние</dt>
+                <dt className={labelClass} style={labelStyle}>Влияние</dt>
                 <dd
                   className={cx(
                     'whitespace-nowrap text-base font-semibold',
@@ -169,6 +171,8 @@ function RouteBox({
   // На полотне путь — одна строка с подсказкой: вторая строка сдвигала причину под край
   // карточки. В потоке высоты хватает, а колонка узкая, поэтому путь переносится.
   const stacked = useStacked();
+  const hops = `${route?.hops ?? '—'} переходов`;
+  const availability = metrics === null ? '' : ` · ${(metrics.availability * 100).toFixed(2)}\u00a0%`;
   return (
     <div className="min-w-0 rounded-lg border border-line-subtle bg-surface-sunken px-[15px] py-[11px]">
       <p className={`text-base font-medium ${tone}`}>{caption}</p>
@@ -181,15 +185,34 @@ function RouteBox({
       >
         {route === null ? '—' : route.path.length === 0 ? 'маршрута нет' : route.path.join(' → ')}
       </p>
-      <p className="mt-[8px] text-micro text-ink-muted" data-numeric>
-        {route?.hops ?? '—'} переходов
-        {metrics !== null && ` · ${(metrics.availability * 100).toFixed(2)}\u00a0%`}
-      </p>
+      {stacked ? (
+        <p className="mt-[8px] text-micro text-ink-muted" data-numeric>
+          {hops}
+          {availability}
+        </p>
+      ) : (
+        // На полотне — одна строка при любом кегле: подросшая на ноутбуке подпись
+        // переносилась, коробка маршрута становилась выше, и влияние отказа уходило под край
+        // карточки. Место уступает счётчик переходов, а доступность — ради неё сравнивают
+        // «до» и «после» — остаётся целиком. `whitespace-pre` хранит пробел на стыке частей.
+        <p className="mt-[8px] flex whitespace-pre text-micro text-ink-muted" data-numeric>
+          <span className="min-w-0 truncate" title={hops}>
+            {hops}
+          </span>
+          <span className="shrink-0">{availability}</span>
+        </p>
+      )}
     </div>
   );
 }
 
 const labelClass = 'w-[118px] shrink-0 text-small text-ink-secondary';
+/**
+ * На полотне колонка подписей отдаёт запас значениям: на 1280×720 подросшая строка
+ * «Влияние · Перерыв» выходила за правый край карточки, а подписи в 118 пикселях
+ * занимают едва половину ширины.
+ */
+const CANVAS_LABEL_STYLE = { width: withTextGrowth(118, -40) };
 
 function describeStatus(comparison: ClientComparison | null): string {
   if (comparison === null) {

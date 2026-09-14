@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 
 import type { ExperimentPoint } from '@/api/types';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
 import { EChart } from '@/components/chart/EChart';
 import { useContainerSize } from '@/components/layout/box';
@@ -38,6 +39,7 @@ export function TradeoffCard({
   stackedClassName,
 }: TradeoffCardProps) {
   const stacked = useStacked();
+  const textSize = useCanvasTextSize();
   const [chartBox, chartBoxSize] = useContainerSize<HTMLDivElement>();
   const color = useTokenColors();
 
@@ -76,7 +78,7 @@ export function TradeoffCard({
       tooltip: {
         backgroundColor: color('--surface-raised'),
         borderColor: color('--border-default'),
-        textStyle: { color: color('--text-primary'), fontSize: 13 },
+        textStyle: { color: color('--text-primary'), fontSize: textSize(13) },
         formatter: (params: unknown) => {
           const value = (params as { value: [number, number] }).value;
           return `min доступность ${value[1].toFixed(1)} %<br />макс. окно ${value[0].toFixed(0)} мин`;
@@ -87,15 +89,15 @@ export function TradeoffCard({
         name: 'макс. окно, мин',
         nameLocation: 'middle',
         nameGap: 24,
-        nameTextStyle: { color: color('--chart-axis'), fontSize: 11 },
+        nameTextStyle: { color: color('--chart-axis'), fontSize: textSize(11) },
         axisLine: { lineStyle: { color: color('--chart-grid') } },
-        axisLabel: { color: color('--chart-axis'), fontSize: 11 },
+        axisLabel: { color: color('--chart-axis'), fontSize: textSize(11) },
         splitLine: { show: false },
       },
       yAxis: {
         type: 'value',
         scale: true,
-        axisLabel: { color: color('--chart-axis'), fontSize: 11, formatter: '{value} %' },
+        axisLabel: { color: color('--chart-axis'), fontSize: textSize(11), formatter: '{value} %' },
         splitLine: { lineStyle: { color: color('--chart-grid') } },
       },
       series: [
@@ -107,12 +109,12 @@ export function TradeoffCard({
             symbol: 'none',
             data: [{ yAxis: target * 100 }],
             lineStyle: { color: color('--chart-target'), type: 'dashed', width: 2 },
-            label: { formatter: 'цель', color: color('--text-secondary'), fontSize: 11 },
+            label: { formatter: 'цель', color: color('--text-secondary'), fontSize: textSize(11) },
           },
         },
       ],
     };
-  }, [ready, target, selectedPointId, color]);
+  }, [ready, target, selectedPointId, color, textSize]);
 
   const select = ({ dataIndex }: { dataIndex: number }) => {
     const point = ready[dataIndex];
@@ -133,7 +135,16 @@ export function TradeoffCard({
       >
         min доступность и максимальное окно недоступности
       </h2>
-      <p className={cx('text-caption text-ink-muted', !stacked && 'absolute right-[23px] top-[19px]')}>
+      {/* На полотне подпись делит строку с заголовком: подросший на ноутбуке кегль
+          сдвигал её влево до наложения, поэтому ширина ограничена местом справа от
+          заголовка, а не собственной длиной. */}
+      <p
+        className={cx(
+          'text-caption text-ink-muted',
+          !stacked && 'absolute right-[23px] top-[19px] max-w-[360px] truncate',
+        )}
+        title="наблюдаемая зависимость на рассчитанных точках"
+      >
         наблюдаемая зависимость на рассчитанных точках
       </p>
     </>

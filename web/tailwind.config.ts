@@ -1,4 +1,63 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
+
+import { readableTextSizeCss } from './src/styles/readable-text';
+
+interface FontSizeOptions {
+  lineHeight?: string;
+  letterSpacing?: string;
+}
+
+type FontSizeValue = string | [string, FontSizeOptions];
+
+/** Кегль с компенсацией для пиксельных размеров; остальные единицы не трогаются. */
+function fontSize(size: string): string {
+  const px = /^(\d+(?:\.\d+)?)px$/.exec(size)?.[1];
+  return px === undefined ? size : readableTextSizeCss(Number(px));
+}
+
+/**
+ * Типографика полотна: `text-*`, `leading-*`, `tracking-*` с компенсацией мелкого текста
+ * (`src/styles/readable-text.ts`) — и для ступеней шкалы, и для произвольных `text-[13px]`
+ * из разметки, так что новый размер получает её без отдельной записи.
+ *
+ * Встроенная `text-*` заменена целиком, а не дополнена: второй плагин с тем же префиксом
+ * делает произвольные значения неоднозначными, и Tailwind молча перестаёт их генерировать.
+ * `leading-*` и `tracking-*` переехали сюда вместе с ней: правила плагинов идут после
+ * встроенных, и без переезда интерлиньяж и трекинг ступени шкалы перебивали бы
+ * `leading-[13px]` и `tracking-[0.8px]` из разметки. Порядок этих трёх утилит между собой —
+ * тот же, что у встроенных.
+ */
+const canvasTypography = plugin((api) => {
+  api.matchUtilities<FontSizeValue>(
+    {
+      text: (value, { modifier }) => {
+        const [size, options] = Array.isArray(value) ? value : [value, {}];
+        if (modifier !== null) {
+          return { 'font-size': fontSize(size), 'line-height': modifier };
+        }
+        return {
+          'font-size': fontSize(size),
+          ...(options.lineHeight === undefined ? {} : { 'line-height': options.lineHeight }),
+          ...(options.letterSpacing === undefined ? {} : { 'letter-spacing': options.letterSpacing }),
+        };
+      },
+    },
+    {
+      values: api.theme('fontSize'),
+      modifiers: api.theme('lineHeight'),
+      type: ['absolute-size', 'relative-size', 'length', 'percentage'],
+    },
+  );
+  api.matchUtilities(
+    { leading: (value) => ({ 'line-height': value }) },
+    { values: api.theme<Record<string, string>>('lineHeight') },
+  );
+  api.matchUtilities(
+    { tracking: (value) => ({ 'letter-spacing': value }) },
+    { values: api.theme<Record<string, string>>('letterSpacing'), supportsNegativeValues: true },
+  );
+});
 
 /**
  * Все значения — ссылки на CSS-переменные из `src/styles/tokens.css`. Переключение темы
@@ -91,7 +150,12 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  corePlugins: {
+    fontSize: false,
+    lineHeight: false,
+    letterSpacing: false,
+  },
+  plugins: [canvasTypography],
 };
 
 export default config;

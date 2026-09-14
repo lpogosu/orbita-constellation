@@ -7,7 +7,19 @@ import { cx } from '@/lib/cx';
 import { formatGap, formatTick, policyLabel } from '@/lib/run-format';
 import { formatPoints, rowKey } from './format';
 import { useCardBox } from '@/components/layout/box';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
+import { withTextGrowth } from '@/styles/readable-text';
+
+/**
+ * Колонки списка отказов. Капс заголовков и время в строках на ужатом полотне крупнее
+ * макетного (`readable-text.ts`): «ВКЛ» наезжал на «ОБЪЕКТ», «НАЧАЛО» — на «ДЛИТ.», а
+ * «1 ч 43 мин» обрезалась. Колонки получают запас роста, его забирает у названия объекта
+ * гибкая колонка, так что заголовки и строки остаются выровненными.
+ */
+const TOGGLE_COLUMN = { width: withTextGrowth(26, 24) };
+const START_COLUMN = { width: withTextGrowth(64, 20) };
+const DURATION_COLUMN = { width: withTextGrowth(76, 14) };
 
 export interface FailureRowRef {
   readonly kind: 'satellite' | 'gateway';
@@ -62,6 +74,8 @@ export function FailuresCard(props: FailuresCardProps) {
   // В потоке панель управляется пальцем: мелкие флажки и корзины макета получают
   // область касания 40px, а на полотне остаются в размерах макета.
   const stacked = useStacked();
+  const textSize = useCanvasTextSize();
+  const captionGrown = !stacked && textSize(12) > 12;
 
   return (
     <div
@@ -106,10 +120,12 @@ export function FailuresCard(props: FailuresCardProps) {
       </div>
 
       <div className="mt-[10px] flex text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
-        <span className={stacked ? 'w-[40px]' : 'w-[26px]'}>Вкл</span>
+        <span className={stacked ? 'w-[40px]' : undefined} style={stacked ? undefined : TOGGLE_COLUMN}>
+          Вкл
+        </span>
         <span className="flex-1">Объект</span>
-        <span className="w-[64px]">Начало</span>
-        <span className="w-[76px]">Длит.</span>
+        <span className="shrink-0" style={START_COLUMN}>Начало</span>
+        <span className="shrink-0" style={DURATION_COLUMN}>Длит.</span>
         <span className={stacked ? 'w-[40px]' : 'w-[20px]'} />
       </div>
       <div aria-hidden="true" className="mt-[6px] h-px bg-line-divider" />
@@ -157,11 +173,15 @@ export function FailuresCard(props: FailuresCardProps) {
                 >
                   {row.id}
                 </span>
-                <span className="w-[64px] shrink-0 text-caption text-ink-secondary" data-numeric>
+                <span className="shrink-0 text-caption text-ink-secondary" style={START_COLUMN} data-numeric>
                   {formatTick(row.startS)}
                 </span>
                 {/* Длительность шире начала: «1 ч 43 мин» в 64px упиралась в корзину. */}
-                <span className="w-[76px] shrink-0 truncate text-caption text-ink-secondary" data-numeric>
+                <span
+                  className="shrink-0 truncate text-caption text-ink-secondary"
+                  style={DURATION_COLUMN}
+                  data-numeric
+                >
                   {formatGap(row.endS - row.startS)}
                 </span>
                 <button
@@ -338,9 +358,21 @@ export function FailuresCard(props: FailuresCardProps) {
           )}
         >
           <Clock aria-hidden="true" className="size-[15px] shrink-0" />
-          <span className={stacked ? undefined : 'truncate'}>
-            Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
-          </span>
+          {!captionGrown ? (
+            <span className={stacked ? undefined : 'truncate'}>
+              Открыть первый затронутый момент · {formatTick(props.firstDivergenceTS)}
+            </span>
+          ) : (
+            // Подросший на ноутбуке кегль в строку не помещается, и уступает место только
+            // подпись: момент, к которому ведёт кнопка, виден всегда. Пока текст макетный,
+            // разметка прежняя — отдельные блоки сдвинули бы глифы на доли пикселя.
+            <span className="flex min-w-0">
+              <span className="truncate" title="Открыть первый затронутый момент">
+                Открыть первый затронутый момент
+              </span>
+              <span className="shrink-0 whitespace-pre">{` · ${formatTick(props.firstDivergenceTS)}`}</span>
+            </span>
+          )}
         </button>
       )}
     </div>

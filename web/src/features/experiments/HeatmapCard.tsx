@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 
 import type { ExperimentPoint } from '@/api/types';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
 import { EChart } from '@/components/chart/EChart';
 import { useContainerSize } from '@/components/layout/box';
@@ -61,6 +62,7 @@ export function HeatmapCard({
   stackedClassName,
 }: HeatmapCardProps) {
   const stacked = useStacked();
+  const textSize = useCanvasTextSize();
   const [chartBox, chartBoxSize] = useContainerSize<HTMLDivElement>();
   const color = useTokenColors();
   const descriptor = metricById(metric);
@@ -74,7 +76,7 @@ export function HeatmapCard({
   const option = useMemo<EChartsOption>(
     () =>
       yPath === null
-        ? lineOption({ points, xPath, xValues, descriptor, target, color })
+        ? lineOption({ points, xPath, xValues, descriptor, target, color, textSize })
         : heatmapOption({
             compact: stacked,
             points,
@@ -86,8 +88,9 @@ export function HeatmapCard({
             target,
             selectedPointId,
             color,
+            textSize,
           }),
-    [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color, stacked],
+    [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color, stacked, textSize],
   );
 
   const ordered = useMemo(
@@ -236,6 +239,8 @@ interface HeatmapArgs {
   target: number;
   selectedPointId: string | null;
   color: (name: string) => string;
+  /** Кегль подписей графика с компенсацией ужатого полотна (`useCanvasTextSize`). */
+  textSize: (px: number) => number;
   /** Узкая колонка потока: подпись ячейки короче, отступ под ось меньше. */
   compact: boolean;
 }
@@ -250,6 +255,7 @@ function heatmapOption({
   target,
   selectedPointId,
   color,
+  textSize,
   compact,
 }: HeatmapArgs): EChartsOption {
   const scale = [1, 2, 3, 4, 5].map((step) => color(`--heat-${step}`));
@@ -294,7 +300,7 @@ function heatmapOption({
     tooltip: {
       backgroundColor: color('--surface-raised'),
       borderColor: color('--border-default'),
-      textStyle: { color: color('--text-primary'), fontSize: 13 },
+      textStyle: { color: color('--text-primary'), fontSize: textSize(13) },
       formatter: (params: unknown) => {
         const index = (params as { dataIndex: number }).dataIndex;
         const [value, caption] = (captions[index] ?? '').split('|');
@@ -307,7 +313,7 @@ function heatmapOption({
       splitArea: { show: false },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+      axisLabel: { color: color('--text-secondary'), fontSize: textSize(12) },
     },
     yAxis: {
       type: 'category',
@@ -315,7 +321,7 @@ function heatmapOption({
       splitArea: { show: false },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+      axisLabel: { color: color('--text-secondary'), fontSize: textSize(12) },
     },
     visualMap: {
       min: values.length === 0 ? 0 : Math.min(...values),
@@ -332,7 +338,7 @@ function heatmapOption({
       textGap: 8,
       itemWidth: 12,
       itemHeight: 180,
-      textStyle: { color: color('--chart-axis'), fontSize: 11 },
+      textStyle: { color: color('--chart-axis'), fontSize: textSize(11) },
       inRange: { color: descriptor.better === 'up' ? scale : [...scale].reverse() },
     },
     series: [
@@ -347,8 +353,8 @@ function heatmapOption({
             return `{v|${value ?? ''}}\n{c|${caption ?? ''}}`;
           },
           rich: {
-            v: { fontSize: 14, fontWeight: 'bold', color: cellInk, lineHeight: 18 },
-            c: { fontSize: 9, color: cellInk, lineHeight: 12, opacity: 0.75 },
+            v: { fontSize: textSize(14), fontWeight: 'bold', color: cellInk, lineHeight: textSize(14) + 4 },
+            c: { fontSize: textSize(9), color: cellInk, lineHeight: textSize(9) + 3, opacity: 0.75 },
           },
         },
         emphasis: { itemStyle: { shadowBlur: 8, shadowColor: color('--shadow-glow-blue') } },
@@ -364,6 +370,7 @@ function lineOption({
   descriptor,
   target,
   color,
+  textSize,
 }: {
   points: readonly ExperimentPoint[];
   xPath: string;
@@ -371,6 +378,7 @@ function lineOption({
   descriptor: MetricDescriptor;
   target: number;
   color: (name: string) => string;
+  textSize: (px: number) => number;
 }): EChartsOption {
   const data = xValues.map((x) => {
     const point = points.find((item) => item.params[xPath] === x);
@@ -386,18 +394,18 @@ function lineOption({
       trigger: 'axis',
       backgroundColor: color('--surface-raised'),
       borderColor: color('--border-default'),
-      textStyle: { color: color('--text-primary'), fontSize: 13 },
+      textStyle: { color: color('--text-primary'), fontSize: textSize(13) },
     },
     xAxis: {
       type: 'category',
       data: xValues.map(String),
       axisLine: { lineStyle: { color: color('--chart-grid') } },
-      axisLabel: { color: color('--text-secondary'), fontSize: 12 },
+      axisLabel: { color: color('--text-secondary'), fontSize: textSize(12) },
     },
     yAxis: {
       type: 'value',
       scale: true,
-      axisLabel: { color: color('--chart-axis'), fontSize: 12 },
+      axisLabel: { color: color('--chart-axis'), fontSize: textSize(12) },
       splitLine: { lineStyle: { color: color('--chart-grid') } },
     },
     series: [
@@ -415,7 +423,7 @@ function lineOption({
                 symbol: 'none' as const,
                 data: [{ yAxis: target * 100 }],
                 lineStyle: { color: color('--chart-target'), type: 'dashed' as const, width: 2 },
-                label: { formatter: 'цель', color: color('--text-secondary'), fontSize: 12 },
+                label: { formatter: 'цель', color: color('--text-secondary'), fontSize: textSize(12) },
               },
             }
           : {}),

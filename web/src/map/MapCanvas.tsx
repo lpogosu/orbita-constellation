@@ -7,6 +7,7 @@ import { loadMapSprites } from './earth-layer';
 import type { MapSprites } from './earth-layer';
 import type { MapHit, MapLayers, MapModel } from './model';
 import { readPalette } from './palette';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere, MapView } from './projection';
@@ -88,6 +89,7 @@ export function MapCanvas({
   overlays = true,
 }: MapCanvasProps) {
   const stacked = useStacked();
+  const textSize = useCanvasTextSize();
   const frame = useMemo(() => flatFrame(width, height, overlays), [width, height, overlays]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const resultRef = useRef<DrawResult | null>(null);
@@ -176,6 +178,7 @@ export function MapCanvas({
         width,
         height,
         dpr,
+        textSize,
       });
     };
 
@@ -184,7 +187,7 @@ export function MapCanvas({
     return () => {
       cancelAnimationFrame(frameRef.current);
     };
-  }, [model, layers, hemisphere, projection, width, height, sprites, hover, palette, zoom, flatViewport, frame]);
+  }, [model, layers, hemisphere, projection, width, height, sprites, hover, palette, zoom, flatViewport, frame, textSize]);
 
   const locate = useCallback((event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

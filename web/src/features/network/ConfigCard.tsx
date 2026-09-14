@@ -10,6 +10,7 @@ import type { DraftChange } from './draft';
 import { withEnvironment, withFailures, withGatewayOutages, withLaunchStage, withPlane } from './draft';
 import { STAGE_LABEL, stageStep } from './use-run';
 import { useCardBox } from '@/components/layout/box';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
 
 const POLICIES: readonly { value: RoutingPolicy; label: string; hint: string }[] = [
@@ -54,6 +55,8 @@ interface ConfigCardProps {
 /** Левая панель экрана «Сеть» (`14_SCREENS.md` §2.1), узел макета `33:289`. */
 export function ConfigCard(props: ConfigCardProps) {
   const { draft, changes } = props;
+  const { horizon_s: horizon, step_s: step, isl_range_km: islRange } = draft.environment;
+  const conditionsSummary = `${formatTick(horizon)} · ${step} с · ISL ${islRange} км`;
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [conditionsEditable, setConditionsEditable] = useState(false);
 
@@ -67,6 +70,14 @@ export function ConfigCard(props: ConfigCardProps) {
   // В потоке панель — обычная карточка колонки: высота по содержимому, органы управления
   // не ниже 40 пикселей, строки плоскостей — сеткой, которая сжимается вместе с шириной.
   const stacked = useStacked();
+  const textSize = useCanvasTextSize();
+  // Сводка условий усекается только при подросшем кегле: пока текст макетный, лишняя
+  // обрезка меняла растеризацию прокручиваемой панели на 1920×1080.
+  const summaryGrown = !stacked && textSize(11) > 11;
+  // Плашка черновика в 44 пикселя вмещает подпись и две кнопки только макетным кеглем.
+  // Подросший текст переносил кнопки по словам внутри них; вместо этого плашка, как в
+  // потоке, отпускает кнопки второй строкой за счёт прокручиваемой середины панели.
+  const draftGrown = !stacked && textSize(12) > 12;
 
   return (
     <div
@@ -183,9 +194,19 @@ export function ConfigCard(props: ConfigCardProps) {
           <span className="ml-[8px] whitespace-nowrap text-small font-semibold text-ink-primary">
             Условия расчёта
           </span>
-          <span className="ml-auto whitespace-nowrap text-micro font-medium text-ink-muted" data-numeric>
-            {formatTick(draft.environment.horizon_s)} · {draft.environment.step_s} с · ISL{' '}
-            {draft.environment.isl_range_km} км
+          {/* На полотне сводка делит строку шириной 260 пикселей с подписью: подросший на
+              ноутбуке кегль сводил их вплотную, а на 1280×720 выталкивал «км» за край кнопки.
+              Сводка уступает место подписи и показывается целиком в подсказке. */}
+          <span
+            className={cx(
+              'ml-auto whitespace-nowrap text-micro font-medium text-ink-muted',
+              summaryGrown && 'min-w-0 truncate pl-[8px]',
+            )}
+            title={conditionsSummary}
+            data-numeric
+          >
+            {formatTick(horizon)} · {step} с · ISL{' '}
+            {islRange} км
           </span>
         </button>
 
@@ -328,7 +349,9 @@ export function ConfigCard(props: ConfigCardProps) {
         <div
           className={cx(
             'mt-[12px] flex items-center rounded-sm border border-[rgba(255,160,92,0.38)] bg-[rgba(255,160,92,0.14)] px-[11px]',
-            stacked ? 'flex-wrap gap-y-[8px] py-[8px]' : 'h-[44px]',
+            stacked && 'flex-wrap gap-y-[8px] py-[8px]',
+            draftGrown && 'flex-wrap gap-y-[6px] whitespace-nowrap py-[6px]',
+            !stacked && !draftGrown && 'h-[44px]',
           )}
         >
           <Pencil aria-hidden="true" className="size-[14px] text-status-warning" />
@@ -349,7 +372,8 @@ export function ConfigCard(props: ConfigCardProps) {
             type="button"
             onClick={props.onSaveVariant}
             className={cx(
-              'ml-[8px] rounded-[9px] bg-accent-violet px-[12px] text-caption font-semibold text-ink-onAccent',
+              'rounded-[9px] bg-accent-violet px-[12px] text-caption font-semibold text-ink-onAccent',
+              draftGrown ? 'ml-auto' : 'ml-[8px]',
               stacked ? 'h-[40px]' : 'h-[30px]',
             )}
           >

@@ -8,15 +8,19 @@ import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
 import { deltaArrow, formatPoints } from '@/lib/measures';
 import { formatGap, variantLetter } from '@/lib/run-format';
 import { useResource } from '@/lib/use-resource';
+import { publicPath } from '@/lib/public-path';
 import { deltaToneClass } from './metrics';
 
 const LEFT = 1202;
 const TOP = 564;
+/** Кегль чипов порядка критериев в макете. */
+const CRITERION_TEXT = 10;
 
 /** Имена метрик ранжирования (ADR-006) словами: `ranking_order` приходит ключами API. */
 const CRITERION_TITLES: Record<string, string> = {
@@ -122,7 +126,7 @@ export function RecommendationCard({ entries, onApply, onSwap }: RecommendationC
       )}
 
       <img
-        src="/assets/mascot-recommendation.png"
+        src={publicPath('assets/mascot-recommendation.png')}
         alt=""
         aria-hidden="true"
         className={cx(
@@ -201,6 +205,15 @@ function Verdict({
       : availabilityDelta === 0
         ? ' минимум доступности не изменился.'
         : ` минимум ${availabilityDelta > 0 ? 'выше' : 'ниже'} на ${formatPoints(availabilityDelta)}.`;
+  const criteria = recommendation.ranking_order.map(
+    (criterion, index) => `${index + 1}. ${CRITERION_TITLES[criterion] ?? criterion}`,
+  );
+  // Колонка вывода — 184 пикселя макета. На ноутбуке подросший текст раскладывает чипы
+  // в три ряда вместо двух, и кнопка «Подробнее» уходила под кнопки карточки. Поэтому
+  // там виден один ряд — старшие критерии, — а весь порядок остаётся в подсказке и в
+  // окне деталей.
+  const textSize = useCanvasTextSize();
+  const criteriaClamped = !stacked && textSize(CRITERION_TEXT) > CRITERION_TEXT;
   const summary = winnerIsBase
     ? `База остаётся лучшей:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`
     : `${winnerTitle} — лучший вариант:${change} ${recommendation.target_reached ? 'Цель достигнута.' : 'Цель ещё не достигнута.'}`;
@@ -222,7 +235,12 @@ function Verdict({
       <p className="mt-[10px] shrink-0 text-[10px] font-semibold tracking-[0.8px] text-ink-muted">
         ПОРЯДОК КРИТЕРИЕВ
       </p>
-      <ol className="mt-[5px] flex shrink-0 flex-wrap gap-[5px]">
+      <ol
+        className={cx('mt-[5px] flex shrink-0 flex-wrap gap-[5px] text-[10px]', criteriaClamped && 'overflow-hidden')}
+        // Ряд чипа — строка кегля чипа и его поля по 2 пикселя.
+        style={criteriaClamped ? { maxHeight: 'calc(1.5em + 4px)' } : undefined}
+        title={criteriaClamped ? criteria.join(', ') : undefined}
+      >
         {recommendation.ranking_order.map((criterion, index) => (
           <li
             key={criterion}
@@ -266,7 +284,26 @@ function RecommendationDetailsModal({
       onClose={onClose}
       footer={<Button variant="secondary" onClick={onClose}>Закрыть</Button>}
     >
-      <section aria-labelledby="recommendation-clients-title">
+      <section aria-labelledby="recommendation-criteria-title">
+        <h3
+          id="recommendation-criteria-title"
+          className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted"
+        >
+          Порядок критериев
+        </h3>
+        <ol className="mt-[10px] flex flex-wrap gap-[6px]">
+          {recommendation.ranking_order.map((criterion, index) => (
+            <li
+              key={criterion}
+              className="rounded-sm bg-surface-chip px-[9px] py-[3px] text-caption text-ink-secondary"
+            >
+              {index + 1}. {CRITERION_TITLES[criterion] ?? criterion}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="mt-[24px]" aria-labelledby="recommendation-clients-title">
         <h3
           id="recommendation-clients-title"
           className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted"

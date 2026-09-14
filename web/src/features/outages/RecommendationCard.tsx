@@ -72,8 +72,12 @@ export function RecommendationCard(props: RecommendationCardProps) {
   } else {
     body = (
       // Вывод собирается из полей сравнения и длины не имеет: на полотне он прокручивается
-      // внутри карточки, а не обрезается её краем.
-      <p className={cx('text-small text-ink-secondary', !stacked && 'scroll-area h-full pr-[6px]')}>
+      // внутри карточки, а не обрезается её краем. Высота прокрутки кратна строке: на
+      // ноутбуке кегль вывода подрастает, и последняя видимая строка резалась пополам.
+      <p
+        className={cx('text-small text-ink-secondary', !stacked && 'scroll-area pr-[6px]')}
+        style={stacked ? undefined : { height: 'round(nearest, 100%, 1lh)' }}
+      >
         {sentence(worst, entry)}
       </p>
     );

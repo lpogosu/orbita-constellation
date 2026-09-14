@@ -9,7 +9,7 @@ export const CANVAS_HEIGHT = 1080;
  * двух сторон: экран обязан помещаться целиком, а пропорции блоков — оставаться
  * макетными, поэтому по одной из осей остаётся поле.
  */
-function scaleFor(width: number, height: number): number {
+export function scaleFor(width: number, height: number): number {
   return Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
 }
 

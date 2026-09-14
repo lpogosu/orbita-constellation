@@ -4,6 +4,7 @@ import type { EChartsOption } from 'echarts';
 import type { ComparisonEntry } from '@/api/types';
 import { EChart } from '@/components/chart/EChart';
 import { Card } from '@/components/ui/Card';
+import { useCanvasTextSize } from '@/app/use-viewport';
 import { useViewport } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
 import { useTokenColors } from '@/theme/use-token-colors';
@@ -33,11 +34,16 @@ export function AvailabilityCard({
   const color = useTokenColors();
   const { mode, contentWidth } = useViewport();
   const stacked = mode === 'stacked';
+  const textSize = useCanvasTextSize();
   const base = entries[0];
 
   const option = useMemo<EChartsOption>(() => {
     const clients = base?.clients.map((client) => client.client_id) ?? [];
     const axis = color('--chart-axis');
+    // Подписи значений над соседними столбиками в макете разделены узким зазором. На
+    // ноутбуке они растут вместе с текстом и слипались, поэтому столбики группы расходятся
+    // на ту же долю. 20 % — зазор ECharts по умолчанию: на 1920×1080 он прежний.
+    const barGap = `${Math.round(20 + (textSize(12) / 12 - 1) * 100)}%`;
 
     return {
       animation: false,
@@ -47,7 +53,7 @@ export function AvailabilityCard({
         trigger: 'axis',
         backgroundColor: color('--surface-raised'),
         borderColor: color('--border-default'),
-        textStyle: { color: color('--text-primary'), fontSize: 13 },
+        textStyle: { color: color('--text-primary'), fontSize: textSize(13) },
         valueFormatter: (value) => `${Number(value).toFixed(2)} %`,
       },
       xAxis: {
@@ -55,20 +61,21 @@ export function AvailabilityCard({
         data: clients,
         axisLine: { lineStyle: { color: color('--chart-grid') } },
         axisTick: { show: false },
-        axisLabel: { color: color('--text-primary'), fontSize: stacked ? 14 : 17, fontWeight: 600 },
+        axisLabel: { color: color('--text-primary'), fontSize: stacked ? 14 : textSize(17), fontWeight: 600 },
       },
       yAxis: {
         type: 'value',
         min: 0,
         max: 100,
         interval: 25,
-        axisLabel: { color: axis, fontSize: 12, formatter: '{value}%' },
+        axisLabel: { color: axis, fontSize: textSize(12), formatter: '{value}%' },
         splitLine: { lineStyle: { color: color('--chart-grid') } },
       },
       series: entries.map((entry, index) => ({
         type: 'bar' as const,
         name: entry.variant_title,
         barMaxWidth: 42,
+        barGap,
         itemStyle: { color: color(slotToken(index)), borderRadius: [4, 4, 0, 0] },
         label: {
           // На телефоне столбики уже подписей в два знака после запятой: значения
@@ -76,7 +83,7 @@ export function AvailabilityCard({
           show: !stacked || contentWidth >= 600,
           position: 'top' as const,
           color: color('--text-primary'),
-          fontSize: 12,
+          fontSize: textSize(12),
           formatter: (params: { value: unknown }) => `${Number(params.value).toFixed(2)}%`,
         },
         data: clients.map((clientId) => {
@@ -93,14 +100,14 @@ export function AvailabilityCard({
                 label: {
                   formatter: `${(target * 100).toFixed(0)}%`,
                   color: color('--text-primary'),
-                  fontSize: 13,
+                  fontSize: textSize(13),
                 },
               },
             }
           : {}),
       })),
     };
-  }, [base, entries, target, color, stacked, contentWidth]);
+  }, [base, entries, target, color, stacked, contentWidth, textSize]);
 
   return (
     <Card

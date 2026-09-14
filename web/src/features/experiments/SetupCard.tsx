@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { policyLabel, ROUTING_POLICIES } from '@/lib/run-format';
 import { cx } from '@/lib/cx';
 import { formatShareShort } from '@/lib/measures';
+import { bottomAnchoredTop, centerAnchoredTop } from '@/styles/readable-text';
 import { draftFor, NO_AXIS } from './axes';
 import type { AxisCheck, AxisDraft, AxisOption } from './axes';
 import { FieldLabel, NumberField, SelectField, StaticField } from './fields';
@@ -102,7 +103,9 @@ export function SetupCard({
   const gridHint =
     budgetProblem === null ? (
       <p
-        className={cx('text-[11px] text-ink-muted', !stacked && 'absolute left-[23px] top-[577px]')}
+        className={cx('text-[11px] text-ink-muted', !stacked && 'absolute left-[23px]')}
+        // Строка зажата между полями бюджета и кнопкой: подросший кегль делится поровну.
+        style={stacked ? undefined : { top: centerAnchoredTop(577, 16.5) }}
         data-numeric
       >
         сетка {checkX.points} × {checkY.points} = {gridPoints}{' '}
@@ -222,8 +225,10 @@ export function SetupCard({
       <FieldLabel left={23} top={12}>
         БАЗОВЫЙ ВАРИАНТ
       </FieldLabel>
+      {/* Название прижато низом к разделителю под ним, подпись над ним — к названию. */}
       <p
-        className="absolute left-[23px] top-[27px] w-[376px] truncate text-[13px] font-semibold text-ink-primary"
+        className="absolute left-[23px] w-[376px] truncate text-[13px] font-semibold text-ink-primary"
+        style={{ top: bottomAnchoredTop(27, 19.5) }}
         title={baseVariant.title}
       >
         {baseVariant.title}

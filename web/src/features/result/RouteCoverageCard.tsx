@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/Card';
 import { NETWORK_PATH } from '@/app/sections';
 import { cx } from '@/lib/cx';
 import { DASH, causeView, formatShare, formatTick } from '@/lib/run-format';
+import { publicPath } from '@/lib/public-path';
+import { withTextGrowth } from '@/styles/readable-text';
 
 const LEFT = 552;
 const TOP = 570;
@@ -28,6 +30,14 @@ interface RouteCoverageCardProps {
  * текущем отсчёте — текстом, из `GET /api/runs/{id}/snapshot`. Рисовать поверх картинки
  * «примерные» линии было бы враньём: координаты аппаратов в снимке есть, проекция — нет.
  */
+/**
+ * На ноутбуке колонке метрик в 172 пикселя не хватает места под подросший текст: доли
+ * слипались, «%» переносился, ссылка упиралась в край карточки. Колонка забирает у списка
+ * маршрутов — коротких строк с усечением — столько, сколько вырос текст, а её правый край
+ * остаётся макетным.
+ */
+const METRICS_GROWTH = 80;
+
 export function RouteCoverageCard({
   snapshot,
   clients,
@@ -50,7 +60,7 @@ export function RouteCoverageCard({
       }
     >
       <img
-        src="/assets/earth-globe.png"
+        src={publicPath('assets/earth-globe.png')}
         alt=""
         aria-hidden="true"
         className={cx(
@@ -109,7 +119,10 @@ export function RouteCoverageCard({
         )}
 
         {error === null && snapshot !== null && snapshot.clients.length > 0 && (
-          <ul className={cx('space-y-[8px]', !stacked && 'scroll-area h-full w-[526px] pr-[6px]')}>
+          <ul
+            className={cx('space-y-[8px]', !stacked && 'scroll-area h-full pr-[6px]')}
+            style={stacked ? undefined : { width: withTextGrowth(526, -METRICS_GROWTH) }}
+          >
             {snapshot.clients.map((route) => (
               <li
                 key={route.client_id}
@@ -153,7 +166,14 @@ export function RouteCoverageCard({
         )}
       </div>
 
-      <div className={stacked ? 'relative' : 'absolute left-[579px] top-[73px] w-[172px]'}>
+      <div
+        className={stacked ? 'relative' : 'absolute top-[73px]'}
+        style={
+          stacked
+            ? undefined
+            : { left: withTextGrowth(579, -METRICS_GROWTH), width: withTextGrowth(172, METRICS_GROWTH) }
+        }
+      >
         <p className="text-micro font-semibold uppercase text-ink-muted">Метрики клиентов</p>
         <table className="mt-[14px] w-full text-left">
           <thead>
@@ -178,7 +198,10 @@ export function RouteCoverageCard({
               </tr>
             )}
             {clients?.slice(0, 3).map((client) => (
-              <tr key={client.client_id} className="text-[12px]">
+              // Доля и знак процента не разрываются: колонка в 172 пикселя при подросшем
+              // на ноутбуке тексте переносила «%» на вторую строку и выталкивала ссылку
+              // под край карточки.
+              <tr key={client.client_id} className={cx('text-[12px]', !stacked && 'whitespace-nowrap')}>
                 <td className="h-[26px] font-semibold text-ink-primary">{client.client_id}</td>
                 <td className="font-medium text-ink-secondary">{formatShare(client.availability)}</td>
                 <td className="font-medium text-ink-secondary">{formatShare(client.visibility)}</td>
@@ -187,7 +210,7 @@ export function RouteCoverageCard({
           </tbody>
         </table>
 
-        <p className="mt-[14px] text-[11px] text-ink-muted">
+        <p className={cx('mt-[14px] text-[11px] text-ink-muted', !stacked && 'whitespace-nowrap')}>
           среднее число переходов {meanHops == null ? DASH : meanHops.toFixed(1)}
         </p>
 

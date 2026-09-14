@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from './use-canvas-scale';
+import { CANVAS_WIDTH, scaleFor } from './use-canvas-scale';
 
 /**
  * Как показывать интерфейс.
@@ -35,8 +35,7 @@ export const STACK_MAX_WIDTH = 1180;
 export const STACK_GUTTER = 16;
 
 export function modeFor(width: number, height: number): ViewportMode {
-  const scale = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
-  return scale >= MIN_CANVAS_SCALE ? 'canvas' : 'stacked';
+  return scaleFor(width, height) >= MIN_CANVAS_SCALE ? 'canvas' : 'stacked';
 }
 
 export interface Viewport {

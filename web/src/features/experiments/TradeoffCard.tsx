@@ -2,20 +2,27 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 
 import type { ExperimentPoint } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { EChart } from '@/components/chart/EChart';
+import { useContainerSize } from '@/components/layout/box';
 import { Card } from '@/components/ui/Card';
+import { cx } from '@/lib/cx';
 import { useTokenColors } from '@/theme/use-token-colors';
 
 const LEFT = 465;
 const TOP = 636;
 const CHART_WIDTH = 872;
 const CHART_HEIGHT = 162;
+/** В потоке у графика нет соседей по высоте, и точкам даётся больше места. */
+const STACKED_CHART_HEIGHT = 220;
 
 interface TradeoffCardProps {
   readonly points: readonly ExperimentPoint[];
   readonly target: number;
   readonly selectedPointId: string | null;
   readonly onSelect: (point: ExperimentPoint) => void;
+  /** Место карточки в сетке потока; на полотне не используется. */
+  readonly stackedClassName?: string;
 }
 
 /**
@@ -23,7 +30,15 @@ interface TradeoffCardProps {
  * «наблюдаемая зависимость на рассчитанных точках», а не «оптимум» (`07_UI.md`): точки
  * между узлами сетки никто не считал, и утверждать о них нечего.
  */
-export function TradeoffCard({ points, target, selectedPointId, onSelect }: TradeoffCardProps) {
+export function TradeoffCard({
+  points,
+  target,
+  selectedPointId,
+  onSelect,
+  stackedClassName,
+}: TradeoffCardProps) {
+  const stacked = useStacked();
+  const [chartBox, chartBoxSize] = useContainerSize<HTMLDivElement>();
   const color = useTokenColors();
 
   const ready = useMemo(
@@ -55,7 +70,9 @@ export function TradeoffCard({ points, target, selectedPointId, onSelect }: Trad
     return {
       animation: false,
       textStyle: { fontFamily: 'Inter Variable, Inter, sans-serif' },
-      grid: { left: 56, right: 20, top: 16, bottom: 32 },
+      // Подпись оси X стоит под осью, а не у её конца: в конце она вместе с меткой «цель»
+      // уходила за правый край графика.
+      grid: { left: 56, right: 36, top: 16, bottom: 40 },
       tooltip: {
         backgroundColor: color('--surface-raised'),
         borderColor: color('--border-default'),
@@ -68,7 +85,8 @@ export function TradeoffCard({ points, target, selectedPointId, onSelect }: Trad
       xAxis: {
         type: 'value',
         name: 'макс. окно, мин',
-        nameLocation: 'end',
+        nameLocation: 'middle',
+        nameGap: 24,
         nameTextStyle: { color: color('--chart-axis'), fontSize: 11 },
         axisLine: { lineStyle: { color: color('--chart-grid') } },
         axisLabel: { color: color('--chart-axis'), fontSize: 11 },
@@ -96,6 +114,50 @@ export function TradeoffCard({ points, target, selectedPointId, onSelect }: Trad
     };
   }, [ready, target, selectedPointId, color]);
 
+  const select = ({ dataIndex }: { dataIndex: number }) => {
+    const point = ready[dataIndex];
+    if (point !== undefined) {
+      onSelect(point);
+    }
+  };
+  const ariaLabel =
+    'Точечный график: минимальная доступность против максимального окна недоступности';
+
+  const heading = (
+    <>
+      <h2
+        className={cx(
+          'text-[18px] font-semibold text-ink-primary',
+          !stacked && 'absolute left-[23px] top-[13px]',
+        )}
+      >
+        min доступность и максимальное окно недоступности
+      </h2>
+      <p className={cx('text-caption text-ink-muted', !stacked && 'absolute right-[23px] top-[19px]')}>
+        наблюдаемая зависимость на рассчитанных точках
+      </p>
+    </>
+  );
+
+  if (stacked) {
+    return (
+      <Card className={cx('flex flex-col gap-[4px] p-[20px]', stackedClassName)}>
+        {heading}
+        <div ref={chartBox} className="mt-[8px] min-w-0" style={{ height: STACKED_CHART_HEIGHT }}>
+          {chartBoxSize.width > 0 && (
+            <EChart
+              width={chartBoxSize.width}
+              height={STACKED_CHART_HEIGHT}
+              option={option}
+              ariaLabel={ariaLabel}
+              onSelect={select}
+            />
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card
       sceneX={LEFT}
@@ -103,25 +165,15 @@ export function TradeoffCard({ points, target, selectedPointId, onSelect }: Trad
       className="absolute h-[220px] w-[918px]"
       style={{ left: LEFT, top: TOP }}
     >
-      <h2 className="absolute left-[23px] top-[13px] text-[18px] font-semibold text-ink-primary">
-        min доступность и максимальное окно недоступности
-      </h2>
-      <p className="absolute right-[23px] top-[19px] text-caption text-ink-muted">
-        наблюдаемая зависимость на рассчитанных точках
-      </p>
+      {heading}
 
       <div className="absolute left-[23px] top-[44px]">
         <EChart
           width={CHART_WIDTH}
           height={CHART_HEIGHT}
           option={option}
-          ariaLabel="Точечный график: минимальная доступность против максимального окна недоступности"
-          onSelect={({ dataIndex }) => {
-            const point = ready[dataIndex];
-            if (point !== undefined) {
-              onSelect(point);
-            }
-          }}
+          ariaLabel={ariaLabel}
+          onSelect={select}
         />
       </div>
     </Card>

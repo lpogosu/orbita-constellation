@@ -2,9 +2,11 @@ import { ChevronRight, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { ClientMetrics, Snapshot } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { NETWORK_PATH } from '@/app/sections';
+import { cx } from '@/lib/cx';
 import { DASH, causeView, formatShare, formatTick } from '@/lib/run-format';
 
 const LEFT = 552;
@@ -35,29 +37,54 @@ export function RouteCoverageCard({
   error,
   onRetry,
 }: RouteCoverageCardProps) {
+  const stacked = useStacked();
+
   return (
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute left-[552px] top-[570px] h-[323px] w-[781px]"
+      className={
+        stacked
+          ? 'flex h-full flex-col gap-[12px] p-[20px]'
+          : 'absolute left-[552px] top-[570px] h-[323px] w-[781px]'
+      }
     >
       <img
         src="/assets/earth-globe.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute left-[99px] top-[44px] h-[448px] w-[457px] opacity-55"
+        className={cx(
+          'pointer-events-none absolute',
+          stacked
+            ? 'right-[-80px] top-[40px] h-[320px] w-[326px] opacity-30'
+            : 'left-[99px] top-[44px] h-[448px] w-[457px] opacity-55',
+        )}
       />
 
-      <Share2 aria-hidden="true" className="absolute left-[32px] top-[27px] size-[30px] text-accent-blue" />
-      <h2 className="absolute left-[77px] top-[24px] text-title-l font-semibold text-ink-primary">
-        Покрытие маршрутов
-      </h2>
+      {stacked ? (
+        <div className="relative flex items-center gap-[12px]">
+          <Share2 aria-hidden="true" className="size-[24px] shrink-0 text-accent-blue" />
+          <h2 className="text-title-m font-semibold text-ink-primary">Покрытие маршрутов</h2>
+        </div>
+      ) : (
+        <>
+          <Share2 aria-hidden="true" className="absolute left-[32px] top-[27px] size-[30px] text-accent-blue" />
+          <h2 className="absolute left-[77px] top-[24px] text-title-l font-semibold text-ink-primary">
+            Покрытие маршрутов
+          </h2>
+        </>
+      )}
 
-      <p className="absolute left-[32px] top-[62px] text-micro font-semibold uppercase text-ink-muted">
+      <p
+        className={cx(
+          'text-micro font-semibold uppercase text-ink-muted',
+          stacked ? 'relative' : 'absolute left-[32px] top-[62px]',
+        )}
+      >
         Маршруты на отсчёте {snapshot === null ? DASH : formatTick(snapshot.t_s)}
       </p>
 
-      <div className="absolute left-[32px] top-[88px] h-[200px] w-[520px]">
+      <div className={stacked ? 'relative min-h-[160px]' : 'absolute left-[32px] top-[88px] h-[200px] w-[520px]'}>
         {error !== null && (
           <ErrorBlock title="Маршруты не загрузились" message={error} onRetry={onRetry} />
         )}
@@ -67,7 +94,7 @@ export function RouteCoverageCard({
             <ul className="space-y-[10px]">
               {[0, 1, 2].map((index) => (
                 <li key={index}>
-                  <Skeleton className="h-[44px] w-[510px] rounded-sm" />
+                  <Skeleton className={cx('h-[44px] rounded-sm', stacked ? 'w-full' : 'w-[510px]')} />
                 </li>
               ))}
             </ul>
@@ -82,7 +109,7 @@ export function RouteCoverageCard({
         )}
 
         {error === null && snapshot !== null && snapshot.clients.length > 0 && (
-          <ul className="scroll-area h-full w-[526px] space-y-[8px] pr-[6px]">
+          <ul className={cx('space-y-[8px]', !stacked && 'scroll-area h-full w-[526px] pr-[6px]')}>
             {snapshot.clients.map((route) => (
               <li
                 key={route.client_id}
@@ -99,7 +126,10 @@ export function RouteCoverageCard({
                   </span>
                 </p>
                 {route.reachable ? (
-                  <p className="truncate font-mono text-[12px] text-ink-secondary">
+                  <p
+                    className="truncate font-mono text-[12px] text-ink-secondary"
+                    title={route.path.join(' → ')}
+                  >
                     {route.path.join(' → ')}
                   </p>
                 ) : (
@@ -123,7 +153,7 @@ export function RouteCoverageCard({
         )}
       </div>
 
-      <div className="absolute left-[579px] top-[73px] w-[172px]">
+      <div className={stacked ? 'relative' : 'absolute left-[579px] top-[73px] w-[172px]'}>
         <p className="text-micro font-semibold uppercase text-ink-muted">Метрики клиентов</p>
         <table className="mt-[14px] w-full text-left">
           <thead>
@@ -143,7 +173,7 @@ export function RouteCoverageCard({
             {clients === null && (
               <tr>
                 <td colSpan={3} className="pt-[8px]">
-                  <Skeleton className="h-[56px] w-[172px]" />
+                  <Skeleton className={cx('h-[56px]', stacked ? 'w-full' : 'w-[172px]')} />
                 </td>
               </tr>
             )}
@@ -168,7 +198,13 @@ export function RouteCoverageCard({
         {projectId !== null && (
           <Link
             to={`${NETWORK_PATH}/${projectId}${variantId === null ? '' : `?variant=${variantId}`}`}
-            className="mt-[12px] inline-flex items-center gap-[4px] text-[12px] font-semibold text-accent-blue hover:underline"
+            // На полотне в колонку 172 пикселя подпись со стрелкой не помещалась: переносилась
+            // на две строки, а стрелка уезжала к правому краю. Одна строка шире колонки
+            // на несколько пикселей, но справа у карточки ещё есть поле.
+            className={cx(
+              'mt-[12px] inline-flex items-center gap-[4px] whitespace-nowrap text-[12px] font-semibold text-accent-blue hover:underline',
+              stacked && 'min-h-[40px]',
+            )}
           >
             Открыть маршрут клиента
             <ChevronRight aria-hidden="true" className="size-[14px]" />

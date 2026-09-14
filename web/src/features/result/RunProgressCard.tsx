@@ -1,8 +1,10 @@
 import { AlertTriangle, RotateCw } from 'lucide-react';
 
 import type { Run } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { cx } from '@/lib/cx';
 import { runStatusLabel } from '@/lib/run-format';
 
 const LEFT = 37;
@@ -32,6 +34,7 @@ interface RunProgressCardProps {
  * со скелетонами до конца расчёта нечестно: они обещают данные, которых ещё не считали.
  */
 export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgressCardProps) {
+  const stacked = useStacked();
   const failed = run.status === 'failed' || run.status === 'cancelled';
   const percent = Math.round(run.progress * 100);
 
@@ -39,15 +42,20 @@ export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgr
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute left-[37px] top-[249px] flex h-[806px] w-[1295px] flex-col items-center justify-center gap-[20px] px-[80px] text-center"
+      className={cx(
+        'flex flex-col items-center justify-center text-center',
+        stacked
+          ? 'min-h-[360px] gap-[16px] px-[20px] py-[40px]'
+          : 'absolute left-[37px] top-[249px] h-[806px] w-[1295px] gap-[20px] px-[80px]',
+      )}
     >
       {failed ? (
         <>
           <AlertTriangle aria-hidden="true" className="size-[48px] text-status-danger" />
-          <p className="text-heading-m font-bold text-ink-primary">
+          <p className={cx('font-bold text-ink-primary', stacked ? 'text-title-l' : 'text-heading-m')}>
             {run.status === 'failed' ? 'Расчёт не удался' : 'Расчёт отменён'}
           </p>
-          <p className="max-w-[62ch] text-body text-ink-secondary">
+          <p className={cx('max-w-[62ch] text-ink-secondary', stacked ? 'text-small' : 'text-body')}>
             {run.error?.message ??
               'Сервис не сообщил причину. Повторный запуск того же варианта безопасен: результат определяется сценарием и политикой.'}
           </p>
@@ -55,7 +63,7 @@ export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgr
             <p className="text-small text-ink-muted">Остановился на стадии «{STAGES[run.stage]}»</p>
           )}
           {run.error?.path != null && (
-            <p className="font-mono text-small text-ink-muted">{run.error.path}</p>
+            <p className="max-w-full break-all font-mono text-small text-ink-muted">{run.error.path}</p>
           )}
           <Button
             onClick={onRetry}
@@ -72,12 +80,14 @@ export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgr
         </>
       ) : (
         <>
-          <p className="text-heading-m font-bold text-ink-primary">Расчёт ещё идёт</p>
-          <p className="text-body text-ink-secondary">
+          <p className={cx('font-bold text-ink-primary', stacked ? 'text-title-l' : 'text-heading-m')}>
+            Расчёт ещё идёт
+          </p>
+          <p className={cx('text-ink-secondary', stacked ? 'text-small' : 'text-body')}>
             {STAGES[run.stage]} · статус «{runStatusLabel(run.status)}»
           </p>
           <div
-            className="h-[10px] w-[620px] overflow-hidden rounded-pill bg-chart-empty"
+            className="h-[10px] w-full max-w-[620px] overflow-hidden rounded-pill bg-chart-empty"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -89,7 +99,10 @@ export function RunProgressCard({ run, onRetry, retrying, retryError }: RunProgr
               style={{ width: `${String(percent)}%` }}
             />
           </div>
-          <p className="text-title-m font-semibold text-ink-primary" data-numeric>
+          <p
+            className={cx('font-semibold text-ink-primary', stacked ? 'text-base' : 'text-title-m')}
+            data-numeric
+          >
             {percent} % · отсчётов {run.completed_ticks} из {run.total_ticks}
           </p>
           <p className="max-w-[62ch] text-small text-ink-muted">

@@ -19,6 +19,7 @@ import type {
 } from '@/api/types';
 import { useProjectSelection } from '@/app/project-selection';
 import { RESULT_PATH } from '@/app/sections';
+import { useStacked } from '@/app/viewport-mode';
 import { ErrorBlock, LoadingBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { describe, useResource } from '@/lib/use-resource';
@@ -31,6 +32,15 @@ import { RunProgressCard } from './RunProgressCard';
 import { SaveExportCard } from './SaveExportCard';
 import { TimelineCard } from './TimelineCard';
 import { useRun, waitForRun } from './use-run';
+import { Block, PageStack } from '@/components/layout/Slot';
+
+/**
+ * Места блоков в сетке потока. На планшете шапка, карточки клиентов и шкала идут на всю
+ * ширину, а пары «сохранение — перерывы» и «маршруты — параметры» стоят рядом; на
+ * телефоне тот же порядок читается сверху вниз: сначала ответ, потом детали.
+ */
+const WIDE = 'w-full min-w-0 md:col-span-2';
+const HALF = 'w-full min-w-0';
 
 /** Первый отсчёт горизонта: мини-карта показывает сеть на нём (`14_SCREENS.md` §4). */
 const FIRST_TICK_S = 0;
@@ -51,6 +61,7 @@ export function ResultPage() {
   const { runId = '' } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const { select } = useProjectSelection();
+  const stacked = useStacked();
 
   const { run, error: runError, reload: reloadRun } = useRun(runId);
   const variantId = run?.variant_id ?? null;
@@ -103,7 +114,13 @@ export function ResultPage() {
   const recompute = useRecompute(variantId, run?.routing_policy ?? 'bfs_shortest', openResult);
 
   if (runError !== null) {
-    return (
+    return stacked ? (
+      <PageStack>
+        <Card className="min-h-[320px]">
+          <ErrorBlock title="Расчёт не загрузился" message={runError} onRetry={reloadRun} />
+        </Card>
+      </PageStack>
+    ) : (
       <Card
         sceneX={37}
         sceneY={249}
@@ -115,7 +132,17 @@ export function ResultPage() {
   }
 
   if (run === null) {
-    return (
+    return stacked ? (
+      <PageStack>
+        <LoadingBlock label="Загружаем расчёт">
+          <div className="flex flex-col gap-[16px]">
+            <Skeleton className="h-[120px] rounded-2xl" />
+            <Skeleton className="h-[300px] rounded-2xl" />
+            <Skeleton className="h-[420px] rounded-2xl" />
+          </div>
+        </LoadingBlock>
+      </PageStack>
+    ) : (
       <LoadingBlock label="Загружаем расчёт">
         <Skeleton className="absolute left-[43px] top-[126px] h-[86px] w-[1290px] rounded-2xl" />
         <Skeleton className="absolute left-[37px] top-[249px] h-[806px] w-[1295px] rounded-2xl" />
@@ -125,65 +152,84 @@ export function ResultPage() {
   }
 
   const bundle = results.data;
+  const succeededView = run.status === 'succeeded';
 
   return (
-    <>
-      <ResultHeader run={run} variant={variant.data} />
+    <PageStack className="md:grid md:grid-cols-2">
+      <Block className={WIDE}>
+        <ResultHeader run={run} variant={variant.data} />
+      </Block>
 
-      {run.status === 'succeeded' ? (
+      {succeededView ? (
         <>
-          <ClientStatCards
-            clients={bundle?.metrics.clients ?? null}
-            targetAvailability={variant.data?.scenario.environment.target_availability ?? null}
-            error={results.error}
-            onRetry={results.reload}
-          />
-          <ChangedParametersCard
-            variant={variant.data}
-            error={variant.error}
-            onRetry={variant.reload}
-          />
-          <RouteCoverageCard
-            snapshot={bundle?.snapshot ?? null}
-            clients={bundle?.metrics.clients ?? null}
-            meanHops={bundle?.metrics.config.mean_hops ?? null}
-            projectId={projectId}
-            variantId={variantId}
-            error={results.error}
-            onRetry={results.reload}
-          />
-          <TimelineCard
-            timeline={bundle?.timeline ?? null}
-            error={results.error}
-            onRetry={results.reload}
-          />
+          <Block className={WIDE}>
+            <ClientStatCards
+              clients={bundle?.metrics.clients ?? null}
+              targetAvailability={variant.data?.scenario.environment.target_availability ?? null}
+              error={results.error}
+              onRetry={results.reload}
+            />
+          </Block>
+          <Block className={WIDE}>
+            <TimelineCard
+              timeline={bundle?.timeline ?? null}
+              error={results.error}
+              onRetry={results.reload}
+            />
+          </Block>
         </>
       ) : (
-        <RunProgressCard
+        <Block className={WIDE}>
+          <RunProgressCard
+            run={run}
+            onRetry={recompute.startWithCurrentPolicy}
+            retrying={recompute.progressLabel !== null}
+            retryError={recompute.error}
+          />
+        </Block>
+      )}
+
+      <Block className={succeededView ? HALF : WIDE}>
+        <SaveExportCard
           run={run}
-          onRetry={recompute.startWithCurrentPolicy}
-          retrying={recompute.progressLabel !== null}
-          retryError={recompute.error}
-        />
-      )}
-
-      <SaveExportCard
-        run={run}
-        variant={variant.data}
-        projectId={projectId}
-        projectTitle={projectTitle.data}
-        recompute={recompute}
-      />
-
-      {run.status === 'succeeded' && (
-        <OutageWindowsCard
-          outages={bundle?.outages ?? null}
-          error={results.error}
-          onRetry={results.reload}
+          variant={variant.data}
           projectId={projectId}
+          projectTitle={projectTitle.data}
+          recompute={recompute}
         />
+      </Block>
+
+      {succeededView && (
+        <>
+          <Block className={HALF}>
+            <OutageWindowsCard
+              outages={bundle?.outages ?? null}
+              error={results.error}
+              onRetry={results.reload}
+              projectId={projectId}
+            />
+          </Block>
+          <Block className={HALF}>
+            <RouteCoverageCard
+              snapshot={bundle?.snapshot ?? null}
+              clients={bundle?.metrics.clients ?? null}
+              meanHops={bundle?.metrics.config.mean_hops ?? null}
+              projectId={projectId}
+              variantId={variantId}
+              error={results.error}
+              onRetry={results.reload}
+            />
+          </Block>
+          <Block className={HALF}>
+            <ChangedParametersCard
+              variant={variant.data}
+              error={variant.error}
+              onRetry={variant.reload}
+            />
+          </Block>
+        </>
       )}
-    </>
+    </PageStack>
   );
 }
 

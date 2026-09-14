@@ -7,12 +7,25 @@ import { variantExportPath } from '@/api/projects';
 import { runEvidencePackPath, runExportPath } from '@/api/runs';
 import type { Run, RoutingPolicy, Variant } from '@/api/types';
 import { COMPARISON_PATH, sectionHref } from '@/app/sections';
+import { useStacked } from '@/app/viewport-mode';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { cx } from '@/lib/cx';
 import { downloadFile, exportFileName } from '@/lib/download';
 import { ROUTING_POLICIES, policyLabel } from '@/lib/run-format';
 import { describe } from '@/lib/use-resource';
+
+/**
+ * Подпись маскота по статусу. «Отличный результат!» над ещё идущим или упавшим расчётом
+ * противоречила соседнему блоку прогресса.
+ */
+const MASCOT_CAPTION: Record<Run['status'], readonly [string, string]> = {
+  succeeded: ['Отличный', 'результат!'],
+  queued: ['Ждём', 'очереди…'],
+  running: ['Ещё', 'считаем…'],
+  failed: ['Попробуем', 'ещё раз'],
+  cancelled: ['Расчёт', 'отменён'],
+};
 
 const LEFT = 1373;
 const TOP = 112;
@@ -64,35 +77,65 @@ export function SaveExportCard({
     });
   }, []);
 
+  const stacked = useStacked();
+  const message = downloadError ?? recompute.error;
+  // Карточка на полотне: 500 пикселей. Блок под маскотом поднят на 10 против макета —
+  // иначе ссылка на сравнение ложилась на нижнюю рамку карточки.
+  const at = (canvas: string, flow = '') => (stacked ? flow : `absolute ${canvas}`);
+
   return (
     <Card
       sceneX={LEFT}
       sceneY={TOP}
-      className="absolute left-[1373px] top-[112px] h-[500px] w-[508px]"
+      className={
+        stacked
+          ? 'flex h-full flex-col gap-[12px] p-[20px]'
+          : 'absolute left-[1373px] top-[112px] h-[500px] w-[508px]'
+      }
     >
-      <img
-        src="/assets/mascot-success.png"
-        alt=""
-        aria-hidden="true"
-        className="absolute left-[9px] top-[11px] h-[127px] w-[190px] object-contain"
-      />
-      <p className="absolute left-[207px] top-[52px] w-[130px] rotate-6 font-script text-[26px] font-bold leading-[1.12] tracking-[0.4px] text-ink-secondary">
-        Отличный
-        <br />
-        результат!
-      </p>
+      <div className={stacked ? 'flex items-center gap-[8px]' : 'contents'}>
+        <img
+          src="/assets/mascot-success.png"
+          alt=""
+          aria-hidden="true"
+          className={cx(
+            'object-contain',
+            at('left-[9px] top-[11px] h-[127px] w-[190px]', 'h-[96px] w-[144px] shrink-0'),
+          )}
+        />
+        <p
+          className={cx(
+            'rotate-6 font-script font-bold leading-[1.12] tracking-[0.4px] text-ink-secondary',
+            at('left-[207px] top-[52px] w-[130px] text-[26px]', 'text-[22px]'),
+          )}
+        >
+          {MASCOT_CAPTION[run.status][0]}
+          <br />
+          {MASCOT_CAPTION[run.status][1]}
+        </p>
+      </div>
 
-      <p className="absolute left-[23px] top-[159px] text-[10px] tracking-[0.8px] text-ink-secondary">
-        НАЗВАНИЕ ВАРИАНТА
-      </p>
+      <div className={stacked ? 'flex flex-col gap-[6px]' : 'contents'}>
+        <p className={cx('text-[10px] tracking-[0.8px] text-ink-secondary', at('left-[23px] top-[149px]'))}>
+          НАЗВАНИЕ ВАРИАНТА
+        </p>
+        <p
+          className={cx(
+            'flex h-[50px] items-center rounded-lg border border-line bg-surface-input px-[21px] font-semibold text-ink-primary',
+            at('left-[23px] top-[167px] w-[462px] text-title-l', 'text-title-m'),
+          )}
+          title={variant?.title ?? 'Название варианта задаётся при его сохранении: менять его на этом экране API не позволяет'}
+        >
+          <span className="min-w-0 truncate">{variant?.title ?? '…'}</span>
+        </p>
+      </div>
+
       <p
-        className="absolute left-[23px] top-[177px] flex h-[50px] w-[462px] items-center truncate rounded-lg border border-line bg-surface-input px-[21px] text-title-l font-semibold text-ink-primary"
-        title="Название варианта задаётся при его сохранении: менять его на этом экране API не позволяет"
+        className={cx(
+          'flex min-h-[22px] items-center gap-[10px] text-[15px] font-bold text-ink-primary',
+          at('left-[25px] top-[229px] w-[460px]'),
+        )}
       >
-        {variant?.title ?? '…'}
-      </p>
-
-      <p className="absolute left-[25px] top-[239px] flex h-[22px] w-[460px] items-center gap-[10px] text-[15px] font-bold text-ink-primary">
         <span
           aria-hidden="true"
           className={cx(
@@ -105,55 +148,73 @@ export function SaveExportCard({
         </span>
       </p>
 
-      <PrimaryAction
-        className="absolute left-[23px] top-[275px] h-[48px] w-[462px]"
-        disabled={!succeeded}
-        onClick={() => {
-          save(runExportPath(run.id), resultName);
-        }}
-        icon={<Download aria-hidden="true" className="size-[18px]" />}
-        after={<ChevronRight aria-hidden="true" className="size-[16px]" />}
+      <div className={stacked ? 'flex flex-col gap-[4px]' : 'contents'}>
+        <PrimaryAction
+          className={at('left-[23px] top-[265px] h-[48px] w-[462px]', 'h-[48px] w-full')}
+          disabled={!succeeded}
+          onClick={() => {
+            save(runExportPath(run.id), resultName);
+          }}
+          icon={<Download aria-hidden="true" className="size-[18px] shrink-0" />}
+          after={<ChevronRight aria-hidden="true" className="size-[16px] shrink-0" />}
+        >
+          Скачать результат JSON
+        </PrimaryAction>
+
+        <p
+          className={cx('truncate font-mono text-[11px] text-ink-muted', at('left-[23px] top-[319px] w-[462px]'))}
+          title={resultName}
+        >
+          {resultName}
+        </p>
+      </div>
+
+      <div className={stacked ? 'grid grid-cols-2 gap-[12px]' : 'contents'}>
+        <SecondaryAction
+          className={at('left-[23px] top-[341px] h-[48px] w-[224px]', 'h-[48px] min-w-0 px-[12px]')}
+          disabled={!succeeded}
+          onClick={() => {
+            save(runEvidencePackPath(run.id), packName);
+          }}
+          icon={<Package aria-hidden="true" className="size-[16px] shrink-0" />}
+        >
+          Evidence Pack
+        </SecondaryAction>
+
+        <PrimaryAction
+          className={at('left-[261px] top-[341px] h-[48px] w-[224px]', 'h-[48px] min-w-0 px-[12px]')}
+          compact={stacked}
+          disabled={variant === null}
+          onClick={() => {
+            if (variant !== null) {
+              save(variantExportPath(variant.id), scenarioName);
+            }
+          }}
+          icon={<Download aria-hidden="true" className="size-[16px] shrink-0" />}
+        >
+          Сценарий JSON
+        </PrimaryAction>
+      </div>
+
+      <div
+        className={cx(
+          'flex min-h-[48px] items-center rounded-[13px] border border-[var(--border-accent)] bg-[var(--surface-accent-soft)]',
+          at('left-[23px] top-[401px] h-[48px] w-[462px]'),
+        )}
       >
-        Скачать результат JSON
-      </PrimaryAction>
-
-      <p className="absolute left-[23px] top-[329px] w-[462px] truncate font-mono text-[11px] text-ink-muted">
-        {resultName}
-      </p>
-
-      <SecondaryAction
-        className="absolute left-[23px] top-[351px] h-[48px] w-[224px]"
-        disabled={!succeeded}
-        onClick={() => {
-          save(runEvidencePackPath(run.id), packName);
-        }}
-        icon={<Package aria-hidden="true" className="size-[16px]" />}
-      >
-        Evidence Pack
-      </SecondaryAction>
-
-      <PrimaryAction
-        className="absolute left-[261px] top-[351px] h-[48px] w-[224px]"
-        disabled={variant === null}
-        onClick={() => {
-          if (variant !== null) {
-            save(variantExportPath(variant.id), scenarioName);
-          }
-        }}
-        icon={<Download aria-hidden="true" className="size-[16px]" />}
-      >
-        Сценарий JSON
-      </PrimaryAction>
-
-      <div className="absolute left-[23px] top-[411px] flex h-[48px] w-[462px] items-center rounded-[13px] border border-[var(--border-accent)] bg-[var(--surface-accent-soft)]">
         <button
           type="button"
           disabled={variant === null || recompute.progressLabel !== null}
           onClick={recompute.onStart}
-          className="flex h-full flex-1 items-center gap-[10px] rounded-l-[13px] pl-[15px] text-left text-[13px] font-semibold text-ink-primary transition-[filter] duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+          className={cx(
+            'flex min-h-[48px] min-w-0 flex-1 items-center gap-[10px] self-stretch rounded-l-[13px] pl-[15px] text-left text-[13px] font-semibold leading-[1.2] text-ink-primary transition-[filter] duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45',
+          )}
         >
-          <History aria-hidden="true" className="size-[16px]" />
-          {recompute.progressLabel ?? 'Пересчитать с другой политикой'}
+          <History aria-hidden="true" className="size-[16px] shrink-0" />
+          {/* В узкой колонке подпись переносится на вторую строку, а не обрезается. */}
+          <span className={stacked ? 'line-clamp-2' : 'truncate'}>
+            {recompute.progressLabel ?? 'Пересчитать с другой политикой'}
+          </span>
         </button>
         <Select
           label="Политика маршрутизации для нового расчёта"
@@ -167,21 +228,27 @@ export function SaveExportCard({
             value: policy,
             title: policyLabel(policy),
           }))}
-          triggerClassName="h-[34px] w-[136px] rounded-sm border border-transparent pl-[10px] pr-[6px] text-caption font-semibold text-accent-violet-light hover:border-line"
+          triggerClassName={cx(
+            'rounded-sm border border-transparent pl-[10px] pr-[6px] text-caption font-semibold text-accent-violet-light hover:border-line',
+            stacked ? 'h-[40px] w-[120px]' : 'h-[34px] w-[136px]',
+          )}
           menuAlign="end"
           menuWidth={196}
         />
       </div>
 
-      {(downloadError ?? recompute.error) !== null && (
-        // Сообщение встаёт под строкой пересчёта (411 + 48), а не поверх неё; полный текст
-        // остаётся во всплывающей подсказке.
+      {message !== null && (
+        // Сообщение встаёт под строкой пересчёта, а не поверх неё. На полотне у него одна
+        // строка, и полный текст остаётся во всплывающей подсказке.
         <p
           role="alert"
-          title={downloadError ?? recompute.error ?? undefined}
-          className="absolute left-[23px] top-[463px] line-clamp-1 w-[462px] text-[12px] text-status-danger"
+          title={message}
+          className={cx(
+            'text-[12px] text-status-danger',
+            at('left-[23px] top-[453px] line-clamp-1 w-[462px]'),
+          )}
         >
-          {downloadError ?? recompute.error}
+          {message}
         </p>
       )}
 
@@ -189,7 +256,10 @@ export function SaveExportCard({
       {projectId !== null && (
         <Link
           to={`${sectionHref(COMPARISON_PATH, projectId)}&runs=${run.id}`}
-          className="absolute left-[23px] top-[481px] inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline"
+          className={cx(
+            'inline-flex items-center gap-[4px] text-[13px] font-semibold text-accent-blue hover:underline',
+            at('left-[23px] top-[471px]', 'min-h-[40px] self-start'),
+          )}
         >
           Перейти к сравнению вариантов
           <ChevronRight aria-hidden="true" className="size-[14px]" />
@@ -205,9 +275,12 @@ function PrimaryAction({
   onClick,
   icon,
   after,
+  compact = false,
   children,
 }: {
   className: string;
+  /** Половина строки узкой колонки: 15 пикселей обрезали бы подпись. */
+  compact?: boolean;
   disabled: boolean;
   onClick: () => void;
   icon: ReactNode;
@@ -220,7 +293,8 @@ function PrimaryAction({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        'flex items-center gap-[12px] rounded-lg bg-accent-magenta px-[16px] text-left text-[15px] font-semibold text-ink-onAccent shadow-glow-magenta',
+        'flex items-center rounded-lg bg-accent-magenta text-left font-semibold text-ink-onAccent shadow-glow-magenta',
+        compact ? 'gap-[8px] text-[13px]' : 'gap-[12px] px-[16px] text-[15px]',
         'transition-[filter] duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none disabled:hover:brightness-100',
         className,
       )}

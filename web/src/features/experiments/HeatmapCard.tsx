@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 
 import type { ExperimentPoint } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { EChart } from '@/components/chart/EChart';
+import { useContainerSize } from '@/components/layout/box';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { useTokenColors } from '@/theme/use-token-colors';
@@ -13,6 +15,16 @@ const LEFT = 465;
 const TOP = 200;
 const CHART_WIDTH = 872;
 const CHART_HEIGHT = 336;
+/** Высота графика в потоке: карточка там ниже макетной, а подписи ячеек те же. */
+const STACKED_CHART_HEIGHT = 320;
+/**
+ * Ячейка уже 72 пикселей не вмещает значение и подпись под ним: в узкой колонке карта
+ * становится шире карточки и прокручивается внутри неё, а не сжимает подписи в кашу.
+ */
+const MIN_CELL_WIDTH = 72;
+/** Отступ сетки под подписи оси Y: значения осей короткие, макетные 78 пикселей велики. */
+const STACKED_GRID_LEFT = 40;
+const MIN_POINT_GAP = 28;
 
 interface HeatmapCardProps {
   readonly points: readonly ExperimentPoint[];
@@ -24,6 +36,8 @@ interface HeatmapCardProps {
   readonly selectedPointId: string | null;
   readonly onSelect: (point: ExperimentPoint) => void;
   readonly onMetric: (metric: PointMetric) => void;
+  /** Место карточки в сетке потока; на полотне не используется. */
+  readonly stackedClassName?: string;
 }
 
 /**
@@ -44,7 +58,10 @@ export function HeatmapCard({
   selectedPointId,
   onSelect,
   onMetric,
+  stackedClassName,
 }: HeatmapCardProps) {
+  const stacked = useStacked();
+  const [chartBox, chartBoxSize] = useContainerSize<HTMLDivElement>();
   const color = useTokenColors();
   const descriptor = metricById(metric);
 
@@ -59,6 +76,7 @@ export function HeatmapCard({
       yPath === null
         ? lineOption({ points, xPath, xValues, descriptor, target, color })
         : heatmapOption({
+            compact: stacked,
             points,
             xPath,
             yPath,
@@ -69,13 +87,89 @@ export function HeatmapCard({
             selectedPointId,
             color,
           }),
-    [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color],
+    [points, xPath, yPath, xValues, yValues, descriptor, target, selectedPointId, color, stacked],
   );
 
   const ordered = useMemo(
     () => orderedPoints(points, xPath, yPath, descriptor),
     [points, xPath, yPath, descriptor],
   );
+
+  const title = (
+    <h2
+      className={cx(
+        'text-[18px] font-semibold text-ink-primary',
+        !stacked && 'absolute left-[23px] top-[17px]',
+      )}
+    >
+      Тепловая карта конфигураций
+    </h2>
+  );
+
+  const metricSwitch = (
+    <div
+      className={cx(
+        'rounded-sm border border-line bg-surface-input p-[2px]',
+        stacked
+          ? 'grid w-full grid-cols-3 sm:flex sm:w-auto'
+          : 'absolute right-[23px] top-[13px] flex h-[30px] items-center',
+      )}
+    >
+      {METRICS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={item.id === metric}
+          onClick={() => { onMetric(item.id); }}
+          className={cx(
+            'rounded-[7px] text-[12px] font-semibold transition-colors duration-150',
+            stacked ? 'min-h-[40px] px-[10px] leading-[1.2]' : 'h-[26px] px-[14px]',
+            item.id === metric
+              ? 'bg-accent-violet text-ink-onAccent'
+              : 'text-ink-secondary hover:text-ink-primary',
+          )}
+        >
+          {item.title}
+        </button>
+      ))}
+    </div>
+  );
+
+  const ariaLabel =
+    yPath === null
+      ? `График ${descriptor.title} по параметру ${axisTitle(xPath)}`
+      : `Тепловая карта ${descriptor.title} по параметрам ${axisTitle(xPath)} и ${axisTitle(yPath)}`;
+
+  const select = ({ dataIndex }: { dataIndex: number }) => {
+    const point = ordered[dataIndex];
+    if (point !== undefined) {
+      onSelect(point);
+    }
+  };
+
+  if (stacked) {
+    const minWidth =
+      yPath === null
+        ? 60 + xValues.length * MIN_POINT_GAP
+        : STACKED_GRID_LEFT + 12 + xValues.length * MIN_CELL_WIDTH;
+    return (
+      <Card className={cx('flex flex-col gap-[12px] p-[20px]', stackedClassName)}>
+        <div className="flex flex-wrap items-center justify-between gap-[12px]">
+          {title}
+          {metricSwitch}
+        </div>
+        <div ref={chartBox} className="scroll-area overflow-x-auto">
+          <EChart
+            width={Math.max(chartBoxSize.width, minWidth)}
+            height={STACKED_CHART_HEIGHT}
+            option={option}
+            ariaLabel={ariaLabel}
+            onSelect={select}
+          />
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -84,45 +178,16 @@ export function HeatmapCard({
       className="absolute h-[420px] w-[918px]"
       style={{ left: LEFT, top: TOP }}
     >
-      <h2 className="absolute left-[23px] top-[17px] text-[18px] font-semibold text-ink-primary">
-        Тепловая карта конфигураций
-      </h2>
-
-      <div className="absolute right-[23px] top-[13px] flex h-[30px] items-center rounded-sm border border-line bg-surface-input p-[2px]">
-        {METRICS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-pressed={item.id === metric}
-            onClick={() => { onMetric(item.id); }}
-            className={cx(
-              'h-[26px] rounded-[7px] px-[14px] text-[12px] font-semibold transition-colors duration-150',
-              item.id === metric
-                ? 'bg-accent-violet text-ink-onAccent'
-                : 'text-ink-secondary hover:text-ink-primary',
-            )}
-          >
-            {item.title}
-          </button>
-        ))}
-      </div>
+      {title}
+      {metricSwitch}
 
       <div className="absolute left-[23px] top-[58px]">
         <EChart
           width={CHART_WIDTH}
           height={CHART_HEIGHT}
           option={option}
-          ariaLabel={
-            yPath === null
-              ? `График ${descriptor.title} по параметру ${axisTitle(xPath)}`
-              : `Тепловая карта ${descriptor.title} по параметрам ${axisTitle(xPath)} и ${axisTitle(yPath)}`
-          }
-          onSelect={({ dataIndex }) => {
-            const point = ordered[dataIndex];
-            if (point !== undefined) {
-              onSelect(point);
-            }
-          }}
+          ariaLabel={ariaLabel}
+          onSelect={select}
         />
       </div>
     </Card>
@@ -171,6 +236,8 @@ interface HeatmapArgs {
   target: number;
   selectedPointId: string | null;
   color: (name: string) => string;
+  /** Узкая колонка потока: подпись ячейки короче, отступ под ось меньше. */
+  compact: boolean;
 }
 
 function heatmapOption({
@@ -183,11 +250,13 @@ function heatmapOption({
   target,
   selectedPointId,
   color,
+  compact,
 }: HeatmapArgs): EChartsOption {
   const scale = [1, 2, 3, 4, 5].map((step) => color(`--heat-${step}`));
   const cellInk = color('--chart-cell-ink');
   const items: { value: [number, number, number]; itemStyle: Record<string, unknown> }[] = [];
   const captions: string[] = [];
+  const raws: number[] = [];
 
   for (const [yIndex, y] of yValues.entries()) {
     for (const [xIndex, x] of xValues.entries()) {
@@ -208,18 +277,20 @@ function heatmapOption({
           borderRadius: 8,
         },
       });
+      raws.push(raw);
       captions.push(
-        `${descriptor.format(raw)}|${reached ? 'цель достигнута' : 'ниже цели'}`,
+        `${descriptor.format(raw)}|${reached ? (compact ? 'достигнута' : 'цель достигнута') : 'ниже цели'}`,
       );
     }
   }
 
   const values = items.map((item) => item.value[2]);
+  const gridLeft = compact ? STACKED_GRID_LEFT : 78;
 
   return {
     animation: false,
     textStyle: { fontFamily: 'Inter Variable, Inter, sans-serif' },
-    grid: { left: 78, right: 12, top: 26, bottom: 66 },
+    grid: { left: gridLeft, right: 12, top: 26, bottom: 66 },
     tooltip: {
       backgroundColor: color('--surface-raised'),
       borderColor: color('--border-default'),
@@ -251,8 +322,14 @@ function heatmapOption({
       max: values.length === 0 ? 1 : Math.max(...values),
       calculable: false,
       orient: 'horizontal',
-      left: 78,
+      left: gridLeft,
       bottom: 4,
+      // Шкала без подписей концов не отвечает, какой цвет какому значению соответствует.
+      text:
+        raws.length === 0
+          ? ['', '']
+          : [descriptor.format(Math.max(...raws)), descriptor.format(Math.min(...raws))],
+      textGap: 8,
       itemWidth: 12,
       itemHeight: 180,
       textStyle: { color: color('--chart-axis'), fontSize: 11 },

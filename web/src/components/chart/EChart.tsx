@@ -28,7 +28,10 @@ export interface ChartClick {
 }
 
 interface EChartProps {
-  /** Размер в пикселях полотна макета: измерять DOM нельзя, он масштабирован `zoom`. */
+  /**
+   * Размер в пикселях. На полотне это макетная величина: измерять DOM там нельзя, он
+   * масштабирован `zoom`. В потоке `zoom` нет, и размер приходит из `useContainerSize`.
+   */
   readonly width: number;
   readonly height: number;
   readonly option: EChartsOption;
@@ -49,13 +52,22 @@ export function EChart({ width, height, option, onSelect, ariaLabel }: EChartPro
   const chart = useRef<echarts.ECharts | null>(null);
   const select = useRef(onSelect);
   select.current = onSelect;
+  // Экземпляр создаётся один раз, а размер и настройки приходят позже: пересоздание при
+  // каждом изменении ширины карточки в потоке оставляло бы новый экземпляр без рядов.
+  const initial = useRef({ width, height, option });
 
   useEffect(() => {
     const element = host.current;
     if (element === null) {
       return;
     }
-    const instance = echarts.init(element, null, { renderer: 'svg', width, height });
+    const { width: startWidth, height: startHeight, option: startOption } = initial.current;
+    const instance = echarts.init(element, null, {
+      renderer: 'svg',
+      width: Math.max(startWidth, 1),
+      height: Math.max(startHeight, 1),
+    });
+    instance.setOption(startOption, { notMerge: true });
     chart.current = instance;
     instance.on('click', (event: { seriesIndex?: number; dataIndex?: number }) => {
       if (event.seriesIndex !== undefined && event.dataIndex !== undefined) {
@@ -66,6 +78,13 @@ export function EChart({ width, height, option, onSelect, ariaLabel }: EChartPro
       instance.dispose();
       chart.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    // Контейнер в потоке ещё не измерен в первом кадре: нулевой размер ECharts не принимает.
+    if (width > 0 && height > 0) {
+      chart.current?.resize({ width, height });
+    }
   }, [width, height]);
 
   useEffect(() => {

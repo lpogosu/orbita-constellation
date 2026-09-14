@@ -19,12 +19,18 @@ import {
 } from './sections';
 
 /**
+ * Обычная сборка живёт в корне origin, демо на GitHub Pages — под именем репозитория.
+ * `BASE_URL` оканчивается на `/`, а `basename` роутера ждёт путь без него.
+ */
+const ROUTER_BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+/**
  * Каждый раздел — пара маршрутов: адрес с проектом показывает экран, адрес без проекта
  * приводит к нему (`SectionEntry`). Страниц-заглушек в приложении нет.
  */
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={ROUTER_BASENAME}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to={PROJECTS_PATH} replace />} />

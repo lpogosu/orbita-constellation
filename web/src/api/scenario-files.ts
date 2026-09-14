@@ -1,3 +1,5 @@
+import { DEMO_MODE } from '@/demo/mode';
+import { publicPath } from '@/lib/public-path';
 import { TransportError } from './client';
 
 /**
@@ -19,7 +21,12 @@ export interface ScenarioExample {
  */
 const EXAMPLE_NAME = /^\d{2}_[a-z0-9_-]+\.json$/i;
 const EXAMPLE_LIMIT = 4;
-const DIRECTORY = '/scenarios/';
+const DIRECTORY = publicPath('scenarios/');
+/**
+ * GitHub Pages не выдаёт список файлов каталога, поэтому сборка демо кладёт рядом с
+ * примерами готовый ответ в том же формате, что `autoindex_format json` у nginx.
+ */
+const DIRECTORY_LISTING = DEMO_MODE ? `${DIRECTORY}index.json` : DIRECTORY;
 
 interface DirectoryEntry {
   name?: unknown;
@@ -32,7 +39,7 @@ export async function loadScenarioExamples(): Promise<ScenarioExample[]> {
 }
 
 async function listExampleNames(): Promise<string[]> {
-  const listing = await fetchJson(DIRECTORY);
+  const listing = await fetchJson(DIRECTORY_LISTING);
   if (!Array.isArray(listing)) {
     throw new TransportError('Каталог примеров вернул не список файлов');
   }

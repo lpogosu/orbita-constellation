@@ -5,6 +5,7 @@ import { useStacked } from '@/app/viewport-mode';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
+import { publicPath } from '@/lib/public-path';
 
 interface DropzoneCardProps {
   onFile: (file: File) => void;
@@ -68,7 +69,7 @@ export function DropzoneCard({ onFile, onBrowse, onShowExamples }: DropzoneCardP
         }
       >
         <img
-          src="/assets/mascot-json.png"
+          src={publicPath('assets/mascot-json.png')}
           alt="Спутник-маскот ОРБИТЫ держит файл сценария"
           className={
             stacked ? 'aspect-[396/264] w-full object-cover' : 'h-[264px] w-[396px] object-cover'

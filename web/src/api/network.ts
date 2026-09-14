@@ -1,3 +1,4 @@
+import { DEMO_MODE } from '@/demo/mode';
 import { apiRequest, jsonBody } from './client';
 import type {
   BackupPaths,
@@ -94,6 +95,19 @@ export function subscribeRunEvents(
   onEvent: (event: RunProgressEvent) => void,
   onError: (message: string) => void,
 ): RunEventsSubscription {
+  if (DEMO_MODE) {
+    // Статический сайт не держит поток событий, а все расчёты записи уже завершены. Поток
+    // сразу считается закрытым: экран дочитает статус запросом, как при обрыве связи.
+    const timer = window.setTimeout(() => {
+      onError('Поток прогресса в демо не открывается — статус расчёта берётся из записи');
+    }, 0);
+    return {
+      close: () => {
+        window.clearTimeout(timer);
+      },
+    };
+  }
+
   const source = new EventSource(`/api/runs/${encodeURIComponent(runId)}/events`);
   let closed = false;
 

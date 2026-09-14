@@ -1,3 +1,5 @@
+import { publicPath } from '@/lib/public-path';
+
 /**
  * Подложка карты: фотография Земли из макета (узел «Globe»), перепроецированная в ту же
  * азимутальную равнопромежуточную сетку, в которой рисуются данные. Сам ассет
@@ -12,12 +14,12 @@
  * перерисовывается только при смене размера или плотности пикселей.
  */
 
-const EQUIRECT_SRC = '/assets/earth-natural-equirect.png';
+const EQUIRECT_SRC = publicPath('assets/earth-natural-equirect.png');
 // Use the production cut-outs with a real alpha channel. The older WebP files
 // (`map-satellite.webp`/`map-gateway.webp`) contain a baked navy rectangle, which
 // becomes visible whenever the sprite is drawn over the globe.
-const SATELLITE_SRC = '/assets/orbita-satellite-mini-base.png';
-const GATEWAY_SRC = '/assets/orbita-gateway-dish.png';
+const SATELLITE_SRC = publicPath('assets/orbita-satellite-mini-base.png');
+const GATEWAY_SRC = publicPath('assets/orbita-gateway-dish.png');
 
 export interface MapSprites {
   /** Реальная равнопрямоугольная дневная текстура: из неё строятся оба полярных диска. */

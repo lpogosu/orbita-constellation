@@ -5,6 +5,7 @@ import { useStacked } from '@/app/viewport-mode';
 import { ErrorBlock, Skeleton } from '@/components/state/States';
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
+import { publicPath } from '@/lib/public-path';
 
 /**
  * Обложки лежат в `public/assets` и назначаются по порядку файлов в каталоге: у сценария
@@ -12,10 +13,10 @@ import { cx } from '@/lib/cx';
  * идентификаторы кейса в код.
  */
 const COVERS = [
-  '/assets/scenario-cover-1.png',
-  '/assets/scenario-cover-2.png',
-  '/assets/scenario-cover-3.png',
-  '/assets/scenario-cover-4.png',
+  publicPath('assets/scenario-cover-1.png'),
+  publicPath('assets/scenario-cover-2.png'),
+  publicPath('assets/scenario-cover-3.png'),
+  publicPath('assets/scenario-cover-4.png'),
 ];
 
 interface ScenarioExampleCardsProps {

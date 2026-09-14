@@ -1,4 +1,4 @@
-import { ApiError, TransportError } from '@/api/client';
+import { ApiError, apiFetch } from '@/api/client';
 import type { ErrorDetail } from '@/api/types';
 
 /**
@@ -11,12 +11,7 @@ import type { ErrorDetail } from '@/api/types';
  * разбирается так же, чтобы блок показал сообщение сервиса, а не «не удалось скачать».
  */
 export async function downloadFile(path: string, fileName: string): Promise<void> {
-  let response: Response;
-  try {
-    response = await fetch(path);
-  } catch (cause) {
-    throw new TransportError('Сервис недоступен: проверьте, что стек запущен', { cause });
-  }
+  const response = await apiFetch(path);
 
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);

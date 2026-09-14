@@ -54,7 +54,8 @@ export function scenariosDir(directory: string): Plugin {
   };
 }
 
-async function listDirectory(directory: string): Promise<string> {
+/** Ответ `autoindex_format json` nginx: те же поля, по которым экран отбирает примеры. */
+export async function listDirectory(directory: string): Promise<string> {
   const names = await readdir(directory);
   const entries = await Promise.all(
     names.map(async (name) => {

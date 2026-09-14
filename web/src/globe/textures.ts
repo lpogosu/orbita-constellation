@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 
+import { publicPath } from '@/lib/public-path';
+
 /** Пути готовых текстур (`web/public/assets/`, `docs/18_GLOBE_3D.md` §5). */
 const SOURCES = {
-  day: '/assets/earth-natural-equirect.png',
-  night: '/assets/earth-night.webp',
-  clouds: '/assets/clouds.webp',
-  rough: '/assets/earth-rough.png',
-  satellite: '/assets/satellite-orbital-sprite.png',
+  day: publicPath('assets/earth-natural-equirect.png'),
+  night: publicPath('assets/earth-night.webp'),
+  clouds: publicPath('assets/clouds.webp'),
+  rough: publicPath('assets/earth-rough.png'),
+  satellite: publicPath('assets/satellite-orbital-sprite.png'),
 } as const;
 
 type TextureKey = keyof typeof SOURCES;

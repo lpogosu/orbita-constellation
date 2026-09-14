@@ -4,6 +4,7 @@ import { EmptyState, ErrorBlock, LoadingBlock, Skeleton } from '@/components/sta
 import { Card } from '@/components/ui/Card';
 import { cx } from '@/lib/cx';
 import { DASH, formatGap, formatShare } from '@/lib/run-format';
+import { publicPath } from '@/lib/public-path';
 
 /** Полоса карточек клиентов: (37, 249), карточка 405×308, шаг 445 (узел 49:626). */
 const BAND_LEFT = 37;
@@ -251,7 +252,7 @@ function ClientStatCard({
         {/* В узкой карточке антенна уходит в верхний угол: внизу она ложилась бы на
             значения видимости и переходов. */}
         <img
-          src="/assets/ground-station-dish.png"
+          src={publicPath('assets/ground-station-dish.png')}
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute right-[12px] top-[12px] h-[88px] w-[96px] object-contain opacity-80 lg:h-[72px] lg:w-[80px]"
@@ -293,7 +294,7 @@ function ClientStatCard({
       {/* Отступ от правого и нижнего края больше, чем кажется нужным на глаз: у самого
           скругления карточки блик антенны читался как утечка света за её пределы. */}
       <img
-        src="/assets/ground-station-dish.png"
+        src={publicPath('assets/ground-station-dish.png')}
         alt=""
         aria-hidden="true"
         className="pointer-events-none absolute left-[225px] top-[140px] h-[140px] w-[152px] opacity-80"

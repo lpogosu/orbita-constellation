@@ -1,3 +1,5 @@
+import { DEMO_MODE } from '@/demo/mode';
+import { replayRequest } from '@/demo/replay';
 import type {
   ErrorDetail,
   Project,
@@ -36,7 +38,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
 
-  const response = await send(path, { ...init, headers });
+  const response = await apiFetch(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -46,7 +48,14 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   return body as T;
 }
 
-async function send(path: string, init: RequestInit): Promise<Response> {
+/**
+ * Единственная точка сетевого доступа к API: и JSON-запросы, и выгрузки файлов. В демо на
+ * GitHub Pages бэкенда нет, и ответ берётся из записи — экраны этой разницы не видят.
+ */
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  if (DEMO_MODE) {
+    return replayRequest(path, init);
+  }
   try {
     return await fetch(path, init);
   } catch (cause) {

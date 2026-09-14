@@ -2,9 +2,12 @@ import { Moon, SquareArrowOutUpRight, Sun } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { cx } from '@/lib/cx';
+import { publicPath } from '@/lib/public-path';
 import { isSectionActive, NAV_SECTIONS, PROJECTS_PATH, RESULT_PATH, sectionHref } from '@/app/sections';
 import { useProjectSelection } from '@/app/project-selection';
 import { useStacked } from '@/app/viewport-mode';
+import { DemoBadge } from '@/demo/DemoBadge';
+import { DEMO_MODE } from '@/demo/mode';
 import { useTheme } from '@/theme/use-theme';
 import { ProjectSwitcher } from './ProjectSwitcher';
 
@@ -29,7 +32,7 @@ function StackedTopBar() {
   return (
     <header className="sticky top-0 z-20 border-b border-line-strong bg-[var(--topbar-bg)]">
       <div className="flex items-center gap-[10px] px-[16px] py-[10px]">
-        <img src="/assets/logo-mark.png" alt="" className="h-[32px] w-[42px] object-contain" />
+        <img src={publicPath('assets/logo-mark.png')} alt="" className="h-[32px] w-[42px] object-contain" />
         <span className="font-display text-[22px] font-bold leading-none tracking-[1.6px] text-ink-primary">
           ОРБИТА
         </span>
@@ -50,6 +53,12 @@ function StackedTopBar() {
           </span>
         </button>
       </div>
+
+      {DEMO_MODE && (
+        <div className="px-[16px] pb-[10px]">
+          <DemoBadge stacked />
+        </div>
+      )}
 
       <div className="px-[16px] pb-[10px]">
         <ProjectSwitcher />
@@ -100,7 +109,7 @@ function CanvasTopBar() {
 
       <div className="absolute left-[40px] top-[16px] flex items-center gap-[14px]">
         <img
-          src="/assets/logo-mark.png"
+          src={publicPath('assets/logo-mark.png')}
           alt=""
           className="h-[60px] w-[78px] object-contain"
         />
@@ -129,6 +138,8 @@ function CanvasTopBar() {
       </nav>
 
       <ProjectSwitcher />
+
+      {DEMO_MODE && <DemoBadge stacked={false} />}
 
       {selection.runId === null ? (
         <p className="absolute left-[1555px] top-[36px] h-[20px] w-[220px] text-right text-micro font-medium leading-[22px] text-ink-primary">

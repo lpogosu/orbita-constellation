@@ -4,12 +4,29 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { demoPages } from './vite/demo-pages';
 import { scenariosDir } from './vite/scenarios-dir';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const scenarios = path.resolve(root, '..', 'scenarios');
 
-export default defineConfig({
-  plugins: [react(), scenariosDir(path.resolve(root, '..', 'scenarios'))],
+/**
+ * `vite build --mode demo` собирает статическое демо для GitHub Pages: сайт проекта живёт
+ * под именем репозитория, а ответы API берутся из записи в `demo-data/`. Остальные режимы
+ * собираются в корень origin, как и раньше.
+ */
+const DEMO_MODE = 'demo';
+const DEMO_BASE = '/orbita-constellation/';
+
+export default defineConfig(({ mode }) => ({
+  base: mode === DEMO_MODE ? DEMO_BASE : '/',
+  plugins: [
+    react(),
+    scenariosDir(scenarios),
+    ...(mode === DEMO_MODE
+      ? [demoPages({ dataDir: path.resolve(root, 'demo-data'), scenariosDir: scenarios })]
+      : []),
+  ],
   resolve: {
     alias: { '@': path.resolve(root, 'src') },
   },
@@ -42,4 +59,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

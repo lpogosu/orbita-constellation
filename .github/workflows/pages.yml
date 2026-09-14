@@ -1,0 +1,75 @@
+name: pages
+
+# Демо «только для просмотра» на GitHub Pages. Ответы API не хранятся в репозитории:
+# workflow поднимает весь стек, считает данные, проходит экраны и записывает ответы, поэтому
+# демо всегда показывает поведение того кода, из которого собрано.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Две выкладки подряд не должны публиковаться вперемешку: новая отменяет незавершённую.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установить зависимости фронтенда
+        working-directory: web
+        run: npm ci
+
+      - name: Установить Playwright
+        run: |
+          pip install playwright pillow
+          python -m playwright install --with-deps chromium
+
+      - name: Поднять стек
+        run: docker compose -f deploy/docker-compose.yml up -d --build --wait --wait-timeout 600
+
+      - name: Записать ответы API
+        run: python scripts/record_demo.py --base http://localhost:3000 --api http://localhost:8000/api
+
+      - name: Логи стека
+        if: failure()
+        run: docker compose -f deploy/docker-compose.yml logs --no-color --tail 200
+
+      - name: Собрать демо
+        working-directory: web
+        run: npx vite build --mode demo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+      - name: Остановить стек
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down --volumes --remove-orphans
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

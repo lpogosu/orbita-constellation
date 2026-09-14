@@ -16,10 +16,13 @@ import {
 import * as THREE from 'three';
 
 import type { Plane } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
+import { cx } from '@/lib/cx';
 import type { SatelliteAction } from '@/map/MapCanvas';
 import type { MapHit, MapLayers, MapModel } from '@/map/model';
 import { readPalette } from '@/map/palette';
 import { useTokenColors } from '@/theme/use-token-colors';
+import { EARTH_RADIUS_KM } from '@/map/projection';
 import type { Hemisphere } from '@/map/projection';
 import { ContextMenu } from './ContextMenu';
 import { Scene } from './Scene';
@@ -34,17 +37,40 @@ export interface OrbitState {
   readonly distance: number;
 }
 
-const DEFAULT_ORBIT: OrbitState = {
+/** Ракурс по умолчанию; дистанцию подбирает `fitDistance` под размер области. */
+const DEFAULT_ANGLES = {
   azimuth: THREE.MathUtils.degToRad(-30),
   polar: THREE.MathUtils.degToRad(55),
-  distance: 2.8,
-};
+} as const;
+const CAMERA_FOV_DEG = 32;
+/**
+ * Половина спрайта аппарата в радиусах Земли (`Satellites.tsx`: 0.108 × 1.35 / 2): на
+ * столько аппараты выступают за кольцо орбиты, и в кадр должны попасть и они.
+ */
+const SATELLITE_SPRITE_RADIUS = 0.075;
+/** Поле вокруг планеты: без него кольца орбит касаются края области. */
+const FIT_MARGIN = 1.08;
 /** Полярный угол камеры почти над полюсом: 0 — строго над ним, чуть отступаем, чтобы
  * не терять ориентацию при `enableDamping`. Южный — зеркальное значение от другого полюса. */
 const NORTH_POLAR = THREE.MathUtils.degToRad(8);
 const SOUTH_POLAR = THREE.MathUtils.degToRad(180 - 8);
 const MIN_DISTANCE = 1.25;
-const MAX_DISTANCE = 6;
+/** Отъехать можно заметно дальше стартового кадра, но не до точки на горизонте. */
+const MAX_DISTANCE_FACTOR = 1.6;
+
+/**
+ * Дистанция, с которой Земля вместе с орбитами целиком входит в кадр.
+ *
+ * Сфера радиуса R видна целиком, если d ≥ R / sin(половина угла обзора). Вертикальный угол
+ * задан камерой, горизонтальный зависит от пропорций области: в узкой области телефона
+ * планету ограничивает ширина, а не высота, и считать только по вертикали нельзя.
+ */
+function fitDistance(aspect: number, altitudeKm: number): number {
+  const radius = 1 + Math.max(altitudeKm, 0) / EARTH_RADIUS_KM + SATELLITE_SPRITE_RADIUS;
+  const halfVertical = THREE.MathUtils.degToRad(CAMERA_FOV_DEG / 2);
+  const halfHorizontal = Math.atan(Math.tan(halfVertical) * (aspect > 0 ? aspect : 1));
+  return (radius / Math.sin(Math.min(halfVertical, halfHorizontal))) * FIT_MARGIN;
+}
 
 export interface Globe3DProps {
   readonly model: MapModel;
@@ -67,6 +93,11 @@ export interface Globe3DProps {
   readonly onOrbitChange?: ((state: OrbitState) => void) | undefined;
   /** WebGL недоступен на этом устройстве — экран обязан молча вернуться в 2D. */
   readonly onUnavailable?: (() => void) | undefined;
+  /**
+   * Сколько пикселей сверху занимают плашки экрана поверх области (отсчёт, «2D/3D»).
+   * Кнопка сброса камеры встаёт под ними; если экран вынес плашки из области, здесь 0.
+   */
+  readonly overlayTop?: number | undefined;
 }
 
 /**
@@ -90,7 +121,9 @@ function Globe3DView({
   orbit,
   onOrbitChange,
   onUnavailable,
+  overlayTop = 48,
 }: Globe3DProps) {
+  const stacked = useStacked();
   const containerRef = useRef<HTMLDivElement>(null);
   const rigRef = useRef<CameraRigHandle>(null);
 
@@ -108,6 +141,25 @@ function Globe3DView({
       onUnavailable?.();
     }
   }, [available, onUnavailable]);
+
+  // Глобус в прокручиваемой странице не должен становиться ловушкой. Колесо без Ctrl
+  // перехватывается на погружении, раньше обработчика зума `OrbitControls`, и уходит
+  // странице; с Ctrl (щипок на тачпаде) оно по-прежнему приближает глобус.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!stacked || container === null) {
+      return;
+    }
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.ctrlKey) {
+        event.stopPropagation();
+      }
+    };
+    container.addEventListener('wheel', onWheel, { capture: true });
+    return () => {
+      container.removeEventListener('wheel', onWheel, { capture: true });
+    };
+  }, [stacked, status]);
 
   const toLocal = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -146,10 +198,21 @@ function Globe3DView({
   const hoverLocal = hover === null ? null : toLocal(hover.clientX, hover.clientY);
 
   return (
-    <div ref={containerRef} className="relative" style={{ width, height }}>
+    <div
+      ref={containerRef}
+      className={cx(
+        'relative',
+        // `OrbitControls` ставит своему элементу `touch-action: none` строкой стиля и
+        // переставляет при переподключении, поэтому перебивается только `!important`.
+        // `pan-y` отдаёт вертикальный жест пальцем прокрутке страницы, а горизонтальный
+        // сдвиг и щипок остаются глобусу.
+        stacked && '[&_canvas]:![touch-action:pan-y] [&_div]:![touch-action:pan-y]',
+      )}
+      style={{ width, height }}
+    >
       <Canvas
         dpr={dpr}
-        camera={{ fov: 32, near: 0.01, far: 100 }}
+        camera={{ fov: CAMERA_FOV_DEG, near: 0.01, far: 100 }}
         gl={{ antialias: true, alpha: true }}
         frameloop="demand"
         onCreated={({ gl }) => {
@@ -162,7 +225,13 @@ function Globe3DView({
           setMenu(null);
         }}
       >
-        <CameraRig ref={rigRef} hemisphere={hemisphere} orbit={orbit} onOrbitChange={onOrbitChange} />
+        <CameraRig
+          ref={rigRef}
+          hemisphere={hemisphere}
+          altitudeKm={altitudeKm}
+          orbit={orbit}
+          onOrbitChange={onOrbitChange}
+        />
         <Scene
           model={model}
           layers={layers}
@@ -186,23 +255,39 @@ function Globe3DView({
           в родительском экране): иначе плашки перекрываются (`docs/18_GLOBE_3D.md`).
           Точку обзора «Север/Юг» задаёт общий с 2D-картой переключатель полушария —
           здесь остаётся только сброс камеры к дефолтному ракурсу. */}
-      <div className="pointer-events-none absolute right-[14px] top-[58px] flex flex-col items-end gap-[6px]">
+      <div
+        className="pointer-events-none absolute right-[14px] flex flex-col items-end gap-[6px]"
+        style={{ top: overlayTop + 10 }}
+      >
         <div className="pointer-events-auto flex gap-[6px]">
           <button
             type="button"
             title="Сбросить камеру"
+            aria-label="Сбросить камеру"
             onClick={() => {
               rigRef.current?.reset();
             }}
-            className="flex size-[30px] items-center justify-center rounded-sm border border-line bg-surface-raised text-ink-secondary transition-colors duration-150 hover:text-ink-primary"
+            className={cx(
+              'flex items-center justify-center rounded-sm border border-line bg-surface-raised text-ink-secondary transition-colors duration-150 hover:text-ink-primary',
+              stacked ? 'size-[40px]' : 'size-[30px]',
+            )}
           >
             <RotateCcw aria-hidden="true" className="size-[16px]" />
           </button>
         </div>
-        <p className="pointer-events-none rounded-sm border border-line-subtle bg-surface-sunken px-[8px] py-[3px] text-micro text-ink-muted">
-          ЛКМ — вращение · колесо — зум
-        </p>
+        {!stacked && (
+          <p className="pointer-events-none rounded-sm border border-line-subtle bg-surface-sunken px-[8px] py-[3px] text-micro text-ink-muted">
+            ЛКМ — вращение · колесо — зум
+          </p>
+        )}
       </div>
+      {/* В потоке планета начинается от верхнего края области, и подсказка под кнопкой
+          закрывала бы её; внизу по центру она ложится на поле вокруг орбит. */}
+      {stacked && (
+        <p className="pointer-events-none absolute bottom-[8px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm border border-line-subtle bg-surface-sunken px-[8px] py-[3px] text-micro text-ink-muted">
+          Сдвиг вбок — вращение · щипок — зум
+        </p>
+      )}
 
       {hover !== null && hoverLocal !== null && menu === null && (
         <div
@@ -243,6 +328,7 @@ interface CameraRigHandle {
 
 interface CameraRigProps {
   readonly hemisphere: Hemisphere;
+  readonly altitudeKm: number;
   readonly orbit?: OrbitState | null | undefined;
   readonly onOrbitChange?: ((state: OrbitState) => void) | undefined;
 }
@@ -269,12 +355,17 @@ function readSpherical(controls: OrbitControlsInstance): OrbitState {
  * `hemisphere` — им управляет тот же переключатель, что и 2D-картой.
  */
 const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig(
-  { hemisphere, orbit, onOrbitChange },
+  { hemisphere, altitudeKm, orbit, onOrbitChange },
   ref,
 ) {
   const controlsRef = useRef<OrbitControlsInstance | null>(null);
-  const lastSynced = useRef<OrbitState>(DEFAULT_ORBIT);
-  const { invalidate } = useThree();
+  const { invalidate, size } = useThree();
+  const fit = fitDistance(size.width / Math.max(size.height, 1), altitudeKm);
+  const defaultOrbit = useMemo<OrbitState>(() => ({ ...DEFAULT_ANGLES, distance: fit }), [fit]);
+  const lastSynced = useRef<OrbitState>(defaultOrbit);
+  // Пока пользователь не приближал и не отдалял камеру, она следует за размером области:
+  // поворот телефона или смена сетки страницы не должны обрезать планету.
+  const zoomTouched = useRef(false);
   // Полюс, к которому сейчас едет камера, или `null`, если переход уже завершён (или ещё
   // не начинался). Первое значение полушария не анимируем — стартовый вид задаёт
   // `orbit`/`DEFAULT_ORBIT`, а не молчаливый прыжок к полюсу при открытии 3D.
@@ -288,11 +379,30 @@ const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig
     }
     // `useLayoutEffect`, а не `useEffect`: камера обязана встать на место до первой
     // отрисовки кадра, иначе на долю секунды мелькнёт дефолтный вид three.js.
-    applySpherical(controls, orbit ?? DEFAULT_ORBIT);
+    applySpherical(controls, orbit ?? defaultOrbit);
     invalidate();
     // Стартовая точка обзора выставляется один раз при монтировании инструмента камеры.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (controls === null || zoomTouched.current) {
+      return;
+    }
+    const current = readSpherical(controls);
+    if (Math.abs(current.distance - fit) < 1e-3) {
+      return;
+    }
+    const next = { ...current, distance: fit };
+    // Запоминается до применения: `update()` синхронно зовёт `onChange`, и без этого
+    // подгонка под размер выглядела бы как зум пользователя.
+    lastSynced.current = next;
+    applySpherical(controls, next);
+    onOrbitChange?.(next);
+    invalidate();
+  }, [fit, invalidate, onOrbitChange]);
+
 
   useEffect(() => {
     if (orbit === undefined || orbit === null) {
@@ -307,8 +417,8 @@ const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig
       // Это эхо нашего же последнего сообщения наружу — переприменять незачем.
       return;
     }
-    applySpherical(controls, orbit);
     lastSynced.current = orbit;
+    applySpherical(controls, orbit);
     invalidate();
   }, [orbit, invalidate]);
 
@@ -351,12 +461,13 @@ const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig
         return;
       }
       polarTarget.current = null;
-      applySpherical(controls, DEFAULT_ORBIT);
-      lastSynced.current = DEFAULT_ORBIT;
-      onOrbitChange?.(DEFAULT_ORBIT);
+      lastSynced.current = defaultOrbit;
+      applySpherical(controls, defaultOrbit);
+      zoomTouched.current = false;
+      onOrbitChange?.(defaultOrbit);
       invalidate();
     },
-  }), [onOrbitChange, invalidate]);
+  }), [onOrbitChange, invalidate, defaultOrbit]);
 
   return (
     <OrbitControls
@@ -365,13 +476,16 @@ const CameraRig = forwardRef<CameraRigHandle, CameraRigProps>(function CameraRig
       dampingFactor={0.08}
       enablePan={false}
       minDistance={MIN_DISTANCE}
-      maxDistance={MAX_DISTANCE}
+      maxDistance={fit * MAX_DISTANCE_FACTOR}
       onChange={() => {
         const controls = controlsRef.current;
         if (controls === null) {
           return;
         }
         const state = readSpherical(controls);
+        if (Math.abs(state.distance - lastSynced.current.distance) > 1e-3) {
+          zoomTouched.current = true;
+        }
         lastSynced.current = state;
         onOrbitChange?.(state);
       }}

@@ -1,5 +1,6 @@
 import { Check, X } from 'lucide-react';
 
+import { useStacked } from '@/app/viewport-mode';
 import { cx } from '@/lib/cx';
 import type { MapLayers } from './model';
 import type { Hemisphere } from './projection';
@@ -26,6 +27,9 @@ interface MapLayersBarProps {
  * карты (`MapLegend`): вместе с шестью переключателями и полушарием она не помещалась в
  * ширину карты и уезжала под правую панель, а число плоскостей приходит из данных и
  * фиксированной ширине не подчиняется.
+ *
+ * В потоке строка переносится: шесть переключателей в ширину телефона не входят, а
+ * обрезать их нельзя — скрытый слой было бы не включить.
  */
 export function MapLayersBar({
   width,
@@ -34,12 +38,24 @@ export function MapLayersBar({
   hemisphere,
   onHemisphere,
 }: MapLayersBarProps) {
+  const stacked = useStacked();
+
   return (
     <div
-      className="flex h-[41px] items-center gap-[10px] overflow-hidden rounded-sm border border-line-subtle bg-surface-sunken px-[16px]"
-      style={{ width }}
+      className={cx(
+        'flex items-center rounded-sm border border-line-subtle bg-surface-sunken',
+        stacked
+          ? 'w-full flex-wrap gap-[8px] p-[8px]'
+          : 'h-[41px] gap-[10px] overflow-hidden px-[16px]',
+      )}
+      style={stacked ? undefined : { width }}
     >
-      <span className="shrink-0 text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
+      <span
+        className={cx(
+          'shrink-0 text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted',
+          stacked && 'w-full px-[4px]',
+        )}
+      >
         Слои
       </span>
 
@@ -55,8 +71,10 @@ export function MapLayersBar({
               onChange({ ...layers, [toggle.key]: !on });
             }}
             className={cx(
-              'flex h-[25px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[8px] px-[9px] text-caption font-medium transition-colors duration-150',
+              'flex shrink-0 items-center gap-[7px] whitespace-nowrap text-caption font-medium transition-colors duration-150',
+              stacked ? 'h-[40px] rounded-sm px-[12px]' : 'h-[25px] rounded-[8px] px-[9px]',
               on ? 'bg-surface-chip text-ink-primary' : 'text-ink-muted hover:text-ink-secondary',
+              stacked && !on && 'border border-line-subtle',
             )}
           >
             {on ? (
@@ -75,7 +93,10 @@ export function MapLayersBar({
           onHemisphere(hemisphere === 'north' ? 'south' : 'north');
         }}
         title="Полюс вида: в 2D — центр проекции карты, в 3D — точка обзора камеры"
-        className="ml-auto h-[25px] shrink-0 whitespace-nowrap rounded-[8px] bg-surface-chip px-[10px] text-caption font-semibold text-ink-primary transition-colors duration-150 hover:bg-surface-rowActive"
+        className={cx(
+          'ml-auto shrink-0 whitespace-nowrap bg-surface-chip text-caption font-semibold text-ink-primary transition-colors duration-150 hover:bg-surface-rowActive',
+          stacked ? 'h-[40px] rounded-sm px-[12px]' : 'h-[25px] rounded-[8px] px-[10px]',
+        )}
       >
         {hemisphere === 'north' ? 'Центр: север' : 'Центр: юг'}
       </button>

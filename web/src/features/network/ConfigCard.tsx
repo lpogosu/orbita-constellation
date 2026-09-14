@@ -9,6 +9,8 @@ import { formatTick } from '@/lib/run-format';
 import type { DraftChange } from './draft';
 import { withEnvironment, withFailures, withGatewayOutages, withLaunchStage, withPlane } from './draft';
 import { STAGE_LABEL, stageStep } from './use-run';
+import { useCardBox } from '@/components/layout/box';
+import { useStacked } from '@/app/viewport-mode';
 
 const POLICIES: readonly { value: RoutingPolicy; label: string; hint: string }[] = [
   { value: 'bfs_shortest', label: 'BFS', hint: 'Минимум переходов, маршрут пересчитывается каждый отсчёт' },
@@ -61,16 +63,19 @@ export function ConfigCard(props: ConfigCardProps) {
       ? props.run
       : null;
 
+  const box = useCardBox(props);
+  // В потоке панель — обычная карточка колонки: высота по содержимому, органы управления
+  // не ниже 40 пикселей, строки плоскостей — сеткой, которая сжимается вместе с шириной.
+  const stacked = useStacked();
+
   return (
     <div
-      className="card-glass absolute flex flex-col px-[25px] pb-[18px] pt-[13px]"
-      style={{
-        left: props.x,
-        top: props.y,
-        width: props.width,
-        height: props.height,
-        backgroundPosition: `0 0, ${-props.x}px ${-props.y}px`,
-      }}
+      className={cx(
+        'card-glass flex flex-col',
+        box.positionClass,
+        stacked ? 'p-[16px]' : 'px-[25px] pb-[18px] pt-[13px]',
+      )}
+      style={box.style}
     >
       <Select
         label="Вариант"
@@ -78,11 +83,19 @@ export function ConfigCard(props: ConfigCardProps) {
         options={props.variants.map((variant) => ({ value: variant.id, title: variant.title }))}
         onChange={props.onSelectVariant}
         placeholder="Вариант не выбран"
-        triggerClassName="h-[52px] w-full rounded-lg border border-line bg-surface-input pl-[22px] pr-[16px] text-[20px] font-semibold leading-none text-ink-primary hover:border-line-strong"
+        triggerClassName={cx(
+          'w-full rounded-lg border border-line bg-surface-input pr-[16px] font-semibold leading-none text-ink-primary hover:border-line-strong',
+          stacked ? 'h-[48px] pl-[16px] text-base' : 'h-[52px] pl-[22px] text-[20px]',
+        )}
       />
 
       <p className="mt-[10px] text-base font-semibold text-ink-primary">Этап запуска</p>
-      <div className="mt-[8px] flex h-[44px] items-center gap-[2px] rounded-[14px] border border-line-subtle bg-surface-input p-[3px]">
+      <div
+        className={cx(
+          'mt-[8px] flex items-center gap-[2px] rounded-[14px] border border-line-subtle bg-surface-input p-[3px]',
+          stacked ? 'h-[48px]' : 'h-[44px]',
+        )}
+      >
         {stages.map((stage) => (
           <button
             key={stage}
@@ -90,7 +103,8 @@ export function ConfigCard(props: ConfigCardProps) {
             aria-pressed={draft.design.launch_stage === stage}
             onClick={() => { props.onChange(withLaunchStage(draft, stage)); }}
             className={cx(
-              'h-[36px] flex-1 rounded-[9px] text-title-m font-semibold transition-colors duration-150',
+              'flex-1 rounded-[9px] text-title-m font-semibold transition-colors duration-150',
+              stacked ? 'h-[40px]' : 'h-[36px]',
               draft.design.launch_stage === stage
                 ? 'bg-accent-violet text-ink-onAccent shadow-glow-violet'
                 : 'text-ink-secondary',
@@ -101,10 +115,15 @@ export function ConfigCard(props: ConfigCardProps) {
         ))}
       </div>
 
-      <div className="scroll-area mt-[14px] min-h-0 flex-1 pr-[6px]">
-        <div className="flex items-baseline">
+      <div className={stacked ? 'mt-[16px]' : 'scroll-area mt-[14px] min-h-0 flex-1 pr-[6px]'}>
+        <div className={stacked ? cx(PLANE_GRID, 'items-baseline') : 'flex items-baseline'}>
           <h3 className="text-base font-semibold text-ink-primary">Плоскости</h3>
-          <span className="ml-[26px] w-[108px] text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
+          <span
+            className={cx(
+              'text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted',
+              !stacked && 'ml-[26px] w-[108px]',
+            )}
+          >
             RAAN
           </span>
           <span className="text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
@@ -114,26 +133,33 @@ export function ConfigCard(props: ConfigCardProps) {
 
         <ul className="mt-[8px] space-y-[6px]">
           {draft.design.planes.map((plane, index) => (
-            <li key={plane.id} className="flex h-[28px] items-center">
-              <span
-                aria-hidden="true"
-                className="size-[9px] rounded-pill"
-                style={{ background: PLANE_DOT[index % PLANE_DOT.length] }}
-              />
-              <span
-                title={plane.id}
-                className="ml-[9px] w-[120px] shrink-0 truncate text-small font-semibold text-ink-primary"
-              >
-                {plane.id}
+            <li key={plane.id} className={stacked ? cx(PLANE_GRID, 'items-center') : 'flex h-[28px] items-center'}>
+              <span className="flex min-w-0 items-center">
+                <span
+                  aria-hidden="true"
+                  className="size-[9px] shrink-0 rounded-pill"
+                  style={{ background: PLANE_DOT[index % PLANE_DOT.length] }}
+                />
+                <span
+                  title={plane.id}
+                  className={cx(
+                    'ml-[9px] shrink-0 truncate text-small font-semibold text-ink-primary',
+                    stacked ? 'min-w-0 flex-1' : 'w-[120px]',
+                  )}
+                >
+                  {plane.id}
+                </span>
               </span>
               <DegreeInput
                 label={`RAAN плоскости ${plane.id}`}
                 value={plane.raan_deg}
+                stacked={stacked}
                 onChange={(value) => { props.onChange(withPlane(draft, plane.id, { raan_deg: value })); }}
               />
               <DegreeInput
                 label={`Фаза плоскости ${plane.id}`}
                 value={plane.phase_deg}
+                stacked={stacked}
                 onChange={(value) => { props.onChange(withPlane(draft, plane.id, { phase_deg: value })); }}
               />
             </li>
@@ -144,15 +170,20 @@ export function ConfigCard(props: ConfigCardProps) {
           type="button"
           aria-expanded={conditionsOpen}
           onClick={() => { setConditionsOpen((value) => !value); }}
-          className="mt-[12px] flex h-[34px] w-full items-center rounded-sm border border-line-subtle bg-surface-sunken px-[11px]"
+          className={cx(
+            'mt-[12px] flex w-full items-center rounded-sm border border-line-subtle bg-surface-sunken px-[11px] text-left',
+            stacked ? 'min-h-[44px] flex-wrap gap-x-[8px] py-[6px]' : 'h-[34px]',
+          )}
         >
           {conditionsOpen ? (
             <ChevronDown aria-hidden="true" className="size-[15px] text-ink-secondary" />
           ) : (
             <ChevronRight aria-hidden="true" className="size-[15px] text-ink-secondary" />
           )}
-          <span className="ml-[8px] text-small font-semibold text-ink-primary">Условия расчёта</span>
-          <span className="ml-auto text-micro font-medium text-ink-muted" data-numeric>
+          <span className="ml-[8px] whitespace-nowrap text-small font-semibold text-ink-primary">
+            Условия расчёта
+          </span>
+          <span className="ml-auto whitespace-nowrap text-micro font-medium text-ink-muted" data-numeric>
             {formatTick(draft.environment.horizon_s)} · {draft.environment.step_s} с · ISL{' '}
             {draft.environment.isl_range_km} км
           </span>
@@ -160,12 +191,17 @@ export function ConfigCard(props: ConfigCardProps) {
 
         {conditionsOpen && (
           <div className="mt-[10px] rounded-sm border border-line-subtle bg-surface-sunken p-[11px]">
-            <label className="flex items-center gap-[8px] text-caption text-ink-secondary">
+            <label
+              className={cx(
+                'flex items-center gap-[8px] text-caption text-ink-secondary',
+                stacked && 'min-h-[40px]',
+              )}
+            >
               <input
                 type="checkbox"
                 checked={conditionsEditable}
                 onChange={(event) => { setConditionsEditable(event.target.checked); }}
-                className="size-[14px] accent-[var(--accent-violet)]"
+                className={cx('accent-[var(--accent-violet)]', stacked ? 'size-[20px]' : 'size-[14px]')}
               />
               Разрешить изменение условий
             </label>
@@ -189,7 +225,10 @@ export function ConfigCard(props: ConfigCardProps) {
                           withEnvironment(draft, { [field.key]: Number(event.target.value) }),
                         );
                       }}
-                      className="h-[26px] w-[96px] rounded-[10px] border border-line bg-surface-input px-[8px] text-caption text-ink-primary disabled:border-line-subtle disabled:text-ink-secondary"
+                      className={cx(
+                        'w-[96px] rounded-[10px] border border-line bg-surface-input px-[8px] text-caption text-ink-primary disabled:border-line-subtle disabled:text-ink-secondary',
+                        stacked ? 'h-[40px]' : 'h-[26px]',
+                      )}
                       data-numeric
                     />
                     <span className="w-[24px] text-micro text-ink-muted">{field.unit}</span>
@@ -201,7 +240,12 @@ export function ConfigCard(props: ConfigCardProps) {
         )}
 
         <h3 className="mt-[14px] text-base font-semibold text-ink-primary">Политика маршрутизации</h3>
-        <div className="mt-[8px] flex h-[42px] items-center gap-[2px] rounded-sm border border-line-subtle bg-surface-track p-[3px]">
+        <div
+          className={cx(
+            'mt-[8px] flex items-center gap-[2px] rounded-sm border border-line-subtle bg-surface-track p-[3px]',
+            stacked ? 'h-[48px]' : 'h-[42px]',
+          )}
+        >
           {POLICIES.map((option) => (
             <button
               key={option.value}
@@ -210,7 +254,8 @@ export function ConfigCard(props: ConfigCardProps) {
               aria-pressed={props.policy === option.value}
               onClick={() => { props.onPolicy(option.value); }}
               className={cx(
-                'h-[34px] flex-1 rounded-[9px] text-caption font-semibold transition-colors duration-150',
+                'flex-1 rounded-[9px] text-caption font-semibold transition-colors duration-150',
+                stacked ? 'h-[40px]' : 'h-[34px]',
                 props.policy === option.value ? 'bg-accent-violet text-ink-onAccent' : 'text-ink-secondary',
               )}
             >
@@ -227,7 +272,10 @@ export function ConfigCard(props: ConfigCardProps) {
           <button
             type="button"
             onClick={props.onAddFailure}
-            className="ml-auto text-caption font-semibold text-accent-blue"
+            className={cx(
+              'ml-auto text-caption font-semibold text-accent-blue',
+              stacked && 'h-[40px] px-[8px]',
+            )}
           >
             + Добавить
           </button>
@@ -242,6 +290,7 @@ export function ConfigCard(props: ConfigCardProps) {
             {draft.failures.map((failure, index) => (
               <FailureRow
                 key={`sat-${failure.satellite_id}-${failure.start_s}`}
+                stacked={stacked}
                 icon={<Rocket aria-hidden="true" className="size-[14px] text-ink-secondary" />}
                 id={failure.satellite_id}
                 startS={failure.start_s}
@@ -256,6 +305,7 @@ export function ConfigCard(props: ConfigCardProps) {
             {draft.gateway_outages.map((outage, index) => (
               <FailureRow
                 key={`gw-${outage.gateway_id}-${outage.start_s}`}
+                stacked={stacked}
                 icon={<SatelliteDish aria-hidden="true" className="size-[14px] text-ink-secondary" />}
                 id={outage.gateway_id}
                 startS={outage.start_s}
@@ -275,7 +325,12 @@ export function ConfigCard(props: ConfigCardProps) {
       </div>
 
       {changes.length > 0 && (
-        <div className="mt-[12px] flex h-[44px] items-center rounded-sm border border-[rgba(255,160,92,0.38)] bg-[rgba(255,160,92,0.14)] px-[11px]">
+        <div
+          className={cx(
+            'mt-[12px] flex items-center rounded-sm border border-[rgba(255,160,92,0.38)] bg-[rgba(255,160,92,0.14)] px-[11px]',
+            stacked ? 'flex-wrap gap-y-[8px] py-[8px]' : 'h-[44px]',
+          )}
+        >
           <Pencil aria-hidden="true" className="size-[14px] text-status-warning" />
           <span className="ml-[8px] text-caption font-semibold text-status-warning">
             Черновик · {changes.length}
@@ -283,14 +338,20 @@ export function ConfigCard(props: ConfigCardProps) {
           <button
             type="button"
             onClick={props.onReset}
-            className="ml-auto h-[30px] rounded-[9px] bg-surface-chip px-[12px] text-caption font-semibold text-ink-secondary"
+            className={cx(
+              'ml-auto rounded-[9px] bg-surface-chip px-[12px] text-caption font-semibold text-ink-secondary',
+              stacked ? 'h-[40px]' : 'h-[30px]',
+            )}
           >
             Сбросить
           </button>
           <button
             type="button"
             onClick={props.onSaveVariant}
-            className="ml-[8px] h-[30px] rounded-[9px] bg-accent-violet px-[12px] text-caption font-semibold text-ink-onAccent"
+            className={cx(
+              'ml-[8px] rounded-[9px] bg-accent-violet px-[12px] text-caption font-semibold text-ink-onAccent',
+              stacked ? 'h-[40px]' : 'h-[30px]',
+            )}
           >
             Сохранить вариант
           </button>
@@ -315,7 +376,10 @@ export function ConfigCard(props: ConfigCardProps) {
             <button
               type="button"
               onClick={props.onCancelRun}
-              className="ml-auto text-caption font-semibold text-status-danger"
+              className={cx(
+                'ml-auto text-caption font-semibold text-status-danger',
+                stacked && 'h-[40px] px-[8px]',
+              )}
             >
               Отменить
             </button>
@@ -348,6 +412,9 @@ export function ConfigCard(props: ConfigCardProps) {
   );
 }
 
+/** Строка плоскости в потоке: имя забирает остаток, поля RAAN и фазы — равные колонки. */
+const PLANE_GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(0,96px)_minmax(0,96px)] gap-x-[10px]';
+
 const PLANE_DOT = [
   'var(--status-success)',
   'var(--accent-violet-light)',
@@ -360,10 +427,12 @@ const PLANE_DOT = [
 function DegreeInput({
   label,
   value,
+  stacked,
   onChange,
 }: {
   label: string;
   value: number;
+  stacked: boolean;
   onChange: (value: number) => void;
 }) {
   return (
@@ -379,7 +448,10 @@ function DegreeInput({
         // Диапазон [0; 360): 360 и −1 — это те же 0 и 359, а не ошибка ввода.
         onChange(((next % 360) + 360) % 360);
       }}
-      className="mr-[12px] h-[28px] w-[96px] rounded-[10px] border border-line bg-surface-input px-[11px] text-small font-medium text-ink-primary"
+      className={cx(
+        'rounded-[10px] border border-line bg-surface-input px-[11px] text-small font-medium text-ink-primary',
+        stacked ? 'h-[40px] w-full min-w-0' : 'mr-[12px] h-[28px] w-[96px]',
+      )}
       data-numeric
     />
   );
@@ -390,8 +462,10 @@ function FailureRow({
   id,
   startS,
   endS,
+  stacked,
   onRemove,
 }: {
+  stacked: boolean;
   icon: ReactNode;
   id: string;
   startS: number;
@@ -399,7 +473,12 @@ function FailureRow({
   onRemove: () => void;
 }) {
   return (
-    <li className="flex h-[32px] items-center rounded-[10px] border border-line-subtle bg-surface-sunken px-[11px]">
+    <li
+      className={cx(
+        'flex items-center rounded-[10px] border border-line-subtle bg-surface-sunken',
+        stacked ? 'h-[44px] pl-[11px] pr-[2px]' : 'h-[32px] px-[11px]',
+      )}
+    >
       {icon}
       <span className="ml-[8px] w-[86px] truncate text-caption font-semibold text-ink-primary">{id}</span>
       <span className="text-caption text-ink-secondary" data-numeric>
@@ -409,7 +488,10 @@ function FailureRow({
         type="button"
         aria-label={`Удалить отказ ${id}`}
         onClick={onRemove}
-        className="ml-auto text-ink-muted transition-colors duration-150 hover:text-status-danger"
+        className={cx(
+          'ml-auto flex items-center justify-center text-ink-muted transition-colors duration-150 hover:text-status-danger',
+          stacked && 'size-[40px]',
+        )}
       >
         <Trash2 aria-hidden="true" className="size-[14px]" />
       </button>

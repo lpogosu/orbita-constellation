@@ -7,6 +7,7 @@ import { loadMapSprites } from './earth-layer';
 import type { MapSprites } from './earth-layer';
 import type { MapHit, MapLayers, MapModel } from './model';
 import { readPalette } from './palette';
+import { useStacked } from '@/app/viewport-mode';
 import { useTokenColors } from '@/theme/use-token-colors';
 import type { Hemisphere, MapView } from './projection';
 
@@ -29,6 +30,43 @@ interface MapCanvasProps {
   readonly onSelectSite: (siteId: string) => void;
   readonly satelliteActions: (satelliteId: string) => readonly SatelliteAction[];
   readonly renderTooltip: (hit: MapHit) => ReactNode;
+  /**
+   * Плашки экрана (отсчёт, переключатели, легенда) лежат поверх карты. Тогда схема
+   * отступает от краёв под них; экран, вынесший плашки за пределы карты, передаёт `false`,
+   * и схема занимает область почти целиком.
+   */
+  readonly overlays?: boolean;
+}
+
+interface FlatFrame {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Прямоугольник схемы при масштабе 1.
+ *
+ * С плашками поверх карты: сверху место под отсчёт и переключатели, снизу — под легенду
+ * (раньше схема уходила под неё на полтора десятка пикселей). Без плашек отступы
+ * символические, а пропорция держится близкой к 2:1 — равнопромежуточная карта, растянутая
+ * в квадрат области телефона, искажала бы материки.
+ */
+function flatFrame(width: number, height: number, overlays: boolean): FlatFrame {
+  if (overlays) {
+    return { left: 34, top: 92, width: width - 68, height: height - 196 };
+  }
+  const availableWidth = width - 16;
+  const availableHeight = height - 24;
+  const frameWidth = Math.min(availableWidth, availableHeight * 2.2);
+  const frameHeight = Math.min(availableHeight, frameWidth / 1.8);
+  return {
+    left: (width - frameWidth) / 2,
+    top: (height - frameHeight) / 2 + 4,
+    width: frameWidth,
+    height: frameHeight,
+  };
 }
 
 /**
@@ -47,7 +85,10 @@ export function MapCanvas({
   onSelectSite,
   satelliteActions,
   renderTooltip,
+  overlays = true,
 }: MapCanvasProps) {
+  const stacked = useStacked();
+  const frame = useMemo(() => flatFrame(width, height, overlays), [width, height, overlays]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const resultRef = useRef<DrawResult | null>(null);
   const frameRef = useRef(0);
@@ -105,15 +146,13 @@ export function MapCanvas({
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
 
-      const baseFlatWidth = width - 68;
-      const baseFlatHeight = height - 174;
-      const flatWidth = baseFlatWidth * flatViewport.scale;
-      const flatHeight = baseFlatHeight * flatViewport.scale;
+      const flatWidth = frame.width * flatViewport.scale;
+      const flatHeight = frame.height * flatViewport.scale;
       const view: MapView = projection === 'scheme'
         ? {
             kind: 'flat',
-            left: (width - flatWidth) / 2 + flatViewport.offsetX,
-            top: 92 + (baseFlatHeight - flatHeight) / 2 + flatViewport.offsetY,
+            left: frame.left + (frame.width - flatWidth) / 2 + flatViewport.offsetX,
+            top: frame.top + (frame.height - flatHeight) / 2 + flatViewport.offsetY,
             width: flatWidth,
             height: flatHeight,
           }
@@ -145,7 +184,7 @@ export function MapCanvas({
     return () => {
       cancelAnimationFrame(frameRef.current);
     };
-  }, [model, layers, hemisphere, projection, width, height, sprites, hover, palette, zoom, flatViewport]);
+  }, [model, layers, hemisphere, projection, width, height, sprites, hover, palette, zoom, flatViewport, frame]);
 
   const locate = useCallback((event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -170,7 +209,9 @@ export function MapCanvas({
     <div className="relative" style={{ width, height }}>
       <canvas
         ref={canvasRef}
-        style={{ width, height, touchAction: 'none' }}
+        // В прокручиваемой странице вертикальный жест пальцем по карте прокручивает
+        // страницу: карта во всю ширину телефона иначе не даёт уйти ниже неё.
+        style={{ width, height, touchAction: stacked ? 'pan-y' : 'none' }}
         className="block"
         role="img"
         aria-label="Карта группировки в полярной проекции"
@@ -184,8 +225,8 @@ export function MapCanvas({
               draggedRef.current = true;
             }
             setFlatViewport((current) => {
-              const maxX = ((width - 68) * current.scale - (width - 68)) / 2;
-              const maxY = ((height - 174) * current.scale - (height - 174)) / 2;
+              const maxX = (frame.width * current.scale - frame.width) / 2;
+              const maxY = (frame.height * current.scale - frame.height) / 2;
               return {
                 ...current,
                 offsetX: Math.min(maxX, Math.max(-maxX, drag.offsetX + deltaX)),
@@ -201,23 +242,27 @@ export function MapCanvas({
           setHover(null);
         }}
         onWheel={(event) => {
-          event.preventDefault();
+          // В прокручиваемой странице колесо принадлежит странице; зум остаётся за
+          // щипком тачпада, который браузер присылает колесом с Ctrl.
+          if (stacked && !event.ctrlKey) {
+            return;
+          }
           if (projection === 'scheme') {
             const box = event.currentTarget.getBoundingClientRect();
             const pointerX = ((event.clientX - box.left) / box.width) * width;
             const pointerY = ((event.clientY - box.top) / box.height) * height;
             setFlatViewport((current) => {
               const scale = Math.min(2.8, Math.max(1, current.scale * (event.deltaY < 0 ? 1.16 : 0.86)));
-              const oldWidth = (width - 68) * current.scale;
-              const oldHeight = (height - 174) * current.scale;
-              const oldLeft = (width - oldWidth) / 2 + current.offsetX;
-              const oldTop = 92 + ((height - 174) - oldHeight) / 2 + current.offsetY;
-              const nextWidth = (width - 68) * scale;
-              const nextHeight = (height - 174) * scale;
-              const nextOffsetX = pointerX - ((pointerX - oldLeft) / oldWidth) * nextWidth - (width - nextWidth) / 2;
-              const nextOffsetY = pointerY - ((pointerY - oldTop) / oldHeight) * nextHeight - 92 - ((height - 174) - nextHeight) / 2;
-              const maxX = ((width - 68) * scale - (width - 68)) / 2;
-              const maxY = ((height - 174) * scale - (height - 174)) / 2;
+              const oldWidth = frame.width * current.scale;
+              const oldHeight = frame.height * current.scale;
+              const oldLeft = frame.left + (frame.width - oldWidth) / 2 + current.offsetX;
+              const oldTop = frame.top + (frame.height - oldHeight) / 2 + current.offsetY;
+              const nextWidth = frame.width * scale;
+              const nextHeight = frame.height * scale;
+              const nextOffsetX = pointerX - ((pointerX - oldLeft) / oldWidth) * nextWidth - frame.left - (frame.width - nextWidth) / 2;
+              const nextOffsetY = pointerY - ((pointerY - oldTop) / oldHeight) * nextHeight - frame.top - (frame.height - nextHeight) / 2;
+              const maxX = (frame.width * scale - frame.width) / 2;
+              const maxY = (frame.height * scale - frame.height) / 2;
               return {
                 scale,
                 offsetX: Math.min(maxX, Math.max(-maxX, nextOffsetX)),

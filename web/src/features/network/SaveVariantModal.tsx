@@ -63,8 +63,13 @@ export function SaveVariantModal({
       </p>
       <ul className="mt-[10px] space-y-[6px]">
         {changes.map((change) => (
-          <li key={change.path} className="flex items-center gap-[10px] text-small text-ink-secondary">
-            <span className="font-mono text-caption text-ink-primary">{change.path}</span>
+          <li
+            key={change.path}
+            className="flex flex-wrap items-center gap-x-[10px] gap-y-[2px] text-small text-ink-secondary"
+          >
+            {/* Путь поля длинный и без пробелов: в узком окне он переносится по символам,
+                а не выталкивает значение за край окна. */}
+            <span className="min-w-0 break-all font-mono text-caption text-ink-primary">{change.path}</span>
             <span data-numeric>
               {change.from} → {change.to}
             </span>

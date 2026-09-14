@@ -1,8 +1,15 @@
 import { X } from 'lucide-react';
 
+import { cx } from '@/lib/cx';
+
 interface MapLegendProps {
   readonly planeIds: readonly string[];
   readonly planeColors: readonly string[];
+  /**
+   * `overlay` — плашка в углу карты, как в макете. `inline` — строка под картой: на узкой
+   * карте телефона угловая плашка закрывала бы треть изображения.
+   */
+  readonly placement?: 'overlay' | 'inline';
 }
 
 /**
@@ -10,9 +17,16 @@ interface MapLegendProps {
  * ширины с переносом: плоскости приходят из сценария, и при пяти и более рядов
  * становится два, а не строка, вылезающая за карту.
  */
-export function MapLegend({ planeIds, planeColors }: MapLegendProps) {
+export function MapLegend({ planeIds, planeColors, placement = 'overlay' }: MapLegendProps) {
   return (
-    <ul className="pointer-events-none absolute bottom-[14px] left-[14px] flex w-[232px] flex-wrap items-center gap-x-[12px] gap-y-[6px] rounded-sm border border-line bg-surface-raised px-[12px] py-[9px]">
+    <ul
+      className={cx(
+        'flex flex-wrap items-center gap-x-[12px] gap-y-[6px] rounded-sm border border-line bg-surface-raised px-[12px] py-[9px]',
+        placement === 'overlay'
+          ? 'pointer-events-none absolute bottom-[14px] left-[14px] w-[232px]'
+          : 'w-full',
+      )}
+    >
       {planeIds.map((planeId, index) => (
         <LegendItem
           key={planeId}

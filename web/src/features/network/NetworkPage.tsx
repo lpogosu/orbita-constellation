@@ -1,12 +1,18 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { networkApi } from '@/api/network';
 import type { BackupPaths } from '@/api/types';
 import { OUTAGES_PATH } from '@/app/sections';
 import { useHealth } from '@/app/use-health';
+import { useStacked } from '@/app/viewport-mode';
 import { DegradedBanner } from '@/components/layout/DegradedBanner';
+import { PageStack, Slot } from '@/components/layout/Slot';
+import { useContainerSize } from '@/components/layout/box';
 import { EmptyState, ErrorBlock, LoadingBlock, Skeleton, UnavailableBlock } from '@/components/state/States';
+import { Card } from '@/components/ui/Card';
+import { cx } from '@/lib/cx';
 import { describe } from '@/lib/use-resource';
 import { MapCanvas } from '@/map/MapCanvas';
 import type { SatelliteAction } from '@/map/MapCanvas';
@@ -246,6 +252,17 @@ export function NetworkPage() {
     scene.runControl.start(variant.id, scene.policy);
   }, [variant, scene]);
 
+  // Окна получают постоянные обработчики закрытия: `Modal` переставляет фокус на первый
+  // элемент при каждой смене `onClose`, и новая стрелка на каждый рендер экрана (а он
+  // перерисовывается от прогресса расчёта) выдёргивала фокус из поля и прокручивала
+  // окно на телефоне обратно к началу.
+  const closeFailureModal = useCallback(() => {
+    setFailureModal(null);
+  }, []);
+  const closeSaveModal = useCallback(() => {
+    setSaveModal(false);
+  }, []);
+
   const saveVariant = useCallback(
     (title: string) => {
       setSaving(true);
@@ -299,16 +316,30 @@ export function NetworkPage() {
 
   const [mapProjection, setMapProjection] = useState<'terrain' | 'scheme'>('scheme');
 
+  // Карта и шкала — canvas и WebGL: размер им нужен числом, из CSS они его не берут.
+  // На полотне это макетные величины; в потоке ширину карты меряет её карточка, а шкала
+  // раскладывается сама.
+  const stacked = useStacked();
+
   const fallBackTo2d = useCallback(() => {
     setMapMode('2d');
   }, [setMapMode]);
 
+  const banner = health.health?.degraded_mode === true && (
+    <DegradedBanner health={health.health} onRefresh={health.refresh} />
+  );
+
   if (scene.projectError !== null) {
-    return (
+    return stacked ? (
+      <PageStack>
+        {banner}
+        <Card className="min-h-[320px]">
+          <ErrorBlock title="Проект не открылся" message={scene.projectError} onRetry={scene.reloadProject} />
+        </Card>
+      </PageStack>
+    ) : (
       <>
-        {health.health?.degraded_mode === true && (
-          <DegradedBanner health={health.health} onRefresh={health.refresh} />
-        )}
+        {banner}
         <div className="absolute inset-x-[25px] top-[134px] h-[722px]">
           <ErrorBlock title="Проект не открылся" message={scene.projectError} onRetry={scene.reloadProject} />
         </div>
@@ -319,153 +350,221 @@ export function NetworkPage() {
   if (draft === null || variant === null || scene.project === null) {
     return (
       <LoadingBlock label="Загружаем проект">
-        {health.health?.degraded_mode === true && (
-          <DegradedBanner health={health.health} onRefresh={health.refresh} />
+        {stacked ? (
+          // Скелетон повторяет порядок блоков потока: карта, шкала, две панели.
+          <PageStack className="md:grid md:grid-cols-2">
+            {banner}
+            <Skeleton className="h-[360px] rounded-2xl md:col-span-2" />
+            <Skeleton className="h-[220px] rounded-2xl md:col-span-2" />
+            <Skeleton className="h-[520px] rounded-2xl" />
+            <Skeleton className="h-[520px] rounded-2xl" />
+          </PageStack>
+        ) : (
+          <>
+            {banner}
+            <div className="absolute inset-x-[25px] top-[134px] flex gap-[21px]">
+              <Skeleton className="h-[722px] w-[424px]" />
+              <Skeleton className="h-[722px] flex-1" />
+              <Skeleton className="h-[722px] w-[491px]" />
+            </div>
+          </>
         )}
-        <div className="absolute inset-x-[25px] top-[134px] flex gap-[21px]">
-          <Skeleton className="h-[722px] w-[424px]" />
-          <Skeleton className="h-[722px] flex-1" />
-          <Skeleton className="h-[722px] w-[491px]" />
-        </div>
       </LoadingBlock>
     );
   }
 
   const totalTicks = scene.totalTicks;
 
-  return (
-    <>
-      {health.health?.degraded_mode === true && (
-        <DegradedBanner health={health.health} onRefresh={health.refresh} />
+  const tickBadge = (
+    <p
+      className={cx(
+        'rounded-pill border border-line bg-surface-raised px-[14px] py-[6px] text-caption font-semibold text-ink-primary',
+        stacked ? 'min-w-0' : 'pointer-events-none absolute left-[14px] top-[10px]',
       )}
-      <ConfigCard
-        {...LAYOUT.left}
-        draft={draft}
-        variants={scene.project.variants}
-        variantId={variant.id}
-        onSelectVariant={selectVariant}
-        onChange={scene.setDraft}
-        policy={scene.policy}
-        onPolicy={scene.setPolicy}
-        changes={scene.changes}
-        onReset={scene.resetDraft}
-        onSaveVariant={() => { setSaveModal(true); }}
-        onPreview={() => { seek(tS); }}
-        onAddFailure={() => { setFailureModal({ satelliteId: null }); }}
-        run={run}
-        runStarting={scene.runControl.starting}
-        runError={scene.runControl.error}
-        onRun={startRun}
-        onCancelRun={scene.runControl.cancel}
-      />
+      data-numeric
+    >
+      {formatTick(tS)} · отсчёт {scene.stepS > 0 ? Math.round(tS / scene.stepS) : 0} из {totalTicks}
+      {scene.snapshotSource === 'preview' && ' · предпросмотр черновика'}
+    </p>
+  );
 
-      <div className="absolute" style={{ left: LAYOUT.map.x, top: LAYOUT.map.y }}>
-        {mapMode === '2d' ? (
-          <MapCanvas
+  const renderMap = (size: { width: number; height: number }) => (
+    <>
+      {mapMode === '2d' ? (
+        <MapCanvas
+          model={model}
+          layers={layers}
+          hemisphere={hemisphere}
+          projection={mapProjection}
+          width={size.width}
+          height={size.height}
+          onSelectSite={selectClient}
+          satelliteActions={satelliteActions}
+          renderTooltip={renderMapTooltip}
+          overlays={!stacked}
+        />
+      ) : (
+        <Suspense
+          fallback={<Skeleton className="rounded-sm" style={{ width: size.width, height: size.height }} />}
+        >
+          <Globe3D
             model={model}
             layers={layers}
+            planes={draft.design.planes}
+            inclinationDeg={draft.environment.inclination_deg}
+            altitudeKm={draft.environment.altitude_km}
+            earthAngle0Deg={draft.environment.earth_angle0_deg}
             hemisphere={hemisphere}
-            projection={mapProjection}
-            width={LAYOUT.map.width}
-            height={LAYOUT.map.height}
+            width={size.width}
+            height={size.height}
             onSelectSite={selectClient}
             satelliteActions={satelliteActions}
             renderTooltip={renderMapTooltip}
+            onUnavailable={fallBackTo2d}
+            overlayTop={stacked ? 0 : 48}
           />
-        ) : (
-          <Suspense
-            fallback={<Skeleton className="rounded-sm" style={{ width: LAYOUT.map.width, height: LAYOUT.map.height }} />}
-          >
-            <Globe3D
-              model={model}
-              layers={layers}
-              planes={draft.design.planes}
-              inclinationDeg={draft.environment.inclination_deg}
-              altitudeKm={draft.environment.altitude_km}
-              earthAngle0Deg={draft.environment.earth_angle0_deg}
-              hemisphere={hemisphere}
-              width={LAYOUT.map.width}
-              height={LAYOUT.map.height}
-              onSelectSite={selectClient}
-              satelliteActions={satelliteActions}
-              renderTooltip={renderMapTooltip}
-              onUnavailable={fallBackTo2d}
-            />
-          </Suspense>
-        )}
+        </Suspense>
+      )}
 
-        <p
-          className="pointer-events-none absolute left-[14px] top-[10px] rounded-pill border border-line bg-surface-raised px-[14px] py-[6px] text-caption font-semibold text-ink-primary"
-          data-numeric
-        >
-          {formatTick(tS)} · отсчёт {scene.stepS > 0 ? Math.round(tS / scene.stepS) : 0} из {totalTicks}
-          {scene.snapshotSource === 'preview' && ' · предпросмотр черновика'}
-        </p>
-
-        <div className="pointer-events-none absolute right-[14px] top-[10px]">
-          <MapModeToggle mode={mapMode} onChange={setMapMode} />
+      {mapMode === '2d' && scene.snapshot === null && scene.snapshotError === null && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <Skeleton
+            className="rounded-pill"
+            style={{ width: Math.min(320, size.height * 0.8), height: Math.min(320, size.height * 0.8) }}
+          />
         </div>
-        {mapMode === '2d' && (
-          <div className="pointer-events-none absolute right-[140px] top-[14px]">
-            <MapProjectionToggle projection={mapProjection} onChange={setMapProjection} />
-          </div>
-        )}
-
-        <MapLegend planeIds={model.planeIds} planeColors={palette.planes} />
-
-        {mapMode === '2d' && scene.snapshot === null && scene.snapshotError === null && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <Skeleton className="size-[320px] rounded-pill" />
-          </div>
-        )}
-        {scene.snapshotError !== null && (
-          <div className="absolute inset-0 flex items-center justify-center">
+      )}
+      {scene.snapshotError !== null && (
+        // Красный текст ошибки прямо поверх снимка Земли не читается ни в одной теме, поэтому
+        // блок стоит на подложке: на полотне — плашкой по центру карты, в невысокой области
+        // телефона, где макетный блок выше самой области, — на всю область.
+        <div
+          className={cx(
+            'absolute inset-0 flex items-center justify-center',
+            stacked && 'bg-surface-raised',
+          )}
+        >
+          {stacked ? (
             <ErrorBlock
               title="Снимок не получен"
               message={scene.snapshotError}
               onRetry={scene.reloadSnapshot}
-              appearance="figma"
+              compact={size.height < 300}
             />
+          ) : (
+            <div className="w-[496px] rounded-2xl border border-line bg-surface-raised shadow-card">
+              <ErrorBlock
+                title="Снимок не получен"
+                message={scene.snapshotError}
+                onRetry={scene.reloadSnapshot}
+                appearance="figma"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const layersBar = (
+    <MapLayersBar
+      width={LAYOUT.map.width}
+      layers={layers}
+      onChange={setLayers}
+      hemisphere={hemisphere}
+      onHemisphere={setHemisphere}
+    />
+  );
+
+  return (
+    <PageStack className="md:grid md:grid-cols-2 md:items-start">
+      {banner}
+
+      {stacked ? (
+        <Card className="order-1 flex flex-col gap-[12px] p-[12px] md:col-span-2">
+          <div className="flex flex-wrap items-center gap-[8px]">
+            {tickBadge}
+            <div className="ml-auto flex items-center gap-[8px]">
+              {mapMode === '2d' && (
+                <MapProjectionToggle projection={mapProjection} onChange={setMapProjection} />
+              )}
+              <MapModeToggle mode={mapMode} onChange={setMapMode} />
+            </div>
           </div>
-        )}
-      </div>
+          <StackedMapArea mode={mapMode === '3d' ? 'globe' : mapProjection}>{renderMap}</StackedMapArea>
+          <MapLegend planeIds={model.planeIds} planeColors={palette.planes} placement="inline" />
+          {layersBar}
+        </Card>
+      ) : (
+        <>
+          <Slot box={LAYOUT.map}>
+            {renderMap(LAYOUT.map)}
+            {tickBadge}
+            <div className="pointer-events-none absolute right-[14px] top-[10px]">
+              <MapModeToggle mode={mapMode} onChange={setMapMode} />
+            </div>
+            {mapMode === '2d' && (
+              <div className="pointer-events-none absolute right-[140px] top-[14px]">
+                <MapProjectionToggle projection={mapProjection} onChange={setMapProjection} />
+              </div>
+            )}
+            <MapLegend planeIds={model.planeIds} planeColors={palette.planes} />
+          </Slot>
+          <Slot box={LAYOUT.bar}>{layersBar}</Slot>
+        </>
+      )}
 
-      <div className="absolute" style={{ left: LAYOUT.bar.x, top: LAYOUT.bar.y }}>
-        <MapLayersBar
-          width={LAYOUT.map.width}
-          layers={layers}
-          onChange={setLayers}
-          hemisphere={hemisphere}
-          onHemisphere={setHemisphere}
+      <StackedCell className="order-3">
+        <ConfigCard
+          {...LAYOUT.left}
+          draft={draft}
+          variants={scene.project.variants}
+          variantId={variant.id}
+          onSelectVariant={selectVariant}
+          onChange={scene.setDraft}
+          policy={scene.policy}
+          onPolicy={scene.setPolicy}
+          changes={scene.changes}
+          onReset={scene.resetDraft}
+          onSaveVariant={() => { setSaveModal(true); }}
+          onPreview={() => { seek(tS); }}
+          onAddFailure={() => { setFailureModal({ satelliteId: null }); }}
+          run={run}
+          runStarting={scene.runControl.starting}
+          runError={scene.runControl.error}
+          onRun={startRun}
+          onCancelRun={scene.runControl.cancel}
         />
-      </div>
+      </StackedCell>
 
-      <NetworkStateCard
-        {...LAYOUT.right}
-        tS={tS}
-        stale={scene.dirty}
-        clients={clients}
-        snapshot={scene.snapshot}
-        snapshotError={scene.snapshotError}
-        onReloadSnapshot={scene.reloadSnapshot}
-        metrics={scene.metrics}
-        outages={scene.outages}
-        resultsError={scene.resultsError}
-        onReloadResults={scene.reloadResults}
-        runReady={scene.runReady}
-        targetAvailability={draft.environment.target_availability}
-        selectedClientId={scene.selectedClientId}
-        onSelectClient={selectClient}
-        onSeek={seek}
-        componentSplit={componentSplit}
-        componentsShown={componentsShown}
-        onToggleComponents={() => { setComponentsShown((value) => !value); }}
-        backup={backup}
-        backupError={backupError}
-        onLoadBackup={loadBackup}
-      />
+      <StackedCell className="order-4">
+        <NetworkStateCard
+          {...LAYOUT.right}
+          tS={tS}
+          stale={scene.dirty}
+          clients={clients}
+          snapshot={scene.snapshot}
+          snapshotError={scene.snapshotError}
+          onReloadSnapshot={scene.reloadSnapshot}
+          metrics={scene.metrics}
+          outages={scene.outages}
+          resultsError={scene.resultsError}
+          onReloadResults={scene.reloadResults}
+          runReady={scene.runReady}
+          targetAvailability={draft.environment.target_availability}
+          selectedClientId={scene.selectedClientId}
+          onSelectClient={selectClient}
+          onSeek={seek}
+          componentSplit={componentSplit}
+          componentsShown={componentsShown}
+          onToggleComponents={() => { setComponentsShown((value) => !value); }}
+          backup={backup}
+          backupError={backupError}
+          onLoadBackup={loadBackup}
+        />
+      </StackedCell>
 
-      <div className="absolute" style={{ left: LAYOUT.timeline.x, top: LAYOUT.timeline.y }}>
+      <Slot box={LAYOUT.timeline} stackedClassName="order-2 md:col-span-2">
         <Timeline
           width={LAYOUT.timeline.width}
           height={LAYOUT.timeline.height}
@@ -507,6 +606,20 @@ export function NetworkPage() {
                         compact
                       />
                     )
+                  : run.status === 'cancelled'
+                    ? (
+                        <EmptyState
+                          title="Расчёт отменён"
+                          hint="Шкала появится после нового запуска — кнопка «Запустить расчёт» в левой панели."
+                          compact
+                        />
+                      )
+                  : run.status === 'succeeded' && scene.timeline === null
+                    ? (
+                        // Расчёт готов, шкала ещё в пути: форма будущих треков, а не
+                        // сообщение «расчёт выполняется», которое было бы неправдой.
+                        <TimelineSkeleton rows={clients.length} />
+                      )
                   : run.status === 'failed'
                     ? (
                         <ErrorBlock
@@ -526,13 +639,13 @@ export function NetworkPage() {
                       )
           }
         />
-      </div>
+      </Slot>
 
       {failureModal !== null && (
         <FailureModal
           scenario={draft}
           presetSatelliteId={failureModal.satelliteId}
-          onClose={() => { setFailureModal(null); }}
+          onClose={closeFailureModal}
           onAdd={addFailure}
         />
       )}
@@ -543,11 +656,63 @@ export function NetworkPage() {
           parentTitle={variant.title}
           busy={saving}
           error={saveError}
-          onClose={() => { setSaveModal(false); }}
+          onClose={closeSaveModal}
           onSave={saveVariant}
         />
       )}
-    </>
+    </PageStack>
+  );
+}
+
+/**
+ * Обёртка блока, которая существует только в потоке: там ей задаётся место в сетке. На
+ * полотне карточки ставят себя сами по макетным координатам, и лишний контейнер не нужен.
+ */
+function StackedCell({ className, children }: { className: string; children: ReactNode }) {
+  return useStacked() ? <div className={className}>{children}</div> : <>{children}</>;
+}
+
+/** Доля высоты окна, выше которой карта в потоке не растёт: под ней должно быть видно шкалу. */
+const STACKED_MAP_MAX_HEIGHT = 0.55;
+
+/**
+ * Область карты в потоке. Ширину меряет сама (карточка может быть уже окна на планшете),
+ * высоту выбирает под то, что показывает: глобусу и полярному ландшафту нужен почти
+ * квадрат, равнопромежуточной схеме — полоса около 2:1, иначе вокруг неё пустое поле.
+ */
+function StackedMapArea({
+  mode,
+  children,
+}: {
+  mode: 'globe' | 'terrain' | 'scheme';
+  children: (size: { width: number; height: number }) => ReactNode;
+}) {
+  const [boxRef, box] = useContainerSize<HTMLDivElement>();
+  const cap = Math.round(window.innerHeight * STACKED_MAP_MAX_HEIGHT);
+  const height =
+    mode === 'scheme'
+      ? Math.max(220, Math.min(Math.round(box.width * 0.6), cap))
+      : Math.max(300, Math.min(box.width, cap));
+
+  return (
+    <div
+      ref={boxRef}
+      className="relative w-full overflow-hidden rounded-lg border border-line-subtle bg-surface-sunken"
+      style={{ height }}
+    >
+      {box.width > 0 && children({ width: box.width, height: height - 2 })}
+    </div>
+  );
+}
+
+/** Скелетон шкалы: по полосе на клиента, как лягут треки. */
+function TimelineSkeleton({ rows }: { rows: number }) {
+  return (
+    <div className="flex h-full flex-col justify-center gap-[10px] px-[16px]">
+      {Array.from({ length: Math.max(rows, 1) }, (_, index) => (
+        <Skeleton key={index} className="h-[20px] w-full" />
+      ))}
+    </div>
   );
 }
 

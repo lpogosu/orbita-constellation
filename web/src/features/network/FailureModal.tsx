@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
 import type { GatewayOutage, SatelliteFailure, Scenario } from '@/api/types';
+import { useStacked } from '@/app/viewport-mode';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
@@ -33,6 +34,7 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
   const stepS = scenario.environment.step_s;
   const horizonS = scenario.environment.horizon_s;
   const gateways = gatewaySites(scenario);
+  const stacked = useStacked();
 
   const [kind, setKind] = useState<'satellite' | 'gateway'>('satellite');
   const [satelliteId, setSatelliteId] = useState(
@@ -97,11 +99,21 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
           <Button variant="secondary" onClick={onClose}>
             Отмена
           </Button>
-          <div className="flex gap-4">
-            <Button variant="secondary" disabled={problems.length > 0} onClick={() => { submit(true); }}>
+          {/* На телефоне пара кнопок не помещается в строку и переносится целиком. */}
+          <div className={cx('flex gap-4', stacked && 'flex-wrap')}>
+            <Button
+              variant="secondary"
+              disabled={problems.length > 0}
+              onClick={() => { submit(true); }}
+              className={stacked ? 'grow' : undefined}
+            >
               Добавить и ещё один
             </Button>
-            <Button disabled={problems.length > 0} onClick={() => { submit(false); }}>
+            <Button
+              disabled={problems.length > 0}
+              onClick={() => { submit(false); }}
+              className={stacked ? 'grow' : undefined}
+            >
               Добавить
             </Button>
           </div>
@@ -158,21 +170,24 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
         )}
       </Field>
 
-      {/* Три поля одного размера в ряду, под ними — ползунки тех двух, что правятся. */}
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <Field label="Начало" inGrid>
+      {/* Три поля одного размера в ряду, под ними — ползунки тех двух, что правятся. На
+          телефоне ряд из трёх полей не помещается: поля идут столбцом, и ползунок стоит
+          сразу под своим полем, а не через одно. */}
+      <div className={cx('mt-4 grid gap-4', stacked ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-3')}>
+        <Field label="Начало" inGrid className={stacked ? 'order-1 sm:order-none' : undefined}>
           <ClockInput label="Начало" valueS={startS} stepS={stepS} onChange={setStartS} />
         </Field>
-        <Field label="Длительность" inGrid>
+        <Field label="Длительность" inGrid className={stacked ? 'order-3 sm:order-none' : undefined}>
           <ClockInput label="Длительность" valueS={durationS} stepS={stepS} onChange={setDurationS} />
         </Field>
-        <Field label="Окончание" inGrid>
+        <Field label="Окончание" inGrid className={stacked ? 'order-5 sm:order-none' : undefined}>
           <p className={cx(FIELD, 'flex items-center text-ink-secondary')} data-numeric>
             {formatTick(endS)}
           </p>
         </Field>
 
         <Slider
+          className={stacked ? '-mt-2 order-2 sm:order-none sm:mt-0' : undefined}
           label="Начало по шкале суток"
           valueS={startS}
           stepS={stepS}
@@ -180,13 +195,19 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
           onChange={setStartS}
         />
         <Slider
+          className={stacked ? '-mt-2 order-4 sm:order-none sm:mt-0' : undefined}
           label="Длительность по шкале суток"
           valueS={durationS}
           stepS={stepS}
           maxS={horizonS - startS}
           onChange={setDurationS}
         />
-        <p className="flex h-[52px] items-center text-caption text-ink-muted">
+        <p
+          className={cx(
+            'flex items-center text-caption text-ink-muted',
+            stacked ? 'order-6 min-h-[40px] sm:order-none sm:h-[52px]' : 'h-[52px]',
+          )}
+        >
           Граница исключая: в {formatTick(endS)} аппарат уже работает.
         </p>
       </div>
@@ -214,16 +235,18 @@ export function FailureModal({ scenario, presetSatelliteId, onClose, onAdd }: Fa
 function Field({
   label,
   inGrid = false,
+  className,
   children,
 }: {
   label: string;
   /** В ряду из трёх полей отступ сверху задаёт сетка, а не само поле. */
   inGrid?: boolean;
+  className?: string | undefined;
   children: ReactNode;
 }) {
   return (
-    <div className={inGrid ? 'block' : 'mt-4 block first:mt-0'}>
-      <span className="mb-2 block text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted">
+    <div className={cx(inGrid ? 'block min-w-0' : 'mt-4 block first:mt-0', className)}>
+      <span className="mb-2 block truncate text-micro font-semibold uppercase tracking-[0.8px] text-ink-muted" title={label}>
         {label}
       </span>
       {children}
@@ -266,8 +289,10 @@ function Slider({
   valueS,
   stepS,
   maxS,
+  className,
   onChange,
 }: {
+  className?: string | undefined;
   label: string;
   valueS: number;
   stepS: number;
@@ -275,7 +300,7 @@ function Slider({
   onChange: (value: number) => void;
 }) {
   return (
-    <span className="flex h-[52px] items-center">
+    <span className={cx('flex h-[52px] items-center', className)}>
       <input
         type="range"
         min={0}

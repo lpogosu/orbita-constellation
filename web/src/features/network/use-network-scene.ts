@@ -84,9 +84,19 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
   const { selection, select } = useProjectSelection();
 
   const entryRunId = entry?.runId ?? null;
-  // Расчёт из адреса подставляется только первым: после «Запустить расчёт» экран живёт
-  // своим прогоном, а прежний идентификатор в запросе уже не команда.
+  // Какой расчёт подставить сам, решается один раз на вариант: при открытии экрана и при
+  // смене варианта. Дальше расчёт меняет только пользователь.
+  //
+  // Раньше решение пересчитывалось на каждое изменение выбора, а выбор этот хук сам же и
+  // пишет из текущего расчёта. Если адрес указывал на расчёт не последнего варианта, два
+  // асинхронных подключения перекидывали выбор друг другу, и экран бесконечно
+  // перезапрашивал оба расчёта — десятки запросов в секунду.
+  const autoRunPending = useRef(true);
+  // Расчёт из адреса — команда только при открытии экрана.
   const entryRunUsed = useRef(false);
+  // Выбор, с которым экран открылся. После первой отрисовки `selection.runId` отражает уже
+  // собственный расчёт экрана, а не пожелание пользователя.
+  const initialSelectionRunId = useRef(selection.runId);
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
@@ -149,6 +159,8 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
       // нельзя, поэтому при смене варианта он сбрасывается вместе с черновиком.
       resetRun();
       attached.current = null;
+      autoRunPending.current = true;
+      initialSelectionRunId.current = null;
       const known = project?.variants.find((item) => item.id === variantId);
       if (known !== undefined) {
         setVariant(known);
@@ -189,13 +201,15 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
   }, [project, variant, selection.variantId, entryRunId]);
 
   useEffect(() => {
-    if (project === null || variant === null) {
+    if (project === null || variant === null || !autoRunPending.current) {
       return;
     }
+    autoRunPending.current = false;
     const requested = entryRunUsed.current ? null : entryRunId;
+    entryRunUsed.current = true;
     const wanted =
       requested ??
-      selection.runId ??
+      initialSelectionRunId.current ??
       project.recent_runs.find(
         (item) => item.variant_id === variant.id && item.status === 'succeeded',
       )?.id ??
@@ -203,11 +217,25 @@ export function useNetworkScene(projectId: string, entry?: SceneEntry): SceneSta
     // Запуск, поставленный с этого же экрана, уже слушается: второй раз подписываться
     // на его события незачем.
     if (wanted !== null && attached.current !== wanted && run?.id !== wanted) {
-      entryRunUsed.current = true;
       attached.current = wanted;
       attach(wanted);
     }
-  }, [project, variant, selection.runId, entryRunId, attach, run]);
+  }, [project, variant, entryRunId, attach, run?.id]);
+
+  // Расчёт принадлежит варианту. Проект отдаёт только последние запуски, поэтому вариант
+  // расчёта из адреса при открытии может быть неизвестен и выбирается по умолчанию. Когда
+  // расчёт загрузился, экран переходит на его настоящий вариант — иначе результаты одного
+  // варианта показывались бы рядом с черновиком другого.
+  useEffect(() => {
+    if (run === null || project === null || variant === null || run.variant_id === variant.id) {
+      return;
+    }
+    const owner = project.variants.find((item) => item.id === run.variant_id);
+    if (owner !== undefined) {
+      setVariant(owner);
+      setDraftState(owner.scenario);
+    }
+  }, [run, project, variant]);
 
   const changes = useMemo(
     () => (variant === null || draft === null ? [] : draftChanges(variant.scenario, draft)),

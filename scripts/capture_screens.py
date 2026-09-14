@@ -3,6 +3,7 @@
     make up
     python scripts/capture_screens.py            # http://localhost:3000
     python scripts/capture_screens.py --base http://127.0.0.1:5173
+    python scripts/capture_screens.py --animation-only   # только анимация для шапки README
 
 Данные заводятся через API тем же путём, что и в интерфейсе: проект из сценария кейса,
 три расчёта с разными политиками маршрутизации и небольшой перебор конфигураций.
@@ -25,6 +26,7 @@ from typing import Any
 
 from PIL import Image
 from playwright.sync_api import Browser, Page, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "assets" / "screens"
@@ -150,6 +152,64 @@ def save(page: Page, name: str) -> None:
     print(f"  {name}")
 
 
+# Анимация: столько кадров, каждый — один отсчёт сетки (две минуты суток) и небольшой
+# поворот глобуса. Шаг в один отсчёт выбран по орбите: за две минуты аппарат проходит
+# около восьми градусов, и движение читается плавным; крупнее — спутники прыгают.
+ANIMATION_FRAMES = 72
+ANIMATION_FRAME_MS = 80
+ANIMATION_SIZE = (1280, 720)
+ANIMATION_DRAG_PX = 7
+
+
+def record_network(page: Page, name: str) -> None:
+    """Вращение глобуса вместе с перемоткой суток: аппараты идут по орбитам, маршрут
+    клиента перестраивается, курсор шкалы и отсчёт в панели меняются синхронно.
+
+    Кадры снимаются по одному, а не видеозаписью: WebGL в headless-режиме рисуется
+    программно и медленно, и запись в реальном времени дёргалась бы. Каждый кадр ждёт
+    снимка сети на своём отсчёте, поэтому анимация получается ровной.
+    """
+    page.wait_for_load_state("networkidle", timeout=90_000)
+    open_map_mode(page, "3D")
+    page.wait_for_timeout(2_000)
+
+    canvas = page.locator("canvas").last.bounding_box()
+    if canvas is None:
+        raise SystemExit("глобус не отрисовался: WebGL недоступен")
+    x = canvas["x"] + canvas["width"] * 0.62
+    y = canvas["y"] + canvas["height"] * 0.5
+
+    frames: list[Image.Image] = []
+    page.mouse.move(x, y)
+    page.mouse.down()
+    for _ in range(ANIMATION_FRAMES):
+        try:
+            with page.expect_response(lambda response: "/snapshot" in response.url, timeout=10_000):
+                page.keyboard.press("ArrowRight")
+        except PlaywrightTimeoutError:
+            # Снимок этого отсчёта мог уже лежать в кэше экрана: запроса не будет, и ждать нечего.
+            pass
+        x -= ANIMATION_DRAG_PX
+        page.mouse.move(x, y, steps=2)
+        page.wait_for_timeout(250)
+        png = page.screenshot(type="png")
+        with Image.open(io.BytesIO(png)) as image:
+            frames.append(image.convert("RGB").resize(ANIMATION_SIZE, Image.Resampling.LANCZOS))
+    page.mouse.up()
+
+    frames[0].save(
+        OUT / name,
+        "WEBP",
+        save_all=True,
+        append_images=frames[1:],
+        duration=ANIMATION_FRAME_MS,
+        loop=0,
+        quality=78,
+        method=6,
+    )
+    print(f"  {name} ({len(frames)} кадров)")
+
+
 def open_map_mode(page: Page, label: str) -> None:
     button = page.get_by_role("button", name=label, exact=True)
     if button.count():
@@ -161,6 +221,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default="http://localhost:3000")
     parser.add_argument("--api", default="http://localhost:8000/api")
+    parser.add_argument(
+        "--animation-only",
+        action="store_true",
+        help="снять только анимацию для шапки README, без статичных экранов",
+    )
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -173,6 +238,14 @@ def main() -> int:
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(args=CHROMIUM_ARGS)
+
+        page = new_page(browser, DESKTOP, "dark", 1)
+        page.goto(args.base + network, wait_until="domcontentloaded")
+        record_network(page, "00-network.webp")
+        page.context.close()
+        if args.animation_only:
+            browser.close()
+            return 0
 
         desktop = [
             ("01-projects.webp", "/projects", None),
